@@ -1,8 +1,7 @@
-import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
 
-export default defineConfig({
+export default {
   plugins: [react()],
   test: {
     environment: "jsdom",
@@ -14,4 +13,4 @@ export default defineConfig({
       "@": resolve(__dirname, "src")
     }
   }
-});
+};
