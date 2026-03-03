@@ -1,6 +1,10 @@
 name: Auto Commit From commit_name
 
 on:
+  push:
+    paths:
+      - commit_name.txt
+      - .github/commit_name.txt
   workflow_dispatch:
 
 permissions:
