@@ -1,0 +1,56 @@
+name: Auto Commit From commit_name
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  commit-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve commit message
+        id: commit_message
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          file_path=""
+          if [ -f "commit_name.txt" ]; then
+            file_path="commit_name.txt"
+          elif [ -f ".github/commit_name.txt" ]; then
+            file_path=".github/commit_name.txt"
+          else
+            echo "commit_name vide"
+            exit 1
+          fi
+
+          msg="$(tr -d '\r' < "$file_path" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          if [ -z "$msg" ]; then
+            echo "commit_name vide"
+            exit 1
+          fi
+
+          echo "message=$msg" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .
+          if git diff --cached --quiet; then
+            echo "Aucun changement a commit."
+            exit 0
+          fi
+
+          git commit -m "${{ steps.commit_message.outputs.message }}"
+          git push origin "${GITHUB_REF_NAME}"
