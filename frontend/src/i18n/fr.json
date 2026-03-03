@@ -1,0 +1,48 @@
+{
+  "app": {
+    "name": "BriefOPS",
+    "save": "Enregistrer",
+    "loading": "Chargement...",
+    "downloadPdf": "Télécharger PDF",
+    "soon": "Bientôt disponible"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "register": "Créer un compte",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submitLogin": "Se connecter",
+    "submitRegister": "Créer un compte",
+    "logout": "Se déconnecter"
+  },
+  "nav": {
+    "briefings": "Briefings",
+    "billing": "Facturation",
+    "onboarding": "Onboarding",
+    "plan": "Plan"
+  },
+  "onboarding": {
+    "title": "Bienvenue",
+    "orgName": "Nom de l'organisation",
+    "submit": "Continuer",
+    "fallback": "L'endpoint onboarding n'est pas encore disponible."
+  },
+  "briefings": {
+    "title": "Briefings",
+    "new": "Nouveau briefing",
+    "empty": "Aucun briefing"
+  },
+  "billing": {
+    "title": "Facturation",
+    "freeLimit": "Plan Free : 3 exports PDF par mois",
+    "upgrade": "Passer Pro"
+  },
+  "editor": {
+    "metadata": "Métadonnées",
+    "modules": "Modules",
+    "saved": "Enregistré",
+    "saveError": "Échec de l'enregistrement",
+    "autosave": "Autosave activé",
+    "pdfDenied": "Export PDF refusé. Upgrade requis."
+  }
+}

@@ -1,8 +1,11 @@
-Init projet (Next.js ou Vite+React)
+Init projet (Next.js 
+ frontend React)
 
 Supabase : schéma + RLS + auth
 
 CRUD briefings (liste + créer + éditer)
+
+
 
 Modules : toggle + form + save JSON
 

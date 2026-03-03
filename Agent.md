@@ -84,6 +84,11 @@ Reuse logic when possible.
 
 Always explain what files were modified.
 
+Environment files rule:
+- Do not modify existing environment variables (values already defined).
+- Creating `.env` files is allowed.
+- Adding new environment variables is allowed.
+
 🧩 How AI Should Work
 
 When implementing a feature:
@@ -99,4 +104,3 @@ Explain how to test it locally.
 Never rewrite the entire project unless explicitly requested.
 
 If something is unclear, make the simplest assumption and proceed.
-
