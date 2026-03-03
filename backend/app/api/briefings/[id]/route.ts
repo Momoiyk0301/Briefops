@@ -3,52 +3,60 @@ import { z } from "zod";
 
 import { deleteBriefing, getBriefingById, updateBriefing } from "@/supabase/queries/briefings";
 import { requireUser } from "@/supabase/server";
+import { createRequestContext, toErrorResponse } from "@/http";
+
+const idSchema = z.string().uuid();
 
 const updateSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().trim().min(1).optional(),
   event_date: z.string().date().nullable().optional(),
-  location_text: z.string().nullable().optional()
+  location_text: z.string().trim().nullable().optional()
 });
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Params) {
+  const ctx = createRequestContext("GET /api/briefings/:id");
+
   try {
-    const { client } = await requireUser(request);
+    const { client, userId } = await requireUser(request);
     const { id } = await params;
-    const briefing = await getBriefingById(client, id);
+    const briefing = await getBriefingById(client, idSchema.parse(id));
+    ctx.info("fetched briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
-    const message = (error as Error).message;
-    const status = message === "Unauthorized" ? 401 : 404;
-    return NextResponse.json({ error: message }, { status });
+    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    return toErrorResponse(error, ctx.requestId);
   }
 }
 
 export async function PATCH(request: Request, { params }: Params) {
+  const ctx = createRequestContext("PATCH /api/briefings/:id");
+
   try {
-    const { client } = await requireUser(request);
+    const { client, userId } = await requireUser(request);
     const { id } = await params;
-    const body = await request.json();
-    const patch = updateSchema.parse(body);
-    const briefing = await updateBriefing(client, id, patch);
+    const patch = updateSchema.parse(await request.json());
+    const briefing = await updateBriefing(client, idSchema.parse(id), patch);
+    ctx.info("updated briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
-    const message = (error as Error).message;
-    const status = message === "Unauthorized" ? 401 : 400;
-    return NextResponse.json({ error: message }, { status });
+    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    return toErrorResponse(error, ctx.requestId);
   }
 }
 
 export async function DELETE(request: Request, { params }: Params) {
+  const ctx = createRequestContext("DELETE /api/briefings/:id");
+
   try {
-    const { client } = await requireUser(request);
+    const { client, userId } = await requireUser(request);
     const { id } = await params;
-    await deleteBriefing(client, id);
+    await deleteBriefing(client, idSchema.parse(id));
+    ctx.info("deleted briefing", { userId, briefingId: id });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = (error as Error).message;
-    const status = message === "Unauthorized" ? 401 : 403;
-    return NextResponse.json({ error: message }, { status });
+    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    return toErrorResponse(error, ctx.requestId);
   }
 }

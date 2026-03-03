@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
 
-import { serverEnv } from "@/env";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { handleStripeWebhookEvent } from "@/stripe/webhook";
-import { stripe } from "@/stripe/stripe";
+import { getStripe, getStripeWebhookSecret } from "@/stripe/stripe";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const signature = request.headers.get("stripe-signature");
-  if (!signature) {
-    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
-  }
-
-  const payload = await request.text();
+  const ctx = createRequestContext("POST /api/stripe/webhook");
 
   try {
-    const event = stripe.webhooks.constructEvent(payload, signature, serverEnv.STRIPE_WEBHOOK_SECRET);
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) {
+      throw new HttpError(400, "Missing stripe-signature header");
+    }
+
+    const payload = await request.text();
+    const event = getStripe().webhooks.constructEvent(payload, signature, getStripeWebhookSecret());
+
     await handleStripeWebhookEvent(event);
+    ctx.info("processed webhook", { eventType: event.type, eventId: event.id });
+
     return NextResponse.json({ received: true });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    return toErrorResponse(error, ctx.requestId);
   }
 }

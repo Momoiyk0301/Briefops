@@ -77,7 +77,8 @@ export async function getMe(): Promise<MeResponse> {
       "/api/me"
     );
     return { ...response, degraded: false };
-  } catch {
+  } catch (error) {
+    console.warn(`[MOCK DATA] me fallback used because ${toApiMessage(error)}`);
     const session = await getSession();
     return {
       user: session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null,
@@ -98,6 +99,42 @@ export async function postOnboarding(input: { org_name: string }) {
 export async function getBriefings() {
   const response = await requestJson<{ data: Briefing[] }>("/api/briefings");
   return response.data;
+}
+
+export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; demo: boolean; reason?: string }> {
+  try {
+    const data = await getBriefings();
+    return { data, demo: false };
+  } catch (error) {
+    const reason = toApiMessage(error);
+    const now = new Date().toISOString();
+    console.warn(`[MOCK DATA] briefings list fallback used because ${reason}`);
+
+    const demoData: Briefing[] = [
+      {
+        id: "demo-briefing-1",
+        org_id: "demo-org",
+        title: "Demo - Festival Main Stage",
+        event_date: now.slice(0, 10),
+        location_text: "Brussels Expo",
+        created_by: "demo-user",
+        created_at: now,
+        updated_at: now
+      },
+      {
+        id: "demo-briefing-2",
+        org_id: "demo-org",
+        title: "Demo - Corporate Summit",
+        event_date: now.slice(0, 10),
+        location_text: "Antwerp Convention Center",
+        created_by: "demo-user",
+        created_at: now,
+        updated_at: now
+      }
+    ];
+
+    return { data: demoData, demo: true, reason };
+  }
 }
 
 export async function createBriefing(input: { org_id: string; title: string; event_date?: string; location_text?: string }) {

@@ -11,10 +11,18 @@ backend/.env.*
 # Node / Next.js
 node_modules/
 backend/node_modules/
+frontend/node_modules/
 .next/
 backend/.next/
 out/
 backend/out/
+frontend/dist/
+backend/.next/
+frontend/coverage/
+backend/coverage/
+playwright-report/
+test-results/
+frontend/tsconfig.tsbuildinfo
 
 # Logs
 npm-debug.log*

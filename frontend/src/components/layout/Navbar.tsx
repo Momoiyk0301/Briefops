@@ -1,6 +1,5 @@
 import { Moon, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
 import { signOut } from "@/lib/auth";
 import { UserPlan } from "@/lib/types";
@@ -9,9 +8,10 @@ import { Button } from "@/components/ui/Button";
 
 type Props = {
   plan: UserPlan | null;
+  demoData?: boolean;
 };
 
-export function Navbar({ plan }: Props) {
+export function Navbar({ plan, demoData = false }: Props) {
   const { t, i18n } = useTranslation();
 
   const setTheme = (theme: "dark" | "light") => {
@@ -26,18 +26,20 @@ export function Navbar({ plan }: Props) {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-      <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-          <Link to="/briefings" className="text-lg font-semibold">{t("app.name")}</Link>
-          <Link to="/briefings" className="text-sm text-slate-600 dark:text-slate-300">{t("nav.briefings")}</Link>
-          <Link to="/settings/billing" className="text-sm text-slate-600 dark:text-slate-300">{t("nav.billing")}</Link>
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6">
+        <div className="min-w-0">
+          <p className="truncate text-base font-semibold">{t("app.name")}</p>
+          <p className="truncate text-xs text-slate-500">
+            Active les modules nécessaires, exporte un PDF clair pour ton staff.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge>{t("nav.plan")}: {plan ?? "unknown"}</Badge>
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">{t("nav.plan")}: {plan ?? "unknown"}</Badge>
+          {demoData && <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200">Demo data</Badge>}
           <Button variant="ghost" onClick={switchLanguage}>{i18n.language.toUpperCase()}</Button>
-          <Button variant="ghost" onClick={() => setTheme("light")}><Sun size={16} /></Button>
-          <Button variant="ghost" onClick={() => setTheme("dark")}><Moon size={16} /></Button>
+          <Button variant="ghost" onClick={() => setTheme("light")} aria-label="Light mode"><Sun size={16} /></Button>
+          <Button variant="ghost" onClick={() => setTheme("dark")} aria-label="Dark mode"><Moon size={16} /></Button>
           <Button variant="secondary" onClick={() => void signOut()}>{t("auth.logout")}</Button>
         </div>
       </div>

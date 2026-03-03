@@ -24,7 +24,7 @@ function ProtectedLayout() {
   if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
 
   return (
-    <AppShell plan={meQuery.data?.plan ?? null}>
+    <AppShell plan={meQuery.data?.plan ?? null} demoData={Boolean(meQuery.data?.degraded)}>
       <Outlet />
     </AppShell>
   );

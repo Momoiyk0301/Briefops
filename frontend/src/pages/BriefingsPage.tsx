@@ -3,10 +3,12 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createBriefing, getBriefings, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { createBriefing, getBriefingsWithFallback, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
 import { moduleRegistry } from "@/lib/moduleRegistry";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function BriefingsPage() {
   const { t } = useTranslation();
@@ -14,7 +16,7 @@ export default function BriefingsPage() {
   const queryClient = useQueryClient();
 
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
-  const briefingsQuery = useQuery({ queryKey: ["briefings"], queryFn: getBriefings });
+  const briefingsQuery = useQuery({ queryKey: ["briefings"], queryFn: getBriefingsWithFallback });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -43,19 +45,41 @@ export default function BriefingsPage() {
     onError: (error) => toast.error(toApiMessage(error))
   });
 
-  if (briefingsQuery.isLoading) return <p>{t("app.loading")}</p>;
+  if (briefingsQuery.isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-12 w-60" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
   if (briefingsQuery.error) return <p>{toApiMessage(briefingsQuery.error)}</p>;
+
+  const briefings = briefingsQuery.data?.data ?? [];
+  const isDemo = Boolean(briefingsQuery.data?.demo);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("briefings.title")}</h1>
-        <Button onClick={() => createMutation.mutate()}>{t("briefings.new")}</Button>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold">{t("briefings.title")}</h1>
+          {isDemo && <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200">Demo data</Badge>}
+        </div>
+        <Button onClick={() => createMutation.mutate()} className="bg-orange-500 hover:bg-orange-600">{t("briefings.new")}</Button>
       </div>
 
       <div className="space-y-3">
-        {(briefingsQuery.data ?? []).length === 0 && <p>{t("briefings.empty")}</p>}
-        {(briefingsQuery.data ?? []).map((briefing) => (
+        {briefings.length === 0 && (
+          <Card className="text-center">
+            <p className="text-lg font-medium">{t("briefings.empty")}</p>
+            <p className="mt-1 text-sm text-slate-500">Crée ton premier briefing en 2 minutes.</p>
+            <Button className="mt-4 bg-orange-500 hover:bg-orange-600" onClick={() => createMutation.mutate()}>
+              {t("briefings.new")}
+            </Button>
+          </Card>
+        )}
+        {briefings.map((briefing) => (
           <Card key={briefing.id} className="cursor-pointer" onClick={() => navigate(`/briefings/${briefing.id}`)}>
             <p className="font-medium">{briefing.title}</p>
             <p className="text-sm text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>

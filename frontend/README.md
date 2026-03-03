@@ -1,104 +1,52 @@
 # BriefOPS Frontend
 
-Frontend MVP for BriefOPS built with React + Vite + TypeScript.
+React + Vite + TypeScript frontend with Tailwind, Supabase Auth, React Query and modular briefing editor.
 
-## Stack
-
-- React + Vite + TypeScript
-- TailwindCSS
-- React Router
-- Supabase Auth (client)
-- TanStack Query
-- React Hook Form + Zod
-- react-i18next (FR/EN)
-- react-hot-toast
-- lucide-react
-
-## Setup
+## Run
 
 ```bash
 cd frontend
 cp .env.example .env.local
+npm install
+npm run dev
 ```
 
-Fill `.env.local`:
+## Env
+
+`frontend/.env.local`:
 
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_API_URL=http://localhost:3000
+VITE_E2E_MOCK_AUTH=false
 ```
 
-Install and run:
+## Tests
+
+Unit/integration:
 
 ```bash
-npm install
-npm run dev
+cd frontend
+npm run test
 ```
 
-Build:
+E2E is configured at monorepo root via Playwright.
 
-```bash
-npm run build
-```
+## Mock fallback policy
 
-## Routing
+When backend data is unavailable, the app uses explicit demo fallback for briefings list:
+- UI badge: `Demo data`
+- console log: `[MOCK DATA] briefings list fallback used because <reason>`
 
-- `/login`
-- `/onboarding`
-- `/briefings`
-- `/briefings/:id`
-- `/settings/billing`
+If `/api/me` is unavailable, fallback user context is used and the app logs:
+- `[MOCK DATA] me fallback used because <reason>`
 
-## API integration
+## UX highlights
 
-The app sends `Authorization: Bearer <access_token>` for all backend calls.
-
-Implemented endpoints:
-
-- `GET /api/briefings`
-- `POST /api/briefings`
-- `GET /api/briefings/:id`
-- `PATCH /api/briefings/:id`
-- `GET /api/briefings/:id/modules`
-- `PUT /api/briefings/:id/modules` (called in loop for batch upsert)
-- `GET /api/pdf/:id`
-
-Adapter with documented fallback:
-
-- `GET /api/me`
-  - if missing, fallback to Supabase session user and set `degraded=true`.
-- `POST /api/onboarding`
-  - if missing, frontend shows a clear fallback error toast/message.
-
-## Editor behavior
-
-- Left: fixed A4 preview (WYSIWYG rendering)
-- Right: metadata form + modules toggles + selected module form
-- Metadata module is mandatory and always visible
-- Autosave debounce (800ms) + explicit save button
-- PDF export by authenticated fetch + blob download
-- On 402/403: toast and CTA to billing page
-
-## Add a new module
-
-1. Add schema + defaults + labels + components in `src/lib/moduleRegistry.ts`
-2. Create module form component in `src/components/briefing/forms/`
-3. Create preview component in `src/components/briefing/preview/`
-
-No editor engine changes required.
-
-## i18n and theme
-
-- Language toggle FR/EN in navbar (persisted in `localStorage`)
-- Dark/light mode toggle in navbar (persisted in `localStorage`)
-
-## Test flow
-
-1. Register/login via email/password.
-2. Go to onboarding and submit org name (or observe fallback if endpoint missing).
-3. Create a briefing from `/briefings`.
-4. Edit metadata + modules and verify live A4 preview.
-5. Save manually and confirm toast.
-6. Trigger autosave by changing fields and waiting >800ms.
-7. Download PDF and verify success/failure handling.
+- Desktop-first editor with A4 preview (WYSIWYG)
+- Metadata always visible
+- Module registry architecture (add module = registry + form + preview)
+- Autosave + manual save
+- PDF export with paywall handling and billing CTA
+- FR/EN + dark/light toggles

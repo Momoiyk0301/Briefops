@@ -54,3 +54,27 @@ export async function requireUser(request: Request): Promise<{ client: SupabaseC
 
   return { client, userId: data.user.id };
 }
+
+export async function requireAuthContext(request: Request): Promise<{
+  client: SupabaseClient;
+  userId: string;
+  email: string | null;
+}> {
+  const token = getBearerToken(request);
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  const client = createSupabaseServerClient(token);
+  const { data, error } = await client.auth.getUser();
+
+  if (error || !data.user) {
+    throw new Error("Unauthorized");
+  }
+
+  return {
+    client,
+    userId: data.user.id,
+    email: data.user.email ?? null
+  };
+}

@@ -1,8 +1,9 @@
 import Stripe from "stripe";
 
-import { env } from "@/env";
 import { createServiceRoleClient } from "@/supabase/server";
-import { isDev, stripe } from "@/stripe/stripe";
+import { getStripe, getStripePriceId, isDev } from "@/stripe/stripe";
+
+const processedEventIds = new Set<string>();
 
 async function updatePlanByEmail(email: string, plan: "free" | "pro", stripeCustomerId?: string | null) {
   const admin = createServiceRoleClient();
@@ -25,15 +26,20 @@ async function updatePlanByCustomerId(customerId: string, plan: "free" | "pro") 
 async function isProFromSession(session: Stripe.Checkout.Session): Promise<boolean> {
   if (!session.id) return false;
 
-  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
-  return lineItems.data.some((item) => item.price?.id === env.STRIPE_PRICE_ID);
+  const lineItems = await getStripe().checkout.sessions.listLineItems(session.id, { limit: 100 });
+  return lineItems.data.some((item) => item.price?.id === getStripePriceId());
 }
 
 function isProFromSubscription(subscription: Stripe.Subscription): boolean {
-  return subscription.items.data.some((item) => item.price.id === env.STRIPE_PRICE_ID);
+  return subscription.items.data.some((item) => item.price.id === getStripePriceId());
 }
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
+  if (event.id && processedEventIds.has(event.id)) {
+    if (isDev) console.info("[stripe] duplicate event ignored", event.id);
+    return;
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -74,4 +80,6 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       break;
     }
   }
+
+  if (event.id) processedEventIds.add(event.id);
 }

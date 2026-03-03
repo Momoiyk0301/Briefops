@@ -4,10 +4,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1), // server only
-  STRIPE_SECRET_KEY: z.string().min(1), // server only
-  STRIPE_WEBHOOK_SECRET: z.string().min(1), // server only
-  STRIPE_PRICE_ID: z.string().min(1),
-  APP_URL: z.string().url(),
+  APP_URL: z.string().url().default("http://localhost:3000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development")
 });
 
@@ -26,7 +23,21 @@ export const clientEnv = {
 };
 
 export const serverEnv = {
-  SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
-  STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY,
-  STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET
+  SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY
 };
+
+const stripeEnvSchema = z.object({
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  STRIPE_PRICE_ID: z.string().min(1)
+});
+
+export function getStripeEnv() {
+  const stripeParsed = stripeEnvSchema.safeParse(process.env);
+  if (!stripeParsed.success) {
+    console.error("Invalid Stripe environment variables", stripeParsed.error.flatten().fieldErrors);
+    throw new Error("Missing or invalid Stripe environment variables");
+  }
+
+  return stripeParsed.data;
+}
