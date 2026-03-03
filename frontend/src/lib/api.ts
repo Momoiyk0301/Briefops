@@ -8,7 +8,7 @@ import {
   UserPlan
 } from "@/lib/types";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = String(import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
 
 if (!API_URL) {
   throw new Error("Missing VITE_API_URL");
@@ -35,22 +35,32 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(await getAuthHeader()),
-    ...(options.headers ?? {})
-  };
+  let response: Response;
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(await getAuthHeader()),
+      ...(options.headers ?? {})
+    };
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined
-  });
+    response = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Network failure";
+    throw { status: 0, message: `Failed to fetch backend (${message})` } as ApiError;
+  }
 
   let payload: unknown = null;
   const text = await response.text();
   if (text) {
-    payload = JSON.parse(text) as unknown;
+    try {
+      payload = JSON.parse(text) as unknown;
+    } catch {
+      payload = { error: text };
+    }
   }
 
   if (!response.ok) {

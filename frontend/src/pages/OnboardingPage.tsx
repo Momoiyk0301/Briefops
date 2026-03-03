@@ -28,17 +28,31 @@ export default function OnboardingPage() {
   const submit = form.handleSubmit(async (values) => {
     try {
       await mutation.mutateAsync(values);
-    } catch {
-      toast.error(t("onboarding.fallback"));
+    } catch (error) {
+      const message = toApiMessage(error);
+      if (message.includes("already has an organization")) {
+        toast.success("Organisation déjà créée, redirection.");
+        navigate("/briefings");
+        return;
+      }
+
+      if (message.toLowerCase().includes("unauthorized")) {
+        toast.error("Session expirée. Reconnecte-toi.");
+        navigate("/login");
+        return;
+      }
+
+      toast.error(`${t("onboarding.fallback")} (${message})`);
     }
   });
 
   return (
-    <Card className="mx-auto max-w-xl">
-      <h1 className="mb-4 text-xl font-semibold">{t("onboarding.title")}</h1>
+    <Card className="mx-auto max-w-xl p-6">
+      <h1 className="mb-1 text-2xl font-semibold">{t("onboarding.title")}</h1>
+      <p className="mb-4 text-sm text-[#888]">Configure ton espace en moins d'une minute.</p>
       <form className="space-y-3" onSubmit={submit}>
         <Input placeholder={t("onboarding.orgName")} {...form.register("org_name")} />
-        <Button type="submit" disabled={mutation.isPending}>{t("onboarding.submit")}</Button>
+        <Button type="submit" disabled={mutation.isPending} withArrow>{t("onboarding.submit")}</Button>
       </form>
     </Card>
   );

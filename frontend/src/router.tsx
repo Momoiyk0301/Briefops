@@ -10,6 +10,7 @@ import BriefingDetailPage from "@/pages/BriefingDetailPage";
 import BriefingsPage from "@/pages/BriefingsPage";
 import LoginPage from "@/pages/LoginPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import StatusPage from "@/pages/StatusPage";
 
 function RequireAuth() {
   const { session, loading } = useAuth();
@@ -40,6 +41,10 @@ function LoginGate() {
 }
 
 export const router = createBrowserRouter([
+  {
+    path: "/status",
+    element: <StatusPage />
+  },
   {
     path: "/login",
     element: <LoginGate />

@@ -1,0 +1,8 @@
+
+Dans l'app 
+il faut une sidebar a gauche avec bord arrondis et les navaigations centrée 
+
+
+Il faut aussi un header avec profiles parametre etc 
+
+

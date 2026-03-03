@@ -3,5 +3,5 @@ type Props = {
 };
 
 export function Skeleton({ className = "" }: Props) {
-  return <div className={`animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/80 ${className}`} />;
+  return <div className={`animate-pulse rounded-2xl bg-[#eceef7] dark:bg-[#222] ${className}`} />;
 }

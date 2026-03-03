@@ -1,5 +1,10 @@
 import { HTMLAttributes } from "react";
 
 export function Card({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={`rounded-xl border border-slate-200 bg-white p-4 shadow-panel dark:border-slate-800 dark:bg-slate-900 ${className}`} {...props} />;
+  return (
+    <div
+      className={`rounded-panel border border-[#eeeeee] bg-white p-5 shadow-panel dark:border-white/10 dark:bg-[#121212] ${className}`}
+      {...props}
+    />
+  );
 }

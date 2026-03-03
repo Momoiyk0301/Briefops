@@ -7,4 +7,8 @@ if [[ ! -f .env.local ]]; then
   echo "[start-frontend.sh] Warning: frontend/.env.local not found"
 fi
 
+echo "[start-frontend] running frontend tests..."
+npm run test
+
+echo "[start-frontend] starting frontend dev server..."
 npm run dev

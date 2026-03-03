@@ -1,10 +1,13 @@
 import { z } from "zod";
 
+const trimmed = (schema: z.ZodTypeAny) =>
+  z.preprocess((value) => (typeof value === "string" ? value.trim() : value), schema);
+
 const envSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1), // server only
-  APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_SUPABASE_URL: trimmed(z.string().url()),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: trimmed(z.string().min(1)),
+  SUPABASE_SERVICE_ROLE_KEY: trimmed(z.string().min(1)), // server only
+  APP_URL: trimmed(z.string().url()).default("http://localhost:3000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development")
 });
 
@@ -27,9 +30,9 @@ export const serverEnv = {
 };
 
 const stripeEnvSchema = z.object({
-  STRIPE_SECRET_KEY: z.string().min(1),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1),
-  STRIPE_PRICE_ID: z.string().min(1)
+  STRIPE_SECRET_KEY: trimmed(z.string().min(1)),
+  STRIPE_WEBHOOK_SECRET: trimmed(z.string().min(1)),
+  STRIPE_PRICE_ID: trimmed(z.string().min(1))
 });
 
 export function getStripeEnv() {

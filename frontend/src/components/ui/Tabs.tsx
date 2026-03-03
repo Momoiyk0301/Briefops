@@ -15,13 +15,17 @@ type Props = {
 export function Tabs({ tabs, active, onChange, children }: Props) {
   return (
     <div>
-      <div className="mb-4 flex gap-2">
+      <div className="mb-5 inline-flex rounded-full bg-[#f0f1f8] p-1 dark:bg-[#222]">
         {tabs.map((tab) => (
           <button
             type="button"
             key={tab.key}
             onClick={() => onChange(tab.key)}
-            className={`rounded-lg px-3 py-2 text-sm ${active === tab.key ? "bg-brand-500 text-white" : "bg-slate-200 dark:bg-slate-800"}`}
+            className={`rounded-full px-4 py-2 text-sm transition ${
+              active === tab.key
+                ? "bg-brand-500 text-white shadow-panel"
+                : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"
+            }`}
           >
             {tab.label}
           </button>
