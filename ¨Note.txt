@@ -1,0 +1,15 @@
+Init projet (Next.js ou Vite+React)
+
+Supabase : schéma + RLS + auth
+
+CRUD briefings (liste + créer + éditer)
+
+Modules : toggle + form + save JSON
+
+Share link : token public (lecture seule)
+
+Export PDF
+
+Stripe paywall
+
+Vercel deploy
