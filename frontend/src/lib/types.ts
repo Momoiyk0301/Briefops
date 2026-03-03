@@ -3,6 +3,7 @@ import { ZodType } from "zod";
 
 export type UserPlan = "free" | "pro";
 export type Locale = "fr" | "en";
+export type MembershipRole = "owner" | "admin" | "member";
 
 export type AppUser = {
   id: string;
@@ -13,6 +14,8 @@ export type MeResponse = {
   user: AppUser | null;
   plan: UserPlan | null;
   org: { id: string; name: string } | null;
+  role: MembershipRole | null;
+  is_admin: boolean;
   degraded: boolean;
 };
 

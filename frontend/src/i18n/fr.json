@@ -18,6 +18,7 @@
   "nav": {
     "briefings": "Briefings",
     "billing": "Facturation",
+    "settings": "Paramètres",
     "onboarding": "Onboarding",
     "plan": "Plan"
   },
@@ -36,6 +37,11 @@
     "title": "Facturation",
     "freeLimit": "Plan Free : 3 exports PDF par mois",
     "upgrade": "Passer Pro"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "languageTitle": "Langue de l'interface",
+    "languageHint": "Choisis la langue utilisée dans l'application."
   },
   "editor": {
     "metadata": "Métadonnées",

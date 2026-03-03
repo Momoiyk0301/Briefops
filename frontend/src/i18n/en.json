@@ -18,6 +18,7 @@
   "nav": {
     "briefings": "Briefings",
     "billing": "Billing",
+    "settings": "Settings",
     "onboarding": "Onboarding",
     "plan": "Plan"
   },
@@ -36,6 +37,11 @@
     "title": "Billing",
     "freeLimit": "Free plan: 3 PDF exports per month",
     "upgrade": "Upgrade to Pro"
+  },
+  "settings": {
+    "title": "Settings",
+    "languageTitle": "UI language",
+    "languageHint": "Choose the language used in the application."
   },
   "editor": {
     "metadata": "Metadata",

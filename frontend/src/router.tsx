@@ -10,6 +10,7 @@ import BriefingDetailPage from "@/pages/BriefingDetailPage";
 import BriefingsPage from "@/pages/BriefingsPage";
 import LoginPage from "@/pages/LoginPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import SettingsPage from "@/pages/SettingsPage";
 import StatusPage from "@/pages/StatusPage";
 
 function RequireAuth() {
@@ -25,10 +26,21 @@ function ProtectedLayout() {
   if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
 
   return (
-    <AppShell plan={meQuery.data?.plan ?? null} demoData={Boolean(meQuery.data?.degraded)}>
+    <AppShell
+      plan={meQuery.data?.plan ?? null}
+      demoData={Boolean(meQuery.data?.degraded)}
+      isAdmin={Boolean(meQuery.data?.is_admin)}
+    >
       <Outlet />
     </AppShell>
   );
+}
+
+function RequireAdmin() {
+  const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
+  if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
+  if (!meQuery.data?.is_admin) return <Navigate to="/briefings" replace />;
+  return <Outlet />;
 }
 
 function LoginGate() {
@@ -41,10 +53,6 @@ function LoginGate() {
 }
 
 export const router = createBrowserRouter([
-  {
-    path: "/status",
-    element: <StatusPage />
-  },
   {
     path: "/login",
     element: <LoginGate />
@@ -59,6 +67,11 @@ export const router = createBrowserRouter([
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
           { path: "/settings/billing", element: <BillingPage /> },
+          { path: "/settings", element: <SettingsPage /> },
+          {
+            element: <RequireAdmin />,
+            children: [{ path: "/status", element: <StatusPage /> }]
+          },
           { path: "*", element: <Navigate to="/briefings" replace /> }
         ]
       }

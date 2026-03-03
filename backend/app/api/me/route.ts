@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id")
+      .select("org_id,role")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       user: { id: userId, email: email ?? "" },
       plan: profile?.plan ?? null,
-      org
+      org,
+      role: membership?.role ?? null,
+      is_admin: membership?.role === "owner" || membership?.role === "admin"
     });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

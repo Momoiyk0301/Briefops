@@ -88,7 +88,13 @@ export function toApiMessage(error: unknown): string {
 
 export async function getMe(): Promise<MeResponse> {
   try {
-    const response = await requestJson<{ user: { id: string; email: string }; plan: UserPlan; org: { id: string; name: string } | null }>(
+    const response = await requestJson<{
+      user: { id: string; email: string };
+      plan: UserPlan;
+      org: { id: string; name: string } | null;
+      role: "owner" | "admin" | "member" | null;
+      is_admin: boolean;
+    }>(
       "/api/me"
     );
     return { ...response, degraded: false };
@@ -99,6 +105,8 @@ export async function getMe(): Promise<MeResponse> {
       user: session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null,
       plan: null,
       org: null,
+      role: null,
+      is_admin: false,
       degraded: true
     };
   }

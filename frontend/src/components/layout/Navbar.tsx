@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/Button";
 type Props = {
   plan: UserPlan | null;
   demoData?: boolean;
+  isAdmin?: boolean;
 };
 
-export function Navbar({ plan, demoData = false }: Props) {
+export function Navbar({ plan, demoData = false, isAdmin = false }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,13 +47,15 @@ export function Navbar({ plan, demoData = false }: Props) {
             >
               Payments
             </button>
-            <button
-              type="button"
-              onClick={() => navigate("/status")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${location.pathname.startsWith("/status") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
-            >
-              Reports
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => navigate("/status")}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${location.pathname.startsWith("/status") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
+              >
+                Reports
+              </button>
+            ) : null}
           </div>
           <Badge>{t("nav.plan")}: {plan ?? "unknown"}</Badge>
           {demoData && <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-900/20 dark:text-orange-200">Demo data</Badge>}
