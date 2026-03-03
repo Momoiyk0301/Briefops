@@ -12,19 +12,13 @@ type Props = {
 };
 
 export function Navbar({ plan, demoData = false }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
   const setTheme = (theme: "dark" | "light") => {
     localStorage.setItem("briefops:theme", theme);
     document.documentElement.classList.toggle("dark", theme === "dark");
-  };
-
-  const switchLanguage = () => {
-    const next = i18n.language === "fr" ? "en" : "fr";
-    void i18n.changeLanguage(next);
-    localStorage.setItem("briefops:lang", next);
   };
 
   return (
@@ -62,7 +56,6 @@ export function Navbar({ plan, demoData = false }: Props) {
           </div>
           <Badge>{t("nav.plan")}: {plan ?? "unknown"}</Badge>
           {demoData && <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-900/20 dark:text-orange-200">Demo data</Badge>}
-          <Button variant="ghost" onClick={switchLanguage}>{i18n.language.toUpperCase()}</Button>
           <Button variant="ghost" onClick={() => setTheme("light")} aria-label="Light mode"><Sun size={16} /></Button>
           <Button variant="ghost" onClick={() => setTheme("dark")} aria-label="Dark mode"><Moon size={16} /></Button>
         </div>

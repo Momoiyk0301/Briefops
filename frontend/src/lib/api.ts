@@ -64,10 +64,15 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    const message =
+    let message =
       typeof payload === "object" && payload !== null && "error" in payload
         ? String((payload as { error: string }).error)
         : `HTTP ${response.status}`;
+
+    if (/<!doctype html>|<html/i.test(message)) {
+      message = "Backend error: HTML response received (check backend env and server logs)";
+    }
+
     throw { status: response.status, message } as ApiError;
   }
 

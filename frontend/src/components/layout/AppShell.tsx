@@ -17,9 +17,9 @@ export function AppShell({ plan, demoData = false, children }: Props) {
   const activeItem = "bg-white text-brand-500 shadow-panel";
 
   return (
-    <div className="min-h-full bg-transparent text-[#111] dark:text-white">
-      <div className="grid min-h-full grid-cols-[64px_1fr]">
-        <aside className="flex flex-col items-center bg-brand-500 py-4 dark:bg-[#1A1A1A]">
+    <div className="min-h-screen bg-transparent text-[#111] dark:text-white">
+      <div className="grid min-h-screen grid-cols-[64px_1fr]">
+        <aside className="sticky top-0 flex h-screen flex-col items-center bg-brand-500 py-4 dark:bg-[#1A1A1A]">
           <button
             type="button"
             aria-label="Notifications"
