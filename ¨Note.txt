@@ -2,18 +2,23 @@ Init projet (Next.js
  frontend React)
 
 Supabase : schéma + RLS + auth
+table 
 
-CRUD briefings (liste + créer + éditer)
-
-
-
+brieifng UI
 Modules : toggle + form + save JSON
 
+assets /couleur /logo
+
+stripe 
+stripe checkout
+stripe webhook
+subscription status
+plan restriction
+
 Share link : token public (lecture seule)
+Export PDFdtorzge supabse 
+securite 
 
-Export PDF
-
-Stripe paywall
 
 Vercel deploy
 
