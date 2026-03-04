@@ -4,11 +4,17 @@ import { z } from "zod";
 import { renderBriefingPdf } from "@/pdf/renderBriefingPdf";
 import { getBriefingById } from "@/supabase/queries/briefings";
 import { listModules } from "@/supabase/queries/modules";
+import { getUserPlan } from "@/supabase/queries/profiles";
 import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
-import { requireUser } from "@/supabase/server";
+import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
+const PDF_LIMITS: Record<"free" | "start" | "pro", number> = {
+  free: 3,
+  start: 100,
+  pro: Number.POSITIVE_INFINITY
+};
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,19 +29,23 @@ export async function GET(request: Request, { params }: Params) {
     const briefing = await getBriefingById(client, briefingId);
     const modules = await listModules(client, briefingId);
 
-    const usageResult = await consumePdfExport(client, userId, 3);
-    if (!usageResult.allowed) {
-      const usage = await getCurrentMonthUsage(client, userId);
-      ctx.warn("pdf limit reached", { userId, used: usage?.pdf_exports ?? usageResult.used });
-      return NextResponse.json(
-        {
-          error: "Monthly PDF export limit reached for free plan",
-          used: usage?.pdf_exports ?? usageResult.used,
-          limit: 3,
-          request_id: ctx.requestId
-        },
-        { status: 402 }
-      );
+    const plan = await getUserPlan(client, userId);
+    const limit = PDF_LIMITS[plan];
+    if (Number.isFinite(limit)) {
+      const usageResult = await consumePdfExport(client, userId, limit);
+      if (!usageResult.allowed) {
+        const usage = await getCurrentMonthUsage(client, userId);
+        ctx.warn("pdf limit reached", { userId, plan, used: usage?.pdf_exports ?? usageResult.used, limit });
+        return NextResponse.json(
+          {
+            error: `Monthly PDF export limit reached for ${plan} plan`,
+            used: usage?.pdf_exports ?? usageResult.used,
+            limit,
+            request_id: ctx.requestId
+          },
+          { status: 402 }
+        );
+      }
     }
 
     const bytes = await renderBriefingPdf({
@@ -53,6 +63,36 @@ export async function GET(request: Request, { params }: Params) {
     ctx.info("generated pdf", { userId, briefingId });
 
     const pdfArrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const storagePath = `${userId}/${briefing.id}/${Date.now()}-briefing.pdf`;
+
+    try {
+      const service = createServiceRoleClient();
+      const { error: uploadError } = await service.storage
+        .from("exports")
+        .upload(storagePath, bytes, {
+          contentType: "application/pdf",
+          upsert: true
+        });
+      if (uploadError) {
+        ctx.warn("storage upload failed", { userId, briefingId, bucket: "exports", error: uploadError.message });
+      } else {
+        const { error: persistError } = await client
+          .from("briefings")
+          .update({ pdf_path: storagePath })
+          .eq("id", briefing.id);
+        if (persistError) {
+          ctx.warn("failed to persist pdf_path", { userId, briefingId, error: persistError.message });
+        }
+        ctx.info("storage upload success", { userId, briefingId, bucket: "exports", path: storagePath });
+      }
+    } catch (storageError) {
+      ctx.warn("storage upload crashed", {
+        userId,
+        briefingId,
+        bucket: "exports",
+        error: storageError instanceof Error ? storageError.message : String(storageError)
+      });
+    }
 
     return new NextResponse(pdfArrayBuffer, {
       status: 200,

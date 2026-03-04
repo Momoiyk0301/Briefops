@@ -68,6 +68,7 @@ create table if not exists public.briefings (
   title text not null,
   event_date date,
   location_text text,
+  pdf_path text,
   created_by uuid not null references public.profiles(id) on delete restrict,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -86,6 +87,7 @@ create table if not exists public.briefing_modules (
 
 create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.organizations(id) on delete cascade,
   briefing_id uuid not null references public.briefings(id) on delete cascade,
   full_name text not null,
   role text not null default 'staff',
@@ -98,9 +100,11 @@ create table if not exists public.staff (
 
 create table if not exists public.public_links (
   id uuid primary key default gen_random_uuid(),
+  token text not null unique default gen_random_uuid()::text,
   briefing_id uuid not null references public.briefings(id) on delete cascade,
-  token text not null unique,
+  created_by uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz,
+  revoked_at timestamptz,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -123,11 +127,13 @@ create index if not exists idx_briefings_org_event_date on public.briefings(org_
 
 create index if not exists idx_modules_briefing_id on public.briefing_modules(briefing_id);
 create index if not exists idx_modules_data_json_gin on public.briefing_modules using gin (data_json);
+create index if not exists idx_staff_org_id on public.staff(org_id);
 create index if not exists idx_staff_briefing_id on public.staff(briefing_id);
 
 create index if not exists idx_public_links_token on public.public_links(token);
 create index if not exists idx_public_links_briefing_id on public.public_links(briefing_id);
 create index if not exists idx_public_links_expires_at on public.public_links(expires_at);
+create index if not exists idx_public_links_created_by on public.public_links(created_by);
 
 create index if not exists idx_usage_user_month on public.usage_counters(user_id, month_start);
 
@@ -191,6 +197,7 @@ as $$
     from public.public_links pl
     where pl.briefing_id = p_briefing_id
       and pl.token = public.request_header('x-briefing-token')
+      and pl.revoked_at is null
       and (pl.expires_at is null or pl.expires_at > now())
   );
 $$;
@@ -218,7 +225,7 @@ begin
     raise exception 'profile_not_found';
   end if;
 
-  if v_plan in ('start', 'pro') then
+  if v_plan = 'pro' then
     return query select true, 0;
     return;
   end if;
@@ -251,6 +258,24 @@ begin
 end;
 $$;
 
+create or replace function public.sync_staff_org_id()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  select b.org_id into new.org_id
+  from public.briefings b
+  where b.id = new.briefing_id;
+
+  if new.org_id is null then
+    raise exception 'invalid briefing_id for staff';
+  end if;
+
+  return new;
+end;
+$$;
+
 
 drop trigger if exists trg_briefings_updated_at on public.briefings;
 create trigger trg_briefings_updated_at
@@ -276,6 +301,12 @@ before update on public.staff
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_staff_sync_org_id on public.staff;
+create trigger trg_staff_sync_org_id
+before insert or update of briefing_id on public.staff
+for each row
+execute function public.sync_staff_org_id();
+
 drop trigger if exists trg_usage_counters_updated_at on public.usage_counters;
 create trigger trg_usage_counters_updated_at
 before update on public.usage_counters
@@ -290,7 +321,8 @@ grant select, insert, update, delete on public.memberships to authenticated;
 grant select, insert, update, delete on public.briefings to authenticated;
 grant select, insert, update, delete on public.briefing_modules to authenticated;
 grant select, insert, update, delete on public.staff to authenticated;
-grant select on public.public_links to anon, authenticated;
+grant select, insert, update, delete on public.public_links to authenticated;
+grant select on public.public_links to anon;
 grant select on public.briefings to anon;
 grant select on public.briefing_modules to anon;
 grant select on public.usage_counters to authenticated;
@@ -344,8 +376,10 @@ drop policy if exists staff_update on public.staff;
 drop policy if exists staff_delete on public.staff;
 
 drop policy if exists public_links_select_token_only on public.public_links;
-drop policy if exists public_links_insert_owner_admin on public.public_links;
-drop policy if exists public_links_delete_owner_admin on public.public_links;
+drop policy if exists public_links_insert_own on public.public_links;
+drop policy if exists public_links_update_own on public.public_links;
+drop policy if exists public_links_delete_own on public.public_links;
+drop policy if exists public_links_select_own on public.public_links;
 
 drop policy if exists usage_select_own on public.usage_counters;
 
@@ -580,8 +614,34 @@ for select
 to anon, authenticated
 using (
   token = public.request_header('x-briefing-token')
+  and revoked_at is null
   and (expires_at is null or expires_at > now())
 );
+
+create policy public_links_insert_own
+on public.public_links
+for insert
+to authenticated
+with check (created_by = auth.uid());
+
+create policy public_links_select_own
+on public.public_links
+for select
+to authenticated
+using (created_by = auth.uid());
+
+create policy public_links_update_own
+on public.public_links
+for update
+to authenticated
+using (created_by = auth.uid())
+with check (created_by = auth.uid());
+
+create policy public_links_delete_own
+on public.public_links
+for delete
+to authenticated
+using (created_by = auth.uid());
 
 create policy usage_select_own
 on public.usage_counters

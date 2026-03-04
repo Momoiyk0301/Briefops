@@ -20,7 +20,7 @@ export type UpdateBriefingInput = z.infer<typeof updateBriefingSchema>;
 export async function listBriefings(client: SupabaseClient) {
   const { data, error } = await client
     .from("briefings")
-    .select("id, org_id, title, event_date, location_text, created_by, created_at, updated_at")
+    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -32,7 +32,7 @@ export async function createBriefing(client: SupabaseClient, userId: string, inp
   const { data, error } = await client
     .from("briefings")
     .insert({ ...payload, created_by: userId })
-    .select("id, org_id, title, event_date, location_text, created_by, created_at, updated_at")
+    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .single();
 
   if (error) throw error;
@@ -52,7 +52,7 @@ export async function countBriefingsByOrg(client: SupabaseClient, orgId: string)
 export async function getBriefingById(client: SupabaseClient, id: string) {
   const { data, error } = await client
     .from("briefings")
-    .select("id, org_id, title, event_date, location_text, created_by, created_at, updated_at")
+    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .eq("id", id)
     .single();
 
@@ -66,7 +66,7 @@ export async function updateBriefing(client: SupabaseClient, id: string, patch: 
     .from("briefings")
     .update(payload)
     .eq("id", id)
-    .select("id, org_id, title, event_date, location_text, created_by, created_at, updated_at")
+    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .single();
 
   if (error) throw error;

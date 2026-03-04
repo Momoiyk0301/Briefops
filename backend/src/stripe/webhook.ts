@@ -42,6 +42,7 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" 
 function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
   const priceId = subscription.items.data[0]?.price?.id ?? null;
   const plan = resolvePlanFromSubscription(subscription);
+  const periodEndUnix = (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end;
 
   return {
     plan,
@@ -49,7 +50,7 @@ function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch
     stripe_price_id: priceId,
     subscription_name: plan === "pro" ? "Pro" : plan === "start" ? "Start" : "Free",
     subscription_status: subscription.status,
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+    current_period_end: typeof periodEndUnix === "number" ? new Date(periodEndUnix * 1000).toISOString() : null
   };
 }
 

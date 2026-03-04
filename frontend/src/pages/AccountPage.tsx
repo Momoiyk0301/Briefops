@@ -1,10 +1,15 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { getMe, toApiMessage } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
 
 export default function AccountPage() {
+  const navigate = useNavigate();
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
 
   if (meQuery.isLoading) {
@@ -18,6 +23,16 @@ export default function AccountPage() {
   const org = meQuery.data?.org;
   const role = meQuery.data?.role ?? "member";
   const plan = meQuery.data?.plan ?? "free";
+  const usage = meQuery.data?.usage;
+  const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    setPhone(localStorage.getItem("briefops:account:phone") ?? "");
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("briefops:account:phone", phone);
+  }, [phone]);
 
   return (
     <section className="space-y-5">
@@ -48,6 +63,23 @@ export default function AccountPage() {
             <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Plan</p>
             <div className="mt-1"><Badge>{plan}</Badge></div>
           </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Restant PDF</p>
+            <p className="mt-1 font-semibold">
+              {usage?.pdf_exports_remaining === null
+                ? "Illimité"
+                : `${usage?.pdf_exports_remaining ?? 0} restant(s)`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Téléphone</p>
+            <div className="mt-1">
+              <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+33 ..." />
+            </div>
+          </div>
+        </div>
+        <div className="mt-5">
+          <Button onClick={() => navigate("/settings/billing")}>Upgrade</Button>
         </div>
       </Card>
     </section>

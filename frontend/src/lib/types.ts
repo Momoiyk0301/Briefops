@@ -17,10 +17,28 @@ export type MeResponse = {
   subscription_status?: string | null;
   stripe_price_id?: string | null;
   current_period_end?: string | null;
+  usage?: {
+    pdf_exports_used: number;
+    pdf_exports_limit: number | null;
+    pdf_exports_remaining: number | null;
+  };
   org: { id: string; name: string } | null;
   role: MembershipRole | null;
   is_admin: boolean;
   degraded: boolean;
+};
+
+export type StaffMember = {
+  id: string;
+  org_id: string;
+  briefing_id: string;
+  full_name: string;
+  role: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Briefing = {

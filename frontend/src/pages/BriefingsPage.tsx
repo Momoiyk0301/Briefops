@@ -1,14 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createBriefing, getBriefingsWithFallback, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { moduleRegistry } from "@/lib/moduleRegistry";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DraggableConfirmModal } from "@/components/ui/DraggableConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function BriefingsPage() {
@@ -16,9 +19,10 @@ export default function BriefingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [briefingToDelete, setBriefingToDelete] = useState<{ id: string; title: string } | null>(null);
 
-  const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
-  const briefingsQuery = useQuery({ queryKey: ["briefings"], queryFn: getBriefingsWithFallback });
+  const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
+  const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
   const initialModules = [
     { module_key: "metadata" as const, enabled: true, data_json: moduleRegistry.metadata.defaultData },
     { module_key: "access" as const, enabled: true, data_json: moduleRegistry.access.defaultData },
@@ -41,8 +45,8 @@ export default function BriefingsPage() {
       void (async () => {
         try {
           await upsertBriefingModules(briefing.id, initialModules);
-          await queryClient.invalidateQueries({ queryKey: ["modules", briefing.id] });
-          await queryClient.invalidateQueries({ queryKey: ["briefings"] });
+          await queryClient.invalidateQueries({ queryKey: queryKeys.modules(briefing.id) });
+          await queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
         } catch (error) {
           toast.error(toApiMessage(error));
         }
@@ -50,10 +54,23 @@ export default function BriefingsPage() {
     },
     onError: (error) => toast.error(toApiMessage(error))
   });
+  const deleteMutation = useMutation({
+    mutationFn: (briefingId: string) => deleteBriefing(briefingId),
+    onSuccess: async () => {
+      toast.success("Briefing supprimé");
+      setBriefingToDelete(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
+    },
+    onError: (error) => toast.error(toApiMessage(error))
+  });
 
   const briefings = briefingsQuery.data?.data ?? [];
   const isDemo = Boolean(briefingsQuery.data?.demo);
+  const plan = meQuery.data?.plan ?? "free";
+  const briefingLimit = plan === "free" ? 1 : plan === "start" ? 20 : null;
+  const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
   const monthStart = new Date(currentYear, currentMonth, 1);
@@ -81,6 +98,41 @@ export default function BriefingsPage() {
     return map;
   }, [briefings, currentMonth, currentYear]);
 
+  const statusCounts = useMemo(() => {
+    let todayCount = 0;
+    let upcomingCount = 0;
+    let pastCount = 0;
+    let undatedCount = 0;
+
+    briefings.forEach((briefing) => {
+      if (!briefing.event_date) {
+        undatedCount += 1;
+        return;
+      }
+      const eventDate = new Date(`${briefing.event_date}T00:00:00`);
+      if (Number.isNaN(eventDate.getTime())) {
+        undatedCount += 1;
+        return;
+      }
+      if (eventDate.getTime() === today.getTime()) {
+        todayCount += 1;
+      } else if (eventDate.getTime() > today.getTime()) {
+        upcomingCount += 1;
+      } else {
+        pastCount += 1;
+      }
+    });
+
+    return { todayCount, upcomingCount, pastCount, undatedCount };
+  }, [briefings, today]);
+
+  const createdThisMonth = useMemo(() => {
+    return briefings.filter((briefing) => {
+      const createdAt = new Date(briefing.created_at);
+      return createdAt.getFullYear() === currentYear && createdAt.getMonth() === currentMonth;
+    }).length;
+  }, [briefings, currentMonth, currentYear]);
+
   const calendarCells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => {
     if (index < firstWeekday) return null;
     return index - firstWeekday + 1;
@@ -101,19 +153,23 @@ export default function BriefingsPage() {
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
-          <p className="text-xs text-[#888]">Total briefings</p>
+          <p className="text-xs text-[#888]">Briefings par statut</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge className="w-fit border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/20 dark:bg-blue-900/20 dark:text-blue-200">Aujourd'hui: {statusCounts.todayCount}</Badge>
+            <Badge className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200">A venir: {statusCounts.upcomingCount}</Badge>
+            <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-900/20 dark:text-orange-200">Passes: {statusCounts.pastCount}</Badge>
+            <Badge className="w-fit border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-500/20 dark:bg-slate-800/60 dark:text-slate-200">Sans date: {statusCounts.undatedCount}</Badge>
+          </div>
+        </Card>
+        <Card>
+          <p className="text-xs text-[#888]">Briefings crees</p>
           <p className="mt-2 text-3xl font-bold">{briefings.length}</p>
-          <Badge className="mt-3 w-fit border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200">+5%</Badge>
+          <Badge className="mt-3 w-fit">Ce mois: {createdThisMonth}</Badge>
         </Card>
         <Card>
-          <p className="text-xs text-[#888]">Upcoming</p>
-          <p className="mt-2 text-3xl font-bold">{briefings.filter((x) => Boolean(x.event_date)).length}</p>
-          <Badge className="mt-3 w-fit">Live data</Badge>
-        </Card>
-        <Card>
-          <p className="text-xs text-[#888]">Locations</p>
-          <p className="mt-2 text-3xl font-bold">{new Set(briefings.map((x) => x.location_text).filter(Boolean)).size}</p>
-          <Badge className="mt-3 w-fit">Ops coverage</Badge>
+          <p className="text-xs text-[#888]">Briefings restants</p>
+          <p className="mt-2 text-3xl font-bold">{remainingBriefings === null ? "Illimite" : remainingBriefings}</p>
+          <Badge className="mt-3 w-fit">Plan: {plan}</Badge>
         </Card>
       </div>
 
@@ -202,11 +258,44 @@ export default function BriefingsPage() {
             onClick={() => navigate(`/briefings/${briefing.id}`)}
             style={{ transitionDelay: `${index * 40}ms` }}
           >
-            <p className="font-medium">{briefing.title}</p>
-            <p className="text-sm text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">{briefing.title}</p>
+                <p className="text-sm text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Supprimer le briefing"
+                className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (deleteMutation.isPending) return;
+                  setBriefingToDelete({ id: briefing.id, title: briefing.title });
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
           </Card>
         ))}
       </div>
+      <DraggableConfirmModal
+        open={Boolean(briefingToDelete)}
+        title="Confirmer la suppression"
+        description={
+          briefingToDelete
+            ? `Voulez-vous supprimer le briefing "${briefingToDelete.title}" ?`
+            : undefined
+        }
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        loading={deleteMutation.isPending}
+        onCancel={() => setBriefingToDelete(null)}
+        onConfirm={() => {
+          if (!briefingToDelete) return;
+          deleteMutation.mutate(briefingToDelete.id);
+        }}
+      />
     </div>
   );
 }

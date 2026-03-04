@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createRequestContext, toErrorResponse } from "@/http";
+import { getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { requireAuthContext } from "@/supabase/server";
 
 export async function GET(request: Request) {
@@ -37,15 +38,26 @@ export async function GET(request: Request) {
       org = organization ?? null;
     }
 
+    const usage = await getCurrentMonthUsage(client, userId);
+    const plan = profile?.plan ?? null;
+    const used = Number(usage?.pdf_exports ?? 0);
+    const planLimit = plan === "free" ? 3 : plan === "start" ? 100 : null;
+    const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
+
     ctx.info("resolved me", { userId, hasOrg: Boolean(org), hasPlan: Boolean(profile?.plan) });
 
     return NextResponse.json({
       user: { id: userId, email: email ?? "" },
-      plan: profile?.plan ?? null,
+      plan,
       subscription_name: profile?.subscription_name ?? null,
       subscription_status: profile?.subscription_status ?? null,
       stripe_price_id: profile?.stripe_price_id ?? null,
       current_period_end: profile?.current_period_end ?? null,
+      usage: {
+        pdf_exports_used: used,
+        pdf_exports_limit: planLimit,
+        pdf_exports_remaining: remaining
+      },
       org,
       role: membership?.role ?? null,
       is_admin: membership?.role === "owner" || membership?.role === "admin"

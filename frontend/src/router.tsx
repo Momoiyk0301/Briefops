@@ -14,7 +14,9 @@ import NotificationsPage from "@/pages/NotificationsPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import RouteErrorPage from "@/pages/RouteErrorPage";
 import SettingsPage from "@/pages/SettingsPage";
+import StaffPage from "@/pages/StaffPage";
 import StatusPage from "@/pages/StatusPage";
+import SubscriptionPage from "@/pages/SubscriptionPage";
 
 function RequireAuth() {
   const { session, loading } = useAuth();
@@ -32,7 +34,6 @@ function ProtectedLayout() {
     <AppShell
       plan={meQuery.data?.plan ?? null}
       demoData={Boolean(meQuery.data?.degraded)}
-      isAdmin={Boolean(meQuery.data?.is_admin)}
     >
       <Outlet />
     </AppShell>
@@ -73,9 +74,11 @@ export const router = createBrowserRouter([
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
           { path: "/account", element: <AccountPage /> },
+          { path: "/abonnement", element: <SubscriptionPage /> },
           { path: "/notifications", element: <NotificationsPage /> },
-          { path: "/settings/billing", element: <BillingPage /> },
+          { path: "/staff", element: <StaffPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/settings/billing", element: <BillingPage /> },
           {
             element: <RequireAdmin />,
             children: [{ path: "/status", element: <StatusPage /> }]

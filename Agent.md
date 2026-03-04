@@ -48,8 +48,8 @@ TailwindCSS
 
 Backend / DB:
 
-Supabase (Postgres + Auth + RLS)
-resend : pour les mails 
+Supabase (Postgres + Auth + RLS Storage
+Stoage  bucket : exports, logos, assets
 Payments:
 
 Stripe

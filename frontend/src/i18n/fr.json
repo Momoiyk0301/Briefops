@@ -42,7 +42,47 @@
   "settings": {
     "title": "Paramètres",
     "languageTitle": "Langue de l'interface",
-    "languageHint": "Choisis la langue utilisée dans l'application."
+    "languageHint": "Choisis la langue utilisée dans l'application.",
+    "appearanceTitle": "Apparence",
+    "appearanceHint": "Réglez le mode jour/nuit depuis les paramètres.",
+    "themeLight": "Jour",
+    "themeDark": "Nuit",
+    "preferencesTitle": "Préférences régionales",
+    "preferencesHint": "Format heure, fuseau et format date pour l'affichage.",
+    "hourFormat": "Format heure",
+    "timezone": "Fuseau",
+    "dateFormat": "Format date",
+    "activityTitle": "Historique récent",
+    "activity": {
+      "timeAgo": "2h ago",
+      "configure": "Paramétrer",
+      "hourFormat": "Format heure",
+      "timezone": "Fuseau",
+      "dateFormat": "Format date"
+    }
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Gestion des membres d'équipe reliés à la table `staff`.",
+    "addTitle": "Ajouter un membre",
+    "selectBriefing": "Choisir un briefing",
+    "addButton": "Ajouter staff",
+    "adding": "Ajout...",
+    "listTitle": "Liste staff",
+    "empty": "Aucun membre staff.",
+    "noPhone": "Sans téléphone",
+    "noEmail": "Sans email",
+    "messages": {
+      "added": "Staff ajouté",
+      "required": "Briefing et nom requis"
+    },
+    "placeholders": {
+      "fullName": "Nom complet",
+      "role": "Rôle",
+      "phone": "Téléphone",
+      "email": "Email",
+      "notes": "Notes"
+    }
   },
   "editor": {
     "metadata": "Métadonnées",

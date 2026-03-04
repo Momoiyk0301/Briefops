@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getBriefingsWithFallback, toApiMessage } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 
@@ -20,7 +22,21 @@ function toLabel(date: Date) {
 }
 
 export default function NotificationsPage() {
-  const briefingsQuery = useQuery({ queryKey: ["briefings"], queryFn: getBriefingsWithFallback });
+  const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("briefops:notifications:dismissed");
+    if (!raw) return;
+    try {
+      const ids = JSON.parse(raw) as unknown;
+      if (Array.isArray(ids)) {
+        setDismissedIds(ids.filter((value): value is string => typeof value === "string"));
+      }
+    } catch {
+      localStorage.removeItem("briefops:notifications:dismissed");
+    }
+  }, []);
 
   const notifications = useMemo(() => {
     const today = new Date();
@@ -42,8 +58,18 @@ export default function NotificationsPage() {
         };
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .filter((item) => !dismissedIds.includes(item.id))
       .sort((a, b) => a.diffDays - b.diffDays);
-  }, [briefingsQuery.data]);
+  }, [briefingsQuery.data, dismissedIds]);
+
+  const dismissNotification = (id: string) => {
+    setDismissedIds((current) => {
+      if (current.includes(id)) return current;
+      const next = [...current, id];
+      localStorage.setItem("briefops:notifications:dismissed", JSON.stringify(next));
+      return next;
+    });
+  };
 
   if (briefingsQuery.isLoading) {
     return <Card>Chargement des notifications...</Card>;
@@ -68,24 +94,34 @@ export default function NotificationsPage() {
         ) : null}
         {notifications.map((item) => (
           <Card key={item.id} className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold">{item.title}</p>
                 <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
                   {item.when} · {item.location}
                 </p>
               </div>
-              <Badge
-                className={
-                  item.level === "high"
-                    ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-900/20 dark:text-red-200"
-                    : item.level === "medium"
-                      ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-900/20 dark:text-orange-200"
-                      : ""
-                }
-              >
-                {item.diffDays <= 0 ? "Aujourd'hui / passé" : `Dans ${item.diffDays} jour(s)`}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge
+                  className={
+                    item.level === "high"
+                      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-900/20 dark:text-red-200"
+                      : item.level === "medium"
+                        ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-900/20 dark:text-orange-200"
+                        : ""
+                  }
+                >
+                  {item.diffDays <= 0 ? "Aujourd'hui / passé" : `Dans ${item.diffDays} jour(s)`}
+                </Badge>
+                <button
+                  type="button"
+                  aria-label="Supprimer la notification"
+                  className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  onClick={() => dismissNotification(item.id)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           </Card>
         ))}

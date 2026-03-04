@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const admin = createServiceRoleClient();
     const body = createShareSchema.parse(await request.json());
-    const link = await createPublicLink(admin, briefingId, body.expires_at ?? null);
+    const link = await createPublicLink(admin, briefingId, userId, body.expires_at ?? null);
 
     return NextResponse.json(
       {

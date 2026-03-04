@@ -5,6 +5,7 @@ import {
   MeResponse,
   ModuleDataMap,
   ModuleKey,
+  StaffMember,
   UserPlan
 } from "@/lib/types";
 
@@ -25,6 +26,22 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+function logApiStart(method: string, path: string) {
+  const startedAt = Date.now();
+  console.info(`[API] -> ${method} ${path}`);
+  return startedAt;
+}
+
+function logApiSuccess(method: string, path: string, status: number, startedAt: number) {
+  const durationMs = Date.now() - startedAt;
+  console.info(`[API] <- ${method} ${path} ${status} (${durationMs}ms)`);
+}
+
+function logApiError(method: string, path: string, status: number | string, message: string, startedAt: number) {
+  const durationMs = Date.now() - startedAt;
+  console.error(`[API] xx ${method} ${path} ${status} (${durationMs}ms) ${message}`);
+}
+
 async function getAuthHeader(): Promise<Record<string, string>> {
   const session = await getSession();
   const token = session?.access_token;
@@ -35,6 +52,8 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 }
 
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = options.method ?? "GET";
+  const startedAt = logApiStart(method, path);
   let response: Response;
   try {
     const headers = {
@@ -44,12 +63,13 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     };
 
     response = await fetch(`${API_URL}${path}`, {
-      method: options.method ?? "GET",
+      method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network failure";
+    logApiError(method, path, "NETWORK", message, startedAt);
     throw { status: 0, message: `Failed to fetch backend (${message})` } as ApiError;
   }
 
@@ -72,10 +92,11 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     if (/<!doctype html>|<html/i.test(message)) {
       message = "Backend error: HTML response received (check backend env and server logs)";
     }
-
+    logApiError(method, path, response.status, message, startedAt);
     throw { status: response.status, message } as ApiError;
   }
 
+  logApiSuccess(method, path, response.status, startedAt);
   return payload as T;
 }
 
@@ -95,6 +116,11 @@ export async function getMe(): Promise<MeResponse> {
       subscription_status: string | null;
       stripe_price_id: string | null;
       current_period_end: string | null;
+      usage?: {
+        pdf_exports_used: number;
+        pdf_exports_limit: number | null;
+        pdf_exports_remaining: number | null;
+      };
       org: { id: string; name: string } | null;
       role: "owner" | "admin" | "member" | null;
       is_admin: boolean;
@@ -188,6 +214,12 @@ export async function patchBriefing(
   return response.data;
 }
 
+export async function deleteBriefing(id: string) {
+  await requestJson<{ ok?: boolean }>(`/api/briefings/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function getBriefingModules(id: string) {
   const response = await requestJson<{ data: BriefingModuleRow[] }>(`/api/briefings/${id}/modules`);
   return response.data;
@@ -209,8 +241,10 @@ export async function upsertBriefingModules(
 }
 
 export async function downloadPdf(id: string): Promise<Blob> {
+  const path = `/api/pdf/${id}`;
+  const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(`${API_URL}/api/pdf/${id}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     method: "GET",
     headers
   });
@@ -226,9 +260,11 @@ export async function downloadPdf(id: string): Promise<Blob> {
         message = text;
       }
     }
+    logApiError("GET", path, response.status, message, startedAt);
     throw { status: response.status, message } as ApiError;
   }
 
+  logApiSuccess("GET", path, response.status, startedAt);
   return response.blob();
 }
 
@@ -243,4 +279,24 @@ export async function createStripePortalSession(): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/portal", {
     method: "POST"
   });
+}
+
+export async function getStaff(): Promise<StaffMember[]> {
+  const response = await requestJson<{ data: StaffMember[] }>("/api/staff");
+  return response.data;
+}
+
+export async function createStaffMember(input: {
+  briefing_id: string;
+  full_name: string;
+  role: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}): Promise<StaffMember> {
+  const response = await requestJson<{ data: StaffMember }>("/api/staff", {
+    method: "POST",
+    body: input
+  });
+  return response.data;
 }

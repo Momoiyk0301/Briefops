@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: Params) {
     const { id } = await params;
     const input = upsertSchema.parse(await request.json());
     const mod = await upsertModule(client, idSchema.parse(id), input);
-    ctx.info("upserted module", { userId, briefingId: id, moduleKey: input.module_key });
+    ctx.info("upserted module");
     return NextResponse.json({ data: mod });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

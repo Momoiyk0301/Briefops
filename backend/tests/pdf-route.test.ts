@@ -6,11 +6,21 @@ const listModules = vi.fn();
 const consumePdfExport = vi.fn();
 const getCurrentMonthUsage = vi.fn();
 const renderBriefingPdf = vi.fn();
+const getUserPlan = vi.fn();
+const upload = vi.fn();
 
-vi.mock("@/supabase/server", () => ({ requireUser }));
+vi.mock("@/supabase/server", () => ({
+  requireUser,
+  createServiceRoleClient: () => ({
+    storage: {
+      from: () => ({ upload })
+    }
+  })
+}));
 vi.mock("@/supabase/queries/briefings", () => ({ getBriefingById }));
 vi.mock("@/supabase/queries/modules", () => ({ listModules }));
 vi.mock("@/supabase/queries/usage", () => ({ consumePdfExport, getCurrentMonthUsage }));
+vi.mock("@/supabase/queries/profiles", () => ({ getUserPlan }));
 vi.mock("@/pdf/renderBriefingPdf", () => ({ renderBriefingPdf }));
 
 describe("/api/pdf/:id", () => {
@@ -22,6 +32,7 @@ describe("/api/pdf/:id", () => {
     requireUser.mockResolvedValueOnce({ client: {}, userId: "u1" });
     getBriefingById.mockResolvedValueOnce({ id: "b1", title: "T", event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
+    getUserPlan.mockResolvedValueOnce("free");
     consumePdfExport.mockResolvedValueOnce({ allowed: false, used: 3 });
     getCurrentMonthUsage.mockResolvedValueOnce({ pdf_exports: 3 });
 
@@ -37,8 +48,10 @@ describe("/api/pdf/:id", () => {
     requireUser.mockResolvedValueOnce({ client: {}, userId: "u1" });
     getBriefingById.mockResolvedValueOnce({ id: "b1", title: "T", event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
+    getUserPlan.mockResolvedValueOnce("pro");
     consumePdfExport.mockResolvedValueOnce({ allowed: true, used: 1 });
     renderBriefingPdf.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
+    upload.mockResolvedValueOnce({ error: null });
 
     const mod = await import("../app/api/pdf/[id]/route");
     const response = await mod.GET(new Request("http://localhost/api/pdf/b1", { headers: { authorization: "Bearer token" } }), {
@@ -47,5 +60,6 @@ describe("/api/pdf/:id", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("application/pdf");
+    expect(upload).toHaveBeenCalledTimes(1);
   });
 });
