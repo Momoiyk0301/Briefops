@@ -232,9 +232,10 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function createStripeCheckoutSession(): Promise<{ url: string }> {
+export async function createStripeCheckoutSession(plan: "start" | "pro"): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
-    method: "POST"
+    method: "POST",
+    body: { plan }
   });
 }
 

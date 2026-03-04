@@ -74,7 +74,8 @@ export const serverEnv = {
 const stripeEnvSchema = z.object({
   STRIPE_SECRET_KEY: trimmed(z.string().min(1)),
   STRIPE_WEBHOOK_SECRET: trimmed(z.string().min(1)),
-  STRIPE_PRICE_ID: trimmed(z.string().min(1))
+  STRIPE_START_PRICE_ID: trimmed(z.string().min(1)),
+  STRIPE_PRO_PRICE_ID: trimmed(z.string().min(1))
 });
 
 export function getStripeEnv() {

@@ -39,6 +39,16 @@ export async function createBriefing(client: SupabaseClient, userId: string, inp
   return data;
 }
 
+export async function countBriefingsByOrg(client: SupabaseClient, orgId: string) {
+  const { count, error } = await client
+    .from("briefings")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId);
+
+  if (error) throw error;
+  return Number(count ?? 0);
+}
+
 export async function getBriefingById(client: SupabaseClient, id: string) {
   const { data, error } = await client
     .from("briefings")

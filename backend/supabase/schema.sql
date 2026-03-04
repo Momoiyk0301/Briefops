@@ -29,7 +29,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   full_name text,
-  plan text not null default 'free' check (plan in ('free', 'pro')),
+  plan text not null default 'free' check (plan in ('free', 'start', 'pro')),
   stripe_customer_id text unique,
   stripe_subscription_id text unique,
   stripe_price_id text,
@@ -39,6 +39,11 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.profiles
+  drop constraint if exists profiles_plan_check;
+alter table public.profiles
+  add constraint profiles_plan_check check (plan in ('free', 'start', 'pro'));
 
 create table if not exists public.organizations (
   id uuid primary key default gen_random_uuid(),
@@ -213,7 +218,7 @@ begin
     raise exception 'profile_not_found';
   end if;
 
-  if v_plan = 'pro' then
+  if v_plan in ('start', 'pro') then
     return query select true, 0;
     return;
   end if;

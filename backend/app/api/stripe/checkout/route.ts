@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { requireAuthContext } from "@/supabase/server";
-import { getStripe, getStripePriceId } from "@/stripe/stripe";
+import { getStripe, getStripePriceIdForPlan } from "@/stripe/stripe";
 import { env } from "@/env";
 
 export const runtime = "nodejs";
+const bodySchema = z.object({
+  plan: z.enum(["start", "pro"])
+});
+const planRank: Record<string, number> = { free: 0, start: 1, pro: 2 };
 
 function resolveAppUrl(request: Request): string {
   const origin = request.headers.get("origin");
@@ -19,6 +24,8 @@ export async function POST(request: Request) {
   try {
     const { client, userId, email } = await requireAuthContext(request);
     const appUrl = resolveAppUrl(request);
+    const body = bodySchema.parse(await request.json());
+    const requestedPlan = body.plan;
 
     const { data: profile, error: profileError } = await client
       .from("profiles")
@@ -27,8 +34,9 @@ export async function POST(request: Request) {
       .single();
     if (profileError) throw profileError;
 
-    if (profile?.plan === "pro") {
-      throw new HttpError(409, "Already on Pro plan");
+    const currentPlan = profile?.plan ?? "free";
+    if ((planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
+      throw new HttpError(409, `Already on ${currentPlan} plan or higher`);
     }
 
     const stripe = getStripe();
@@ -51,11 +59,11 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: getStripePriceId(), quantity: 1 }],
+      line_items: [{ price: getStripePriceIdForPlan(requestedPlan), quantity: 1 }],
       allow_promotion_codes: true,
       success_url: `${appUrl}/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/settings/billing?checkout=cancel`,
-      metadata: { user_id: userId }
+      metadata: { user_id: userId, plan: requestedPlan }
     });
 
     if (!session.url) {

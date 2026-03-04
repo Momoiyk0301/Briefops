@@ -23,7 +23,7 @@ vi.mock("@/stripe/stripe", () => ({
     customers: { create: createCustomer },
     checkout: { sessions: { create: createCheckoutSession } }
   }),
-  getStripePriceId: () => "price_pro"
+  getStripePriceIdForPlan: () => "price_pro"
 }));
 
 vi.mock("@/env", () => ({
@@ -57,7 +57,13 @@ describe("/api/stripe/checkout", () => {
     createCheckoutSession.mockResolvedValueOnce({ id: "cs_1", url: "https://checkout.stripe.test/session" });
 
     const mod = await import("../app/api/stripe/checkout/route");
-    const response = await mod.POST(new Request("http://localhost/api/stripe/checkout", { method: "POST" }));
+    const response = await mod.POST(
+      new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan: "pro" }),
+        headers: { "content-type": "application/json" }
+      })
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -74,7 +80,13 @@ describe("/api/stripe/checkout", () => {
     createCheckoutSession.mockResolvedValueOnce({ id: "cs_2", url: "https://checkout.stripe.test/new" });
 
     const mod = await import("../app/api/stripe/checkout/route");
-    const response = await mod.POST(new Request("http://localhost/api/stripe/checkout", { method: "POST" }));
+    const response = await mod.POST(
+      new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan: "start" }),
+        headers: { "content-type": "application/json" }
+      })
+    );
     expect(response.status).toBe(200);
     expect(createCustomer).toHaveBeenCalledTimes(1);
   });

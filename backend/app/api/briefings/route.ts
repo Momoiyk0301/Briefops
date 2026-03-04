@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createBriefing, listBriefings } from "@/supabase/queries/briefings";
+import { countBriefingsByOrg, createBriefing, listBriefings } from "@/supabase/queries/briefings";
+import { getUserPlan } from "@/supabase/queries/profiles";
 import { requireUser } from "@/supabase/server";
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const createSchema = z.object({
   org_id: z.string().uuid(),
@@ -11,6 +12,11 @@ const createSchema = z.object({
   event_date: z.string().date().optional(),
   location_text: z.string().trim().optional()
 });
+const BRIEFING_LIMITS: Record<"free" | "start" | "pro", number> = {
+  free: 1,
+  start: 20,
+  pro: Number.POSITIVE_INFINITY
+};
 
 export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/briefings");
@@ -32,6 +38,14 @@ export async function POST(request: Request) {
   try {
     const { client, userId } = await requireUser(request);
     const body = createSchema.parse(await request.json());
+    const plan = await getUserPlan(client, userId);
+    const limit = BRIEFING_LIMITS[plan];
+    if (Number.isFinite(limit)) {
+      const count = await countBriefingsByOrg(client, body.org_id);
+      if (count >= limit) {
+        throw new HttpError(402, `Briefing limit reached for ${plan} plan (${limit})`);
+      }
+    }
     const briefing = await createBriefing(client, userId, body);
     ctx.info("created briefing", { userId, briefingId: briefing.id });
     return NextResponse.json({ data: briefing }, { status: 201 });

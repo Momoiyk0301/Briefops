@@ -16,6 +16,7 @@ export default function BillingPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [redirecting, setRedirecting] = useState(false);
   const currentPlan = String(meQuery.data?.plan ?? "free").toLowerCase();
+  const briefingLimitLabel = currentPlan === "free" ? "1 briefing" : currentPlan === "start" ? "20 briefings" : "Briefings illimités";
 
   const tabs = [
     { key: "overview", label: "Vue d'ensemble" },
@@ -23,28 +24,28 @@ export default function BillingPage() {
     { key: "usage", label: "Usage" },
     { key: "invoices", label: "Factures" }
   ];
-  const planRank: Record<string, number> = { free: 0, pro: 1, business: 2 };
+  const planRank: Record<string, number> = { free: 0, start: 1, pro: 2 };
   const plans = [
     {
       key: "free",
       name: "Free",
       price: "0 EUR / mois",
-      description: "Pour démarrer et tester l'outil.",
-      features: ["3 exports PDF / mois", "1 organisation", "Support communauté"]
+      description: "Idéal pour démarrer.",
+      features: ["1 briefing", "3 exports PDF / mois", "Support communauté"]
+    },
+    {
+      key: "start",
+      name: "Start",
+      price: "19 EUR / mois",
+      description: "Pour une petite équipe.",
+      features: ["20 briefings", "Exports PDF illimités", "Support email"]
     },
     {
       key: "pro",
       name: "Pro",
-      price: "29 EUR / mois",
+      price: "49 EUR / mois",
       description: "Pour les équipes terrain actives.",
-      features: ["Exports PDF illimités", "Staff et missions avancés", "Support prioritaire"]
-    },
-    {
-      key: "business",
-      name: "Business",
-      price: "99 EUR / mois",
-      description: "Pour les structures multi-événements.",
-      features: ["Multi-organisations", "Rapports avancés", "SLA + onboarding dédié"]
+      features: ["Briefings illimités", "Exports PDF illimités", "Support prioritaire"]
     }
   ];
 
@@ -54,10 +55,10 @@ export default function BillingPage() {
     return "Basculer vers ce plan";
   };
 
-  const goToCheckout = async () => {
+  const goToCheckout = async (plan: "start" | "pro") => {
     try {
       setRedirecting(true);
-      const { url } = await createStripeCheckoutSession();
+      const { url } = await createStripeCheckoutSession(plan);
       window.location.href = url;
     } catch (error) {
       toast.error(toApiMessage(error));
@@ -90,9 +91,9 @@ export default function BillingPage() {
                 </Badge>
                 {meQuery.data?.subscription_name ? <Badge>Abonnement: {meQuery.data.subscription_name}</Badge> : null}
                 {meQuery.data?.subscription_status ? <Badge>Statut: {meQuery.data.subscription_status}</Badge> : null}
-                <Badge>3 / 3 PDF ce mois</Badge>
+                <Badge>{briefingLimitLabel}</Badge>
               </div>
-              <Button onClick={() => void goToCheckout()} disabled={redirecting} withArrow>{t("billing.upgrade")}</Button>
+              <Button onClick={() => void goToCheckout("start")} disabled={redirecting} withArrow>{t("billing.upgrade")}</Button>
             </div>
           ) : null}
           {activeTab === "usage" ? (
@@ -147,15 +148,13 @@ export default function BillingPage() {
                         variant={isCurrent ? "secondary" : "primary"}
                         disabled={redirecting}
                         onClick={() => {
-                          if (plan.key === "business") {
-                            toast("Plan Business bientôt disponible");
-                            return;
-                          }
                           if (isCurrent) {
                             void goToPortal();
                             return;
                           }
-                          void goToCheckout();
+                          if (plan.key === "start" || plan.key === "pro") {
+                            void goToCheckout(plan.key);
+                          }
                         }}
                       >
                         {isCurrent ? "Gérer l'abonnement" : getPlanActionLabel(plan.key)}

@@ -1,12 +1,12 @@
 import Stripe from "stripe";
 
 import { createServiceRoleClient } from "@/supabase/server";
-import { getStripe, getStripePriceId, isDev } from "@/stripe/stripe";
+import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
 const processedEventIds = new Set<string>();
 
 type ProfilePatch = {
-  plan: "free" | "pro";
+  plan: "free" | "start" | "pro";
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_price_id?: string | null;
@@ -29,15 +29,25 @@ function shouldFallbackToLegacyColumns(error: unknown) {
   return code === "42703" || /column .* does not exist/i.test(message);
 }
 
+function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "start" | "pro" {
+  for (const item of subscription.items.data) {
+    const priceId = item.price?.id;
+    if (!priceId) continue;
+    const plan = getPlanFromStripePriceId(priceId);
+    if (plan) return plan;
+  }
+  return "free";
+}
+
 function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
   const priceId = subscription.items.data[0]?.price?.id ?? null;
-  const plan = isProFromSubscription(subscription) ? "pro" : "free";
+  const plan = resolvePlanFromSubscription(subscription);
 
   return {
     plan,
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId,
-    subscription_name: plan === "pro" ? "Pro" : "Free",
+    subscription_name: plan === "pro" ? "Pro" : plan === "start" ? "Start" : "Free",
     subscription_status: subscription.status,
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
   };
@@ -73,15 +83,17 @@ async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
   if (fallbackError) throw fallbackError;
 }
 
-async function isProFromSession(session: Stripe.Checkout.Session): Promise<boolean> {
-  if (!session.id) return false;
+async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "start" | "pro"> {
+  if (!session.id) return "free";
 
   const lineItems = await getStripe().checkout.sessions.listLineItems(session.id, { limit: 100 });
-  return lineItems.data.some((item) => item.price?.id === getStripePriceId());
-}
-
-function isProFromSubscription(subscription: Stripe.Subscription): boolean {
-  return subscription.items.data.some((item) => item.price.id === getStripePriceId());
+  for (const item of lineItems.data) {
+    const priceId = item.price?.id;
+    if (!priceId) continue;
+    const plan = getPlanFromStripePriceId(priceId);
+    if (plan) return plan;
+  }
+  return "free";
 }
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
@@ -98,9 +110,9 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
 
       if (!email) break;
 
-      const isPro = await isProFromSession(session);
+      const checkoutPlan = await resolvePlanFromSession(session);
       let patch: ProfilePatch = {
-        plan: isPro ? "pro" : "free",
+        plan: checkoutPlan,
         stripe_customer_id: customerId
       };
 
@@ -111,7 +123,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
           ...buildSubscriptionPatch(subscription)
         };
       } else {
-        patch.subscription_name = isPro ? "Pro" : "Free";
+        patch.subscription_name = checkoutPlan === "pro" ? "Pro" : checkoutPlan === "start" ? "Start" : "Free";
       }
 
       await updatePlanByEmail(email, patch);
