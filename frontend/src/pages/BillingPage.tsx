@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { getMe } from "@/lib/api";
+import { createStripeCheckoutSession, createStripePortalSession, getMe, toApiMessage } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,6 +14,7 @@ export default function BillingPage() {
   const { t } = useTranslation();
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const [activeTab, setActiveTab] = useState("overview");
+  const [redirecting, setRedirecting] = useState(false);
   const currentPlan = String(meQuery.data?.plan ?? "free").toLowerCase();
 
   const tabs = [
@@ -53,6 +54,28 @@ export default function BillingPage() {
     return "Basculer vers ce plan";
   };
 
+  const goToCheckout = async () => {
+    try {
+      setRedirecting(true);
+      const { url } = await createStripeCheckoutSession();
+      window.location.href = url;
+    } catch (error) {
+      toast.error(toApiMessage(error));
+      setRedirecting(false);
+    }
+  };
+
+  const goToPortal = async () => {
+    try {
+      setRedirecting(true);
+      const { url } = await createStripePortalSession();
+      window.location.href = url;
+    } catch (error) {
+      toast.error(toApiMessage(error));
+      setRedirecting(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
       <Card className="border-[#e7e8f2] p-6 dark:border-white/10">
@@ -65,9 +88,11 @@ export default function BillingPage() {
                 <Badge className="border-brand-500/20 bg-brand-500/10 text-brand-600 dark:text-brand-500">
                   {t("nav.plan")}: {meQuery.data?.plan ?? "unknown"}
                 </Badge>
+                {meQuery.data?.subscription_name ? <Badge>Abonnement: {meQuery.data.subscription_name}</Badge> : null}
+                {meQuery.data?.subscription_status ? <Badge>Statut: {meQuery.data.subscription_status}</Badge> : null}
                 <Badge>3 / 3 PDF ce mois</Badge>
               </div>
-              <Button onClick={() => toast(t("app.soon"))} withArrow>{t("billing.upgrade")}</Button>
+              <Button onClick={() => void goToCheckout()} disabled={redirecting} withArrow>{t("billing.upgrade")}</Button>
             </div>
           ) : null}
           {activeTab === "usage" ? (
@@ -120,10 +145,20 @@ export default function BillingPage() {
                       <Button
                         className="mt-5 w-full"
                         variant={isCurrent ? "secondary" : "primary"}
-                        disabled={isCurrent}
-                        onClick={() => toast(`Ouverture du checkout ${plan.name} bientôt disponible`)}
+                        disabled={redirecting}
+                        onClick={() => {
+                          if (plan.key === "business") {
+                            toast("Plan Business bientôt disponible");
+                            return;
+                          }
+                          if (isCurrent) {
+                            void goToPortal();
+                            return;
+                          }
+                          void goToCheckout();
+                        }}
                       >
-                        {getPlanActionLabel(plan.key)}
+                        {isCurrent ? "Gérer l'abonnement" : getPlanActionLabel(plan.key)}
                       </Button>
                     </Card>
                   );

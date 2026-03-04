@@ -5,22 +5,72 @@ import { getStripe, getStripePriceId, isDev } from "@/stripe/stripe";
 
 const processedEventIds = new Set<string>();
 
-async function updatePlanByEmail(email: string, plan: "free" | "pro", stripeCustomerId?: string | null) {
-  const admin = createServiceRoleClient();
+type ProfilePatch = {
+  plan: "free" | "pro";
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_price_id?: string | null;
+  subscription_name?: string | null;
+  subscription_status?: string | null;
+  current_period_end?: string | null;
+};
 
-  const payload: Record<string, string> = { plan };
-  if (stripeCustomerId) {
-    payload.stripe_customer_id = stripeCustomerId;
-  }
-
-  const { error } = await admin.from("profiles").update(payload).eq("email", email.toLowerCase());
-  if (error) throw error;
+function toPatchWithFallback(patch: ProfilePatch) {
+  return {
+    plan: patch.plan,
+    stripe_customer_id: patch.stripe_customer_id ?? null
+  };
 }
 
-async function updatePlanByCustomerId(customerId: string, plan: "free" | "pro") {
+function shouldFallbackToLegacyColumns(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
+  const message = "message" in error ? String((error as { message?: string }).message ?? "") : "";
+  return code === "42703" || /column .* does not exist/i.test(message);
+}
+
+function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
+  const priceId = subscription.items.data[0]?.price?.id ?? null;
+  const plan = isProFromSubscription(subscription) ? "pro" : "free";
+
+  return {
+    plan,
+    stripe_subscription_id: subscription.id,
+    stripe_price_id: priceId,
+    subscription_name: plan === "pro" ? "Pro" : "Free",
+    subscription_status: subscription.status,
+    current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+  };
+}
+
+async function updatePlanByEmail(email: string, patch: ProfilePatch) {
   const admin = createServiceRoleClient();
-  const { error } = await admin.from("profiles").update({ plan }).eq("stripe_customer_id", customerId);
-  if (error) throw error;
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const { error } = await admin.from("profiles").update(patch).eq("email", normalizedEmail);
+  if (!error) return;
+
+  if (!shouldFallbackToLegacyColumns(error)) {
+    throw error;
+  }
+
+  const fallback = toPatchWithFallback(patch);
+  const { error: fallbackError } = await admin.from("profiles").update(fallback).eq("email", normalizedEmail);
+  if (fallbackError) throw fallbackError;
+}
+
+async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.from("profiles").update(patch).eq("stripe_customer_id", customerId);
+  if (!error) return;
+
+  if (!shouldFallbackToLegacyColumns(error)) {
+    throw error;
+  }
+
+  const fallback = { plan: patch.plan };
+  const { error: fallbackError } = await admin.from("profiles").update(fallback).eq("stripe_customer_id", customerId);
+  if (fallbackError) throw fallbackError;
 }
 
 async function isProFromSession(session: Stripe.Checkout.Session): Promise<boolean> {
@@ -49,7 +99,22 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       if (!email) break;
 
       const isPro = await isProFromSession(session);
-      await updatePlanByEmail(email, isPro ? "pro" : "free", customerId);
+      let patch: ProfilePatch = {
+        plan: isPro ? "pro" : "free",
+        stripe_customer_id: customerId
+      };
+
+      if (typeof session.subscription === "string") {
+        const subscription = await getStripe().subscriptions.retrieve(session.subscription);
+        patch = {
+          ...patch,
+          ...buildSubscriptionPatch(subscription)
+        };
+      } else {
+        patch.subscription_name = isPro ? "Pro" : "Free";
+      }
+
+      await updatePlanByEmail(email, patch);
       break;
     }
 
@@ -59,8 +124,11 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
       if (!customerId) break;
 
-      const plan = isProFromSubscription(subscription) ? "pro" : "free";
-      await updatePlanByCustomerId(customerId, plan);
+      const patch = {
+        ...buildSubscriptionPatch(subscription),
+        stripe_customer_id: customerId
+      };
+      await updatePlanByCustomerId(customerId, patch);
       break;
     }
 
@@ -69,7 +137,15 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
       if (!customerId) break;
 
-      await updatePlanByCustomerId(customerId, "free");
+      await updatePlanByCustomerId(customerId, {
+        plan: "free",
+        stripe_customer_id: customerId,
+        stripe_subscription_id: null,
+        stripe_price_id: null,
+        subscription_name: "Free",
+        subscription_status: "canceled",
+        current_period_end: null
+      });
       break;
     }
 

@@ -13,6 +13,10 @@ export type AppUser = {
 export type MeResponse = {
   user: AppUser | null;
   plan: UserPlan | null;
+  subscription_name?: string | null;
+  subscription_status?: string | null;
+  stripe_price_id?: string | null;
+  current_period_end?: string | null;
   org: { id: string; name: string } | null;
   role: MembershipRole | null;
   is_admin: boolean;

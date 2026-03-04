@@ -91,6 +91,10 @@ export async function getMe(): Promise<MeResponse> {
     const response = await requestJson<{
       user: { id: string; email: string };
       plan: UserPlan;
+      subscription_name: string | null;
+      subscription_status: string | null;
+      stripe_price_id: string | null;
+      current_period_end: string | null;
       org: { id: string; name: string } | null;
       role: "owner" | "admin" | "member" | null;
       is_admin: boolean;
@@ -226,4 +230,16 @@ export async function downloadPdf(id: string): Promise<Blob> {
   }
 
   return response.blob();
+}
+
+export async function createStripeCheckoutSession(): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/checkout", {
+    method: "POST"
+  });
+}
+
+export async function createStripePortalSession(): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/portal", {
+    method: "POST"
+  });
 }

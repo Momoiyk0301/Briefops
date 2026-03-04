@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await client
       .from("profiles")
-      .select("plan")
+      .select("plan,subscription_name,subscription_status,stripe_price_id,current_period_end")
       .eq("id", userId)
       .maybeSingle();
 
@@ -42,6 +42,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       user: { id: userId, email: email ?? "" },
       plan: profile?.plan ?? null,
+      subscription_name: profile?.subscription_name ?? null,
+      subscription_status: profile?.subscription_status ?? null,
+      stripe_price_id: profile?.stripe_price_id ?? null,
+      current_period_end: profile?.current_period_end ?? null,
       org,
       role: membership?.role ?? null,
       is_admin: membership?.role === "owner" || membership?.role === "admin"

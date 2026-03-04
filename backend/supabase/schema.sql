@@ -31,6 +31,12 @@ create table if not exists public.profiles (
   full_name text,
   plan text not null default 'free' check (plan in ('free', 'pro')),
   stripe_customer_id text unique,
+  stripe_subscription_id text unique,
+  stripe_price_id text,
+  subscription_name text,
+  subscription_status text,
+  current_period_end timestamptz,
+  updated_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -73,6 +79,18 @@ create table if not exists public.briefing_modules (
   unique (briefing_id, module_key)
 );
 
+create table if not exists public.staff (
+  id uuid primary key default gen_random_uuid(),
+  briefing_id uuid not null references public.briefings(id) on delete cascade,
+  full_name text not null,
+  role text not null default 'staff',
+  phone text,
+  email text,
+  notes text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.public_links (
   id uuid primary key default gen_random_uuid(),
   briefing_id uuid not null references public.briefings(id) on delete cascade,
@@ -100,6 +118,7 @@ create index if not exists idx_briefings_org_event_date on public.briefings(org_
 
 create index if not exists idx_modules_briefing_id on public.briefing_modules(briefing_id);
 create index if not exists idx_modules_data_json_gin on public.briefing_modules using gin (data_json);
+create index if not exists idx_staff_briefing_id on public.staff(briefing_id);
 
 create index if not exists idx_public_links_token on public.public_links(token);
 create index if not exists idx_public_links_briefing_id on public.public_links(briefing_id);
@@ -234,9 +253,21 @@ before update on public.briefings
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_profiles_updated_at on public.profiles;
+create trigger trg_profiles_updated_at
+before update on public.profiles
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_briefing_modules_updated_at on public.briefing_modules;
 create trigger trg_briefing_modules_updated_at
 before update on public.briefing_modules
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists trg_staff_updated_at on public.staff;
+create trigger trg_staff_updated_at
+before update on public.staff
 for each row
 execute function public.set_updated_at();
 
@@ -253,6 +284,7 @@ grant select, insert, update, delete on public.organizations to authenticated;
 grant select, insert, update, delete on public.memberships to authenticated;
 grant select, insert, update, delete on public.briefings to authenticated;
 grant select, insert, update, delete on public.briefing_modules to authenticated;
+grant select, insert, update, delete on public.staff to authenticated;
 grant select on public.public_links to anon, authenticated;
 grant select on public.briefings to anon;
 grant select on public.briefing_modules to anon;
@@ -264,6 +296,7 @@ alter table public.organizations enable row level security;
 alter table public.memberships enable row level security;
 alter table public.briefings enable row level security;
 alter table public.briefing_modules enable row level security;
+alter table public.staff enable row level security;
 alter table public.public_links enable row level security;
 alter table public.usage_counters enable row level security;
 
@@ -272,6 +305,7 @@ alter table public.organizations force row level security;
 alter table public.memberships force row level security;
 alter table public.briefings force row level security;
 alter table public.briefing_modules force row level security;
+alter table public.staff force row level security;
 alter table public.public_links force row level security;
 alter table public.usage_counters force row level security;
 
@@ -298,6 +332,11 @@ drop policy if exists modules_select on public.briefing_modules;
 drop policy if exists modules_insert on public.briefing_modules;
 drop policy if exists modules_update on public.briefing_modules;
 drop policy if exists modules_delete on public.briefing_modules;
+
+drop policy if exists staff_select on public.staff;
+drop policy if exists staff_insert on public.staff;
+drop policy if exists staff_update on public.staff;
+drop policy if exists staff_delete on public.staff;
 
 drop policy if exists public_links_select_token_only on public.public_links;
 drop policy if exists public_links_insert_owner_admin on public.public_links;
@@ -466,6 +505,66 @@ using (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
+      and public.has_org_role(b.org_id, array['owner','admin'])
+  )
+);
+
+create policy staff_select
+on public.staff
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.briefings b
+    where b.id = staff.briefing_id
+      and public.is_org_member(b.org_id)
+  )
+);
+
+create policy staff_insert
+on public.staff
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.briefings b
+    where b.id = staff.briefing_id
+      and public.has_org_role(b.org_id, array['owner','admin'])
+  )
+);
+
+create policy staff_update
+on public.staff
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.briefings b
+    where b.id = staff.briefing_id
+      and public.has_org_role(b.org_id, array['owner','admin','member'])
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.briefings b
+    where b.id = staff.briefing_id
+      and public.has_org_role(b.org_id, array['owner','admin','member'])
+  )
+);
+
+create policy staff_delete
+on public.staff
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.briefings b
+    where b.id = staff.briefing_id
       and public.has_org_role(b.org_id, array['owner','admin'])
   )
 );

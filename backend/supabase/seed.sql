@@ -45,7 +45,35 @@ begin
 
   insert into public.briefing_modules (briefing_id, module_key, enabled, data_json)
   values
-    (v_briefing_id, 'agenda', true, '{"sessions":[{"time":"09:00","title":"Opening"}]}'::jsonb),
-    (v_briefing_id, 'logistics', true, '{"venue":"Hall A","access":"Main gate"}'::jsonb)
+    (
+      v_briefing_id,
+      'metadata',
+      true,
+      '{"main_contact_name":"Production lead","main_contact_phone":"+32 470 00 00 00","global_notes":"Briefing de démonstration"}'::jsonb
+    ),
+    (
+      v_briefing_id,
+      'access',
+      true,
+      '{"address":"Brussels Expo, Hall A","parking":"Parking P1","entrance":"Entrée principale","on_site_contact":"Site manager"}'::jsonb
+    ),
+    (
+      v_briefing_id,
+      'notes',
+      true,
+      '{"text":"Arrivée staff 08:00. Check matériel avant ouverture."}'::jsonb
+    )
   on conflict (briefing_id, module_key) do nothing;
+
+  insert into public.staff (briefing_id, full_name, role, phone, email, notes)
+  select v_briefing_id, 'Alice Martin', 'Lead', '+32 470 11 22 33', 'alice@example.com', 'Coordination générale'
+  where not exists (
+    select 1 from public.staff s where s.briefing_id = v_briefing_id and s.email = 'alice@example.com'
+  );
+
+  insert into public.staff (briefing_id, full_name, role, phone, email, notes)
+  select v_briefing_id, 'Yassine B.', 'Runner', '+32 470 44 55 66', 'yassine@example.com', 'Support logistique'
+  where not exists (
+    select 1 from public.staff s where s.briefing_id = v_briefing_id and s.email = 'yassine@example.com'
+  );
 end $$;
