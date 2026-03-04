@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 
 export class HttpError extends Error {
   status: number;
@@ -11,7 +12,7 @@ export class HttpError extends Error {
 }
 
 export function createRequestContext(route: string) {
-  const requestId = crypto.randomUUID();
+  const requestId = randomUUID();
 
   const log = (level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) => {
     const payload = {

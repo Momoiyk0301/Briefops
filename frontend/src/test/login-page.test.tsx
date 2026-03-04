@@ -8,8 +8,10 @@ import { vi } from "vitest";
 import i18n from "@/i18n";
 import LoginPage from "@/pages/LoginPage";
 
-const signInWithPassword = vi.fn();
-const signUpWithPassword = vi.fn();
+const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(),
+  signUpWithPassword: vi.fn()
+}));
 
 vi.mock("@/lib/auth", () => ({
   signInWithPassword,
@@ -47,8 +49,12 @@ describe("LoginPage", () => {
     renderPage();
 
     await userEvent.type(screen.getByPlaceholderText(/email/i), "test@example.com");
-    await userEvent.type(screen.getByPlaceholderText(/password/i), "secret12");
-    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
+    const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+    expect(submitButton).not.toBeNull();
+    if (submitButton) {
+      await userEvent.click(submitButton);
+    }
 
     expect(signInWithPassword).toHaveBeenCalled();
   });

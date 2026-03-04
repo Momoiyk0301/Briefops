@@ -5,11 +5,14 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/lib/auth";
 import { getMe } from "@/lib/api";
+import AccountPage from "@/pages/AccountPage";
 import BillingPage from "@/pages/BillingPage";
 import BriefingDetailPage from "@/pages/BriefingDetailPage";
 import BriefingsPage from "@/pages/BriefingsPage";
 import LoginPage from "@/pages/LoginPage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import RouteErrorPage from "@/pages/RouteErrorPage";
 import SettingsPage from "@/pages/SettingsPage";
 import StatusPage from "@/pages/StatusPage";
 
@@ -55,17 +58,22 @@ function LoginGate() {
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: <LoginGate />
+    element: <LoginGate />,
+    errorElement: <RouteErrorPage />
   },
   {
     element: <RequireAuth />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <ProtectedLayout />,
+        errorElement: <RouteErrorPage />,
         children: [
           { path: "/onboarding", element: <OnboardingPage /> },
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
+          { path: "/account", element: <AccountPage /> },
+          { path: "/notifications", element: <NotificationsPage /> },
           { path: "/settings/billing", element: <BillingPage /> },
           { path: "/settings", element: <SettingsPage /> },
           {

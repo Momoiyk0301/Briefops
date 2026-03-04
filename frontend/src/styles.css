@@ -14,11 +14,20 @@ body,
 
 body {
   margin: 0;
-  font-family: Inter, "Geist Sans", "Segoe UI", sans-serif;
+  font-family: "DM Sans", "Segoe UI", sans-serif;
   background-color: #f8f8fc;
   color: #111111;
   background-image: radial-gradient(circle, rgba(26, 26, 26, 0.08) 1px, transparent 1px);
   background-size: 18px 18px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Syne", "DM Sans", "Segoe UI", sans-serif;
 }
 
 .dark body {

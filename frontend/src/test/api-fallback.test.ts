@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getBriefingsWithFallback } from "@/lib/api";
 
-const mockGetSession = vi.fn();
+const { mockGetSession } = vi.hoisted(() => ({
+  mockGetSession: vi.fn()
+}));
 
 vi.mock("@/lib/auth", () => ({
   getSession: mockGetSession

@@ -193,15 +193,15 @@ export async function upsertBriefingModules(
   id: string,
   modules: Array<{ module_key: ModuleKey; enabled: boolean; data_json: ModuleDataMap[ModuleKey] }>
 ) {
-  const results: BriefingModuleRow[] = [];
-  for (const mod of modules) {
-    const response = await requestJson<{ data: BriefingModuleRow }>(`/api/briefings/${id}/modules`, {
-      method: "PUT",
-      body: mod
-    });
-    results.push(response.data);
-  }
-  return results;
+  const responses = await Promise.all(
+    modules.map((mod) =>
+      requestJson<{ data: BriefingModuleRow }>(`/api/briefings/${id}/modules`, {
+        method: "PUT",
+        body: mod
+      })
+    )
+  );
+  return responses.map((item) => item.data);
 }
 
 export async function downloadPdf(id: string): Promise<Blob> {
