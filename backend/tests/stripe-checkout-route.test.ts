@@ -83,7 +83,7 @@ describe("/api/stripe/checkout", () => {
     const response = await mod.POST(
       new Request("http://localhost/api/stripe/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan: "start" }),
+        body: JSON.stringify({ plan: "starter" }),
         headers: { "content-type": "application/json" }
       })
     );

@@ -39,9 +39,10 @@ export async function GET(request: Request) {
     }
 
     const usage = await getCurrentMonthUsage(client, userId);
-    const plan = profile?.plan ?? null;
+    const rawPlan = String(profile?.plan ?? "").toLowerCase();
+    const plan = rawPlan === "start" ? "starter" : rawPlan || null;
     const used = Number(usage?.pdf_exports ?? 0);
-    const planLimit = plan === "free" ? 3 : plan === "start" ? 100 : null;
+    const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
 
     ctx.info("resolved me", { userId, hasOrg: Boolean(org), hasPlan: Boolean(profile?.plan) });

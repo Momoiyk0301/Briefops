@@ -67,7 +67,7 @@ export default function BriefingsPage() {
   const briefings = briefingsQuery.data?.data ?? [];
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const plan = meQuery.data?.plan ?? "free";
-  const briefingLimit = plan === "free" ? 1 : plan === "start" ? 20 : null;
+  const briefingLimit = plan === "free" ? 1 : plan === "starter" ? 20 : plan === "plus" ? 100 : null;
   const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);

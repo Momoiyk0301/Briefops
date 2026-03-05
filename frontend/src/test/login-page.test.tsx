@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
 import i18n from "@/i18n";
-import LoginPage from "@/pages/LoginPage";
+import LoginPage from "@/views/LoginPage";
 
 const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),

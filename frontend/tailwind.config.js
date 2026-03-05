@@ -1,26 +1,21 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   darkMode: "class",
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         brand: {
-          500: "#6C47FF",
-          600: "#5a39dc",
-          700: "#4d2fc2"
-        },
-        surface: {
-          50: "#F8F8FC",
-          100: "#f1f2f7",
-          900: "#0D0D0D"
+          50: "#edf3ff",
+          100: "#dbe7ff",
+          300: "#8fb0ff",
+          400: "#628fff",
+          500: "#2f70ff",
+          600: "#1f57da"
         }
       },
       boxShadow: {
-        panel: "0 4px 24px rgba(0,0,0,0.08)"
-      },
-      borderRadius: {
-        panel: "20px"
+        soft: "0 10px 30px rgba(15, 23, 42, 0.08)"
       }
     }
   },

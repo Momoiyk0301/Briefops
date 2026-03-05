@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
 
 type BackendStatus = {
   service: string;
@@ -19,6 +19,7 @@ export default function StatusPage() {
 
     const run = async () => {
       try {
+        if (!API_URL) throw new Error("Missing NEXT_PUBLIC_API_URL");
         const response = await fetch(`${API_URL}/api/status`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = (await response.json()) as BackendStatus;

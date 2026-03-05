@@ -10,9 +10,10 @@ import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
-const PDF_LIMITS: Record<"free" | "start" | "pro", number> = {
+const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
   free: 3,
-  start: 100,
+  starter: 100,
+  plus: 300,
   pro: Number.POSITIVE_INFINITY
 };
 

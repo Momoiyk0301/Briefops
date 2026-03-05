@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
-import StaffPage from "@/pages/StaffPage";
+import StaffPage from "@/views/StaffPage";
 
 vi.mock("@/lib/api", () => ({
   getStaff: vi.fn().mockResolvedValue([]),

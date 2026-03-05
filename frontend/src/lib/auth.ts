@@ -3,7 +3,7 @@ import { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
 
-const isE2eMockAuth = import.meta.env.VITE_E2E_MOCK_AUTH === "true";
+const isE2eMockAuth = process.env.NEXT_PUBLIC_E2E_MOCK_AUTH === "true";
 
 type AuthContextType = {
   session: Session | null;

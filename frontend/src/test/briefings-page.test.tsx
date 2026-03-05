@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
-import BriefingsPage from "@/pages/BriefingsPage";
+import BriefingsPage from "@/views/BriefingsPage";
 
 vi.mock("@/lib/api", () => ({
   getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),

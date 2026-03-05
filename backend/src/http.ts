@@ -62,6 +62,11 @@ export function toErrorResponse(error: unknown, requestId: string) {
     return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
   }
 
-  const message = error instanceof Error ? error.message : "Internal server error";
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message ?? "Internal server error")
+        : "Internal server error";
   return NextResponse.json({ error: message, request_id: requestId }, { status: 500 });
 }

@@ -1,6 +1,9 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-export async function getUserPlan(client: SupabaseClient, userId: string): Promise<"free" | "start" | "pro"> {
+export async function getUserPlan(
+  client: SupabaseClient,
+  userId: string
+): Promise<"free" | "starter" | "plus" | "pro"> {
   const { data, error } = await client
     .from("profiles")
     .select("plan")
@@ -9,6 +12,7 @@ export async function getUserPlan(client: SupabaseClient, userId: string): Promi
 
   if (error) throw error;
   const plan = String(data?.plan ?? "free").toLowerCase();
-  if (plan === "start" || plan === "pro") return plan;
+  if (plan === "start") return "starter";
+  if (plan === "starter" || plan === "plus" || plan === "pro") return plan;
   return "free";
 }

@@ -9,10 +9,10 @@ import {
   UserPlan
 } from "@/lib/types";
 
-const API_URL = String(import.meta.env.VITE_API_URL ?? "").trim().replace(/\/$/, "");
+const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
 
 if (!API_URL) {
-  throw new Error("Missing VITE_API_URL");
+  throw new Error("Missing NEXT_PUBLIC_API_URL");
 }
 
 type ApiError = {
@@ -268,7 +268,7 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function createStripeCheckoutSession(plan: "start" | "pro"): Promise<{ url: string }> {
+export async function createStripeCheckoutSession(plan: "starter" | "plus" | "pro"): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
     body: { plan }

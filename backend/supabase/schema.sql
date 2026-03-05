@@ -29,7 +29,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   full_name text,
-  plan text not null default 'free' check (plan in ('free', 'start', 'pro')),
+  plan text not null default 'free' check (plan in ('free', 'starter', 'plus', 'pro')),
   stripe_customer_id text unique,
   stripe_subscription_id text unique,
   stripe_price_id text,
@@ -43,7 +43,7 @@ create table if not exists public.profiles (
 alter table public.profiles
   drop constraint if exists profiles_plan_check;
 alter table public.profiles
-  add constraint profiles_plan_check check (plan in ('free', 'start', 'pro'));
+  add constraint profiles_plan_check check (plan in ('free', 'starter', 'plus', 'pro'));
 
 create table if not exists public.organizations (
   id uuid primary key default gen_random_uuid(),

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 
 export default function BillingPage() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
-  const [submittingPlan, setSubmittingPlan] = useState<"start" | "pro" | null>(null);
+  const [submittingPlan, setSubmittingPlan] = useState<"starter" | "plus" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
 
   const usage = meQuery.data?.usage;
@@ -27,7 +27,7 @@ export default function BillingPage() {
       ? "Illimité"
       : `${usage?.pdf_exports_remaining ?? 0} restant(s)`;
 
-  const openCheckout = async (plan: "start" | "pro") => {
+  const openCheckout = async (plan: "starter" | "plus" | "pro") => {
     try {
       setSubmittingPlan(plan);
       const session = await createStripeCheckoutSession(plan);
@@ -78,16 +78,28 @@ export default function BillingPage() {
 
       <Card className="p-6">
         <h2 className="text-lg font-semibold">Choisir un abonnement</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-[#e6e8f2] p-4 dark:border-white/10">
-            <p className="text-sm font-semibold">Start</p>
+            <p className="text-sm font-semibold">Starter</p>
             <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">100 exports PDF/mois</p>
             <Button
               className="mt-4"
-              disabled={submittingPlan !== null || currentPlan === "start" || currentPlan === "pro"}
-              onClick={() => void openCheckout("start")}
+              disabled={submittingPlan !== null || currentPlan === "starter" || currentPlan === "plus" || currentPlan === "pro"}
+              onClick={() => void openCheckout("starter")}
             >
-              {submittingPlan === "start" ? "Redirection..." : currentPlan === "start" || currentPlan === "pro" ? "Plan actuel ou superieur" : "Passer Start"}
+              {submittingPlan === "starter" ? "Redirection..." : currentPlan === "starter" || currentPlan === "plus" || currentPlan === "pro" ? "Plan actuel ou superieur" : "Passer Starter"}
+            </Button>
+          </div>
+
+          <div className="rounded-2xl border border-[#e6e8f2] p-4 dark:border-white/10">
+            <p className="text-sm font-semibold">Plus</p>
+            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">300 exports PDF/mois</p>
+            <Button
+              className="mt-4"
+              disabled={submittingPlan !== null || currentPlan === "plus" || currentPlan === "pro"}
+              onClick={() => void openCheckout("plus")}
+            >
+              {submittingPlan === "plus" ? "Redirection..." : currentPlan === "plus" || currentPlan === "pro" ? "Plan actuel ou superieur" : "Passer Plus"}
             </Button>
           </div>
 

@@ -12,9 +12,10 @@ const createSchema = z.object({
   event_date: z.string().date().optional(),
   location_text: z.string().trim().optional()
 });
-const BRIEFING_LIMITS: Record<"free" | "start" | "pro", number> = {
+const BRIEFING_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
   free: 1,
-  start: 20,
+  starter: 20,
+  plus: 100,
   pro: Number.POSITIVE_INFINITY
 };
 

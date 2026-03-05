@@ -1,6 +1,6 @@
 # BriefOPS Frontend
 
-React + Vite + TypeScript frontend with Tailwind, Supabase Auth, React Query and modular briefing editor.
+React + Next.js + TypeScript frontend with Tailwind, Supabase Auth, React Query and modular briefing editor.
 
 ## Run
 
@@ -16,10 +16,10 @@ npm run dev
 `frontend/.env.local`:
 
 ```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_API_URL=http://localhost:3000
-VITE_E2E_MOCK_AUTH=false
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_E2E_MOCK_AUTH=false
 ```
 
 ## Tests

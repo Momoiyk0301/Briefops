@@ -8,9 +8,9 @@ import { env } from "@/env";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({
-  plan: z.enum(["start", "pro"])
+  plan: z.enum(["starter", "plus", "pro"])
 });
-const planRank: Record<string, number> = { free: 0, start: 1, pro: 2 };
+const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, plus: 2, pro: 3 };
 
 function resolveAppUrl(request: Request): string {
   const origin = request.headers.get("origin");

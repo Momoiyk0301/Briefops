@@ -8,4 +8,4 @@ if [[ ! -f .env.local ]]; then
 fi
 
 echo "[start-frontend] starting frontend dev server..."
-npm run dev
+npm run dev -- -H 127.0.0.1 -p 5173

@@ -15,7 +15,7 @@ export default defineConfig({
       timeout: 120_000
     },
     {
-      command: "bash -lc 'cd frontend && VITE_E2E_MOCK_AUTH=true npm run dev -- --host 127.0.0.1 --port 5173'",
+      command: "NEXT_PUBLIC_E2E_MOCK_AUTH=true npm --prefix frontend run dev -- -H 127.0.0.1 -p 5173",
       port: 5173,
       reuseExistingServer: true,
       timeout: 120_000

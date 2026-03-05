@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-const rawSupabaseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "").trim();
-const supabaseAnonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? "").trim();
+const rawSupabaseUrl = String(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+const supabaseAnonKey = String(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
 
 if (!rawSupabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -34,21 +34,21 @@ function resolveSupabaseUrl(): string {
     return rawSupabaseUrl;
   }
 
-  // Common misconfiguration: VITE_SUPABASE_URL accidentally contains a key.
+  // Common misconfiguration: NEXT_PUBLIC_SUPABASE_URL accidentally contains a key.
   const payload = decodeJwtPayload(supabaseAnonKey);
   const ref = typeof payload?.ref === "string" ? payload.ref : null;
 
   if (ref) {
     const guessed = `https://${ref}.supabase.co`;
     console.warn(
-      "VITE_SUPABASE_URL is not a valid URL. Falling back to inferred URL from anon key:",
+      "NEXT_PUBLIC_SUPABASE_URL is not a valid URL. Falling back to inferred URL from anon key:",
       guessed
     );
     return guessed;
   }
 
   throw new Error(
-    "Invalid VITE_SUPABASE_URL. Expected a valid http(s) URL like https://<project-ref>.supabase.co"
+    "Invalid NEXT_PUBLIC_SUPABASE_URL. Expected a valid http(s) URL like https://<project-ref>.supabase.co"
   );
 }
 

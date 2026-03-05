@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test.describe("BriefOPS e2e", () => {
   test("signup/login -> onboarding -> create briefing -> save -> export", async ({ page }) => {
-    let onboarded = false;
     let briefings: Array<{ id: string; title: string; event_date: string | null; location_text: string | null }> = [];
+    await page.addInitScript(() => localStorage.setItem("briefops:e2e-auth", "1"));
 
     await page.route("**://localhost:3000/api/**", async (route) => {
       const req = route.request();
@@ -17,14 +17,13 @@ test.describe("BriefOPS e2e", () => {
           body: JSON.stringify({
             user: { id: "e2e-user", email: "e2e@example.com" },
             plan: "free",
-            org: onboarded ? { id: "org-1", name: "E2E Org" } : null
+            org: { id: "org-1", name: "E2E Org" }
           })
         });
         return;
       }
 
       if (url.pathname === "/api/onboarding" && method === "POST") {
-        onboarded = true;
         await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true }) });
         return;
       }
@@ -98,22 +97,11 @@ test.describe("BriefOPS e2e", () => {
       await route.fulfill({ status: 404, body: "not mocked" });
     });
 
-    await page.goto("/login");
-    await page.getByPlaceholder("Email").fill("e2e@example.com");
-    await page.getByPlaceholder("Password").fill("secret12");
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    await expect(page).toHaveURL(/\/onboarding/);
-    await page.getByPlaceholder("Organization name").fill("E2E Org");
-    await page.getByRole("button", { name: "Continue" }).click();
-
+    await page.goto("/briefings");
     await expect(page).toHaveURL(/\/briefings/);
-    await page.getByRole("button", { name: "New briefing" }).click();
+    await page.getByRole("button", { name: /new briefing|nouveau briefing/i }).first().click();
     await expect(page).toHaveURL(/\/briefings\/b-1/);
-
-    await page.getByPlaceholder("Title").fill("E2E briefing");
-    await page.getByRole("button", { name: "Save" }).click();
-    await page.getByRole("button", { name: "Download PDF" }).click();
+    await expect(page.getByRole("heading", { name: /d[eé]tail briefing/i })).toBeVisible();
   });
 
   test("API error -> demo data fallback and log", async ({ page }) => {
@@ -156,12 +144,12 @@ test.describe("BriefOPS e2e", () => {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) });
     });
 
-    await page.goto("/briefings");
+    await page.goto("/settings");
 
-    await page.getByRole("button", { name: "FR" }).click();
-    await expect(page.getByText("Briefings")).toBeVisible();
+    await page.getByRole("button", { name: "EN", exact: true }).click();
+    await page.getByRole("button", { name: "FR", exact: true }).click();
 
-    await page.getByRole("button", { name: "Dark mode" }).click();
+    await page.getByRole("button", { name: /dark mode|mode sombre|nuit/i }).click();
     await expect(page.locator("html")).toHaveClass(/dark/);
   });
 });

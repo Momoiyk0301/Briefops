@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { ZodType } from "zod";
 
-export type UserPlan = "free" | "start" | "pro";
+export type UserPlan = "free" | "starter" | "plus" | "pro";
 export type Locale = "fr" | "en";
 export type MembershipRole = "owner" | "admin" | "member";
 

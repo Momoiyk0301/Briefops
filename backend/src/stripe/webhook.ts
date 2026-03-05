@@ -6,7 +6,7 @@ import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 const processedEventIds = new Set<string>();
 
 type ProfilePatch = {
-  plan: "free" | "start" | "pro";
+  plan: "free" | "starter" | "plus" | "pro";
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_price_id?: string | null;
@@ -29,7 +29,7 @@ function shouldFallbackToLegacyColumns(error: unknown) {
   return code === "42703" || /column .* does not exist/i.test(message);
 }
 
-function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "start" | "pro" {
+function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "starter" | "plus" | "pro" {
   for (const item of subscription.items.data) {
     const priceId = item.price?.id;
     if (!priceId) continue;
@@ -37,6 +37,13 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" 
     if (plan) return plan;
   }
   return "free";
+}
+
+function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro") {
+  if (plan === "pro") return "Pro";
+  if (plan === "plus") return "Plus";
+  if (plan === "starter") return "Starter";
+  return "Free";
 }
 
 function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
@@ -48,7 +55,7 @@ function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch
     plan,
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId,
-    subscription_name: plan === "pro" ? "Pro" : plan === "start" ? "Start" : "Free",
+    subscription_name: toSubscriptionName(plan),
     subscription_status: subscription.status,
     current_period_end: typeof periodEndUnix === "number" ? new Date(periodEndUnix * 1000).toISOString() : null
   };
@@ -84,7 +91,7 @@ async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
   if (fallbackError) throw fallbackError;
 }
 
-async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "start" | "pro"> {
+async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
   if (!session.id) return "free";
 
   const lineItems = await getStripe().checkout.sessions.listLineItems(session.id, { limit: 100 });
@@ -124,7 +131,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
           ...buildSubscriptionPatch(subscription)
         };
       } else {
-        patch.subscription_name = checkoutPlan === "pro" ? "Pro" : checkoutPlan === "start" ? "Start" : "Free";
+        patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
       await updatePlanByEmail(email, patch);

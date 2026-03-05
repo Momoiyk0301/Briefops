@@ -74,8 +74,10 @@ export const serverEnv = {
 const stripeEnvSchema = z.object({
   STRIPE_SECRET_KEY: trimmed(z.string().min(1)),
   STRIPE_WEBHOOK_SECRET: trimmed(z.string().min(1)),
-  STRIPE_START_PRICE_ID: trimmed(z.string().min(1)),
-  STRIPE_PRO_PRICE_ID: trimmed(z.string().min(1))
+  STRIPE_STARTER_ID: trimmed(z.string().min(1)),
+  STRIPE_PRO_ID: trimmed(z.string().min(1)),
+  STRIPE_PLUS_ID: trimmed(z.string()).optional(),
+  STRPE_PLUS_ID: trimmed(z.string()).optional()
 });
 
 export function getStripeEnv() {
@@ -85,5 +87,14 @@ export function getStripeEnv() {
     throw new Error("Missing or invalid Stripe environment variables");
   }
 
-  return stripeParsed.data;
+  const plusId = stripeParsed.data.STRIPE_PLUS_ID || stripeParsed.data.STRPE_PLUS_ID;
+  if (!plusId) {
+    console.error("Invalid Stripe environment variables", { STRIPE_PLUS_ID: ["Required"] });
+    throw new Error("Missing or invalid Stripe environment variables");
+  }
+
+  return {
+    ...stripeParsed.data,
+    STRIPE_PLUS_ID: plusId
+  };
 }
