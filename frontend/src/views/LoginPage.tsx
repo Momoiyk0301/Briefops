@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createStripeCheckoutSession, getMe, postOnboarding, toApiMessage } from "@/lib/api";
+import { createStripeCheckoutSession, getMe, toApiMessage } from "@/lib/api";
 import { signInWithPassword, signOut, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -45,12 +45,6 @@ export default function LoginPage() {
 
       if (!signUpResult.session) {
         navigate(`/auth/check-email?email=${encodeURIComponent(pendingRegistration.email)}`);
-        return;
-      }
-
-      if (plan === "starter") {
-        await postOnboarding({ org_name: trimmedOrgName });
-        navigate("/briefings");
         return;
       }
 
@@ -137,9 +131,9 @@ export default function LoginPage() {
               <div className="cards-grid-3">
                 <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
                   <p className="text-lg font-semibold">Starter</p>
-                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Version gratuite (sans checkout)</p>
+                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Offre Starter via Stripe Checkout</p>
                   <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("starter")}>
-                    {submittingOffer === "starter" ? "Création..." : "Choisir Starter"}
+                    {submittingOffer === "starter" ? "Redirection..." : "Choisir Starter"}
                   </Button>
                 </div>
                 <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
