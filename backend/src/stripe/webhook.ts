@@ -257,6 +257,35 @@ async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch, o
   }
 }
 
+async function updatePlanByUserId(userId: string, patch: ProfilePatch, orgName?: string | null) {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .update(patch)
+    .eq("id", userId)
+    .select("id,email")
+    .maybeSingle();
+
+  if (error) {
+    if (!shouldFallbackToLegacyColumns(error)) {
+      throw error;
+    }
+
+    const fallback = toPatchWithFallback(patch);
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("profiles")
+      .update(fallback)
+      .eq("id", userId)
+      .select("id,email")
+      .maybeSingle();
+    if (fallbackError) throw fallbackError;
+    await ensureMembershipForProfile(userId, fallbackData?.email ?? null, orgName);
+    return;
+  }
+
+  await ensureMembershipForProfile(userId, data?.email ?? null, orgName);
+}
+
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
   if (!session.id) return "free";
 
@@ -282,8 +311,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const email = session.customer_details?.email ?? session.customer_email;
       const customerId = typeof session.customer === "string" ? session.customer : null;
       const orgNameFromMetadata = typeof session.metadata?.org_name === "string" ? session.metadata.org_name : null;
-
-      if (!email) break;
+      const userIdFromMetadata = typeof session.metadata?.user_id === "string" ? session.metadata.user_id : null;
 
       const checkoutPlan = await resolvePlanFromSession(session);
       let patch: ProfilePatch = {
@@ -301,8 +329,16 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
-      await updatePlanByEmail(email, patch, orgNameFromMetadata);
-      await sendPostCheckoutEmails(email, checkoutPlan, session);
+      if (email) {
+        await updatePlanByEmail(email, patch, orgNameFromMetadata);
+        await sendPostCheckoutEmails(email, checkoutPlan, session);
+      } else if (userIdFromMetadata) {
+        await updatePlanByUserId(userIdFromMetadata, patch, orgNameFromMetadata);
+      } else if (customerId) {
+        await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata);
+      } else {
+        throw new Error("Missing identifiers in checkout.session.completed webhook");
+      }
       break;
     }
 
