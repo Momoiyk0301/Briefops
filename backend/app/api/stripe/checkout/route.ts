@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { requireAuthContext } from "@/supabase/server";
+import { createServiceRoleClient, requireAuthContext } from "@/supabase/server";
 import { getStripe, getStripePriceIdForPlan } from "@/stripe/stripe";
 import { env } from "@/env";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({
-  plan: z.enum(["starter", "plus", "pro"])
+  plan: z.enum(["starter", "plus", "pro"]),
+  org_name: z.string().trim().min(2).max(120).optional()
 });
 const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, plus: 2, pro: 3 };
 
@@ -22,17 +23,30 @@ export async function POST(request: Request) {
   const ctx = createRequestContext("POST /api/stripe/checkout");
 
   try {
-    const { client, userId, email } = await requireAuthContext(request);
+    const { userId, email } = await requireAuthContext(request);
+    const admin = createServiceRoleClient();
     const appUrl = resolveAppUrl(request);
     const body = bodySchema.parse(await request.json());
     const requestedPlan = body.plan;
 
-    const { data: profile, error: profileError } = await client
+    const { error: profileUpsertError } = await admin
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          email: (email ?? "").toLowerCase() || undefined
+        },
+        { onConflict: "id" }
+      );
+    if (profileUpsertError) throw profileUpsertError;
+
+    const { data: profile, error: profileError } = await admin
       .from("profiles")
       .select("id,plan,stripe_customer_id")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
     if (profileError) throw profileError;
+    if (!profile) throw new HttpError(500, "Profile not found after upsert");
 
     const currentPlan = profile?.plan ?? "free";
     if ((planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
@@ -49,7 +63,7 @@ export async function POST(request: Request) {
       });
       customerId = customer.id;
 
-      const { error: updateError } = await client
+      const { error: updateError } = await admin
         .from("profiles")
         .update({ stripe_customer_id: customerId })
         .eq("id", userId);
@@ -63,7 +77,11 @@ export async function POST(request: Request) {
       allow_promotion_codes: true,
       success_url: `${appUrl}/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/settings/billing?checkout=cancel`,
-      metadata: { user_id: userId, plan: requestedPlan }
+      metadata: {
+        user_id: userId,
+        plan: requestedPlan,
+        org_name: body.org_name ?? ""
+      }
     });
 
     if (!session.url) {

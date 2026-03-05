@@ -5,16 +5,22 @@ const createCustomer = vi.fn();
 
 const mockEq = vi.fn();
 const mockSingle = vi.fn();
+const mockMaybeSingle = vi.fn();
 const mockUpdateEq = vi.fn();
+const mockUpsert = vi.fn();
 const mockUpdate = vi.fn();
 const mockSelect = vi.fn();
 const mockFrom = vi.fn();
+const mockAdminFrom = vi.fn();
 
 vi.mock("@/supabase/server", () => ({
   requireAuthContext: async () => ({
     client: { from: mockFrom },
     userId: "user-1",
     email: "user@example.com"
+  }),
+  createServiceRoleClient: () => ({
+    from: mockAdminFrom
   })
 }));
 
@@ -38,11 +44,19 @@ describe("/api/stripe/checkout", () => {
       select: mockSelect,
       update: mockUpdate
     });
+    mockAdminFrom.mockReturnValue({
+      upsert: mockUpsert,
+      select: mockSelect,
+      update: mockUpdate
+    });
+
+    mockUpsert.mockResolvedValue({ error: null });
     mockSelect.mockReturnValue({
       eq: mockEq
     });
     mockEq.mockReturnValue({
-      single: mockSingle
+      single: mockSingle,
+      maybeSingle: mockMaybeSingle
     });
     mockUpdate.mockReturnValue({
       eq: mockUpdateEq
@@ -50,7 +64,7 @@ describe("/api/stripe/checkout", () => {
   });
 
   it("returns checkout url", async () => {
-    mockSingle.mockResolvedValueOnce({
+    mockMaybeSingle.mockResolvedValueOnce({
       data: { id: "user-1", plan: "free", stripe_customer_id: "cus_1" },
       error: null
     });
@@ -71,7 +85,7 @@ describe("/api/stripe/checkout", () => {
   });
 
   it("creates a customer when missing", async () => {
-    mockSingle.mockResolvedValueOnce({
+    mockMaybeSingle.mockResolvedValueOnce({
       data: { id: "user-1", plan: "free", stripe_customer_id: null },
       error: null
     });

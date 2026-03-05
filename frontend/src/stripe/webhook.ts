@@ -147,7 +147,7 @@ function formatOrgNameFromEmail(email: string | null | undefined) {
   return cleaned ? `${cleaned} workspace` : "BriefOPS Workspace";
 }
 
-async function ensureMembershipForProfile(userId: string, email?: string | null) {
+async function ensureMembershipForProfile(userId: string, email?: string | null, orgName?: string | null) {
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
@@ -169,11 +169,12 @@ async function ensureMembershipForProfile(userId: string, email?: string | null)
   if (org?.id) {
     orgId = org.id;
   } else {
+    const normalizedOrgName = typeof orgName === "string" ? orgName.trim() : "";
     const { data: createdOrg, error: createOrgError } = await admin
       .from("organizations")
       .insert({
         owner_id: userId,
-        name: formatOrgNameFromEmail(email)
+        name: normalizedOrgName || formatOrgNameFromEmail(email)
       })
       .select("id")
       .single();
@@ -192,7 +193,7 @@ async function ensureMembershipForProfile(userId: string, email?: string | null)
   if (insertMembershipError) throw insertMembershipError;
 }
 
-async function updatePlanByEmail(email: string, patch: ProfilePatch) {
+async function updatePlanByEmail(email: string, patch: ProfilePatch, orgName?: string | null) {
   const admin = createServiceRoleClient();
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -221,11 +222,11 @@ async function updatePlanByEmail(email: string, patch: ProfilePatch) {
 
   const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
   if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail);
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail, orgName);
   }
 }
 
-async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
+async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch, orgName?: string | null) {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("profiles")
@@ -252,7 +253,7 @@ async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
 
   const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
   if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null);
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName);
   }
 }
 
@@ -280,6 +281,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const session = event.data.object as Stripe.Checkout.Session;
       const email = session.customer_details?.email ?? session.customer_email;
       const customerId = typeof session.customer === "string" ? session.customer : null;
+      const orgNameFromMetadata = typeof session.metadata?.org_name === "string" ? session.metadata.org_name : null;
 
       if (!email) break;
 
@@ -299,7 +301,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
-      await updatePlanByEmail(email, patch);
+      await updatePlanByEmail(email, patch, orgNameFromMetadata);
       await sendPostCheckoutEmails(email, checkoutPlan, session);
       break;
     }

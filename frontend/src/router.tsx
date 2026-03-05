@@ -31,6 +31,7 @@ function ProtectedLayout() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
 
   if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
+  if (!meQuery.data?.role) return <Navigate to="/login" replace />;
 
   return (
     <AppShell
@@ -54,7 +55,7 @@ function LoginGate() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe, enabled: Boolean(session) });
   if (loading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
   if (session && meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
-  if (session) return <Navigate to={meQuery.data?.org ? "/briefings" : "/onboarding"} replace />;
+  if (session && meQuery.data?.role) return <Navigate to="/briefings" replace />;
   return <LoginPage />;
 }
 

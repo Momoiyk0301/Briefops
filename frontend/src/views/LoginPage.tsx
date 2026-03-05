@@ -6,8 +6,8 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createStripeCheckoutSession, getMe, toApiMessage } from "@/lib/api";
-import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
+import { createStripeCheckoutSession, getMe, postOnboarding, toApiMessage } from "@/lib/api";
+import { signInWithPassword, signOut, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -26,33 +26,39 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [registerStep, setRegisterStep] = useState<"credentials" | "offer">("credentials");
   const [pendingRegistration, setPendingRegistration] = useState<Values | null>(null);
-  const [submittingOffer, setSubmittingOffer] = useState<"free" | "starter" | "plus" | "pro" | null>(null);
+  const [orgName, setOrgName] = useState("");
+  const [submittingOffer, setSubmittingOffer] = useState<"starter" | "plus" | "pro" | null>(null);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
   const isOfferStep = mode === "register" && registerStep === "offer";
 
-  const continueWithOffer = async (plan: "free" | "starter" | "plus" | "pro") => {
+  const continueWithOffer = async (plan: "starter" | "plus" | "pro") => {
     if (!pendingRegistration) return;
+    const trimmedOrgName = orgName.trim();
+    if (trimmedOrgName.length < 2) {
+      toast.error("Nom d'organisation requis (min 2 caractères).");
+      return;
+    }
+
     try {
       setSubmittingOffer(plan);
       const signUpResult = await signUpWithPassword(pendingRegistration.email, pendingRegistration.password);
 
-      if (plan === "free") {
-        if (signUpResult.session) {
-          navigate("/onboarding");
-        } else {
-          navigate(`/auth/check-email?email=${encodeURIComponent(pendingRegistration.email)}`);
-        }
+      if (!signUpResult.session) {
+        navigate(`/auth/check-email?email=${encodeURIComponent(pendingRegistration.email)}`);
+        return;
+      }
+
+      if (plan === "starter") {
+        await postOnboarding({ org_name: trimmedOrgName });
+        navigate("/briefings");
         return;
       }
 
       if (signUpResult.session) {
-        const checkout = await createStripeCheckoutSession(plan);
+        const checkout = await createStripeCheckoutSession(plan, trimmedOrgName);
         window.location.href = checkout.url;
         return;
       }
-
-      toast.success("Compte créé. Confirme ton email puis connecte-toi pour finaliser l'offre.");
-      navigate(`/auth/check-email?email=${encodeURIComponent(pendingRegistration.email)}`);
     } catch (error) {
       toast.error(toApiMessage(error));
       setSubmittingOffer(null);
@@ -64,7 +70,13 @@ export default function LoginPage() {
       if (mode === "login") {
         await signInWithPassword(values.email, values.password);
         const me = await getMe();
-        navigate(me.org ? "/briefings" : "/onboarding");
+        if (!me.role) {
+          await signOut();
+          toast.error("Aucun membership lié à ce compte.");
+          navigate("/login");
+          return;
+        }
+        navigate("/briefings");
       } else {
         setPendingRegistration(values);
         setRegisterStep("offer");
@@ -105,6 +117,7 @@ export default function LoginPage() {
             setMode(key as "login" | "register");
             setRegisterStep("credentials");
             setPendingRegistration(null);
+            setOrgName("");
             setSubmittingOffer(null);
           }}
         >
@@ -113,13 +126,20 @@ export default function LoginPage() {
               <div>
                 <p className="text-sm font-medium text-[#4f5570] dark:text-[#b4bdd5]">Ton compte est prêt.</p>
                 <h2 className="mt-1 text-2xl font-bold">Choisis ton offre pour continuer vers le checkout Stripe</h2>
+                <div className="mt-3">
+                  <Input
+                    placeholder="Nom de l'organisation"
+                    value={orgName}
+                    onChange={(event) => setOrgName(event.target.value)}
+                  />
+                </div>
               </div>
               <div className="cards-grid-3">
                 <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
                   <p className="text-lg font-semibold">Starter</p>
-                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Pour démarrer rapidement</p>
+                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Version gratuite (sans checkout)</p>
                   <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("starter")}>
-                    {submittingOffer === "starter" ? "Redirection..." : "Choisir Starter"}
+                    {submittingOffer === "starter" ? "Création..." : "Choisir Starter"}
                   </Button>
                 </div>
                 <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
@@ -137,9 +157,6 @@ export default function LoginPage() {
                   </Button>
                 </div>
               </div>
-              <Button variant="secondary" className="w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("free")}>
-                {submittingOffer === "free" ? "Création..." : "Continuer en Free"}
-              </Button>
               <Button
                 type="button"
                 variant="ghost"

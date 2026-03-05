@@ -17,7 +17,10 @@ test.describe("BriefOPS e2e", () => {
           body: JSON.stringify({
             user: { id: "e2e-user", email: "e2e@example.com" },
             plan: "free",
-            org: { id: "org-1", name: "E2E Org" }
+            org: { id: "org-1", name: "E2E Org" },
+            role: "owner",
+            is_admin: true,
+            degraded: false
           })
         });
         return;
@@ -116,7 +119,14 @@ test.describe("BriefOPS e2e", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ user: { id: "e2e-user", email: "e2e@example.com" }, plan: "free", org: { id: "org-1", name: "Org" } })
+        body: JSON.stringify({
+          user: { id: "e2e-user", email: "e2e@example.com" },
+          plan: "free",
+          org: { id: "org-1", name: "Org" },
+          role: "owner",
+          is_admin: true,
+          degraded: false
+        })
       });
     });
 
@@ -136,7 +146,14 @@ test.describe("BriefOPS e2e", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ user: { id: "e2e-user", email: "e2e@example.com" }, plan: "free", org: { id: "org-1", name: "Org" } })
+        body: JSON.stringify({
+          user: { id: "e2e-user", email: "e2e@example.com" },
+          plan: "free",
+          org: { id: "org-1", name: "Org" },
+          role: "owner",
+          is_admin: true,
+          degraded: false
+        })
       });
     });
 

@@ -264,10 +264,13 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function createStripeCheckoutSession(plan: "starter" | "plus" | "pro"): Promise<{ url: string }> {
+export async function createStripeCheckoutSession(
+  plan: "starter" | "plus" | "pro",
+  org_name?: string
+): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
-    body: { plan }
+    body: { plan, org_name }
   });
 }
 
