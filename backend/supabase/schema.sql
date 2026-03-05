@@ -57,6 +57,9 @@ create table if not exists public.memberships (
   org_id uuid not null references public.organizations(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner', 'admin', 'member')),
+  plan_name text,
+  stripe_price_id text,
+  stripe_product_id text,
   created_at timestamptz not null default timezone('utc', now()),
   unique (org_id, user_id),
   unique (user_id)

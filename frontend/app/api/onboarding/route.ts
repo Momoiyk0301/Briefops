@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const { error: membershipError } = await admin.from("memberships").insert({
       org_id: organization.id,
       user_id: userId,
-      role: "owner"
+      role: "member"
     });
 
     if (membershipError) throw membershipError;

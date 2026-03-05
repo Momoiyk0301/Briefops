@@ -21,6 +21,13 @@ type ProfilePatch = {
   current_period_end?: string | null;
 };
 
+type MembershipPatch = {
+  role: "member";
+  plan_name?: string | null;
+  stripe_price_id?: string | null;
+  stripe_product_id?: string | null;
+};
+
 function toPatchWithFallback(patch: ProfilePatch) {
   return {
     plan: patch.plan,
@@ -139,6 +146,11 @@ function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch
   };
 }
 
+function resolveStripeProductIdFromSubscription(subscription: Stripe.Subscription): string | null {
+  const product = subscription.items.data[0]?.price?.product;
+  return typeof product === "string" ? product : null;
+}
+
 function formatOrgNameFromEmail(email: string | null | undefined) {
   if (!email) return "BriefOPS Workspace";
   const local = email.split("@")[0]?.trim();
@@ -147,7 +159,12 @@ function formatOrgNameFromEmail(email: string | null | undefined) {
   return cleaned ? `${cleaned} workspace` : "BriefOPS Workspace";
 }
 
-async function ensureMembershipForProfile(userId: string, email?: string | null, orgName?: string | null) {
+async function ensureMembershipForProfile(
+  userId: string,
+  email?: string | null,
+  orgName?: string | null,
+  membershipPatch?: MembershipPatch
+) {
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
@@ -182,18 +199,35 @@ async function ensureMembershipForProfile(userId: string, email?: string | null,
     orgId = createdOrg.id;
   }
 
-  const { error: insertMembershipError } = await admin.from("memberships").upsert(
-    {
-      org_id: orgId,
-      user_id: userId,
-      role: "owner"
-    },
-    { onConflict: "user_id" }
-  );
-  if (insertMembershipError) throw insertMembershipError;
+  const payload = {
+    org_id: orgId,
+    user_id: userId,
+    role: "member" as const,
+    plan_name: membershipPatch?.plan_name ?? null,
+    stripe_price_id: membershipPatch?.stripe_price_id ?? null,
+    stripe_product_id: membershipPatch?.stripe_product_id ?? null
+  };
+  const { error: insertMembershipError } = await admin.from("memberships").upsert(payload, { onConflict: "user_id" });
+  if (insertMembershipError) {
+    if (!shouldFallbackToLegacyColumns(insertMembershipError)) throw insertMembershipError;
+    const { error: fallbackMembershipError } = await admin.from("memberships").upsert(
+      {
+        org_id: orgId,
+        user_id: userId,
+        role: "member"
+      },
+      { onConflict: "user_id" }
+    );
+    if (fallbackMembershipError) throw fallbackMembershipError;
+  }
 }
 
-async function updatePlanByEmail(email: string, patch: ProfilePatch, orgName?: string | null) {
+async function updatePlanByEmail(
+  email: string,
+  patch: ProfilePatch,
+  orgName?: string | null,
+  membershipPatch?: MembershipPatch
+) {
   const admin = createServiceRoleClient();
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -222,11 +256,16 @@ async function updatePlanByEmail(email: string, patch: ProfilePatch, orgName?: s
 
   const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
   if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail, orgName);
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail, orgName, membershipPatch);
   }
 }
 
-async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch, orgName?: string | null) {
+async function updatePlanByCustomerId(
+  customerId: string,
+  patch: ProfilePatch,
+  orgName?: string | null,
+  membershipPatch?: MembershipPatch
+) {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("profiles")
@@ -253,11 +292,16 @@ async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch, o
 
   const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
   if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName);
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName, membershipPatch);
   }
 }
 
-async function updatePlanByUserId(userId: string, patch: ProfilePatch, orgName?: string | null) {
+async function updatePlanByUserId(
+  userId: string,
+  patch: ProfilePatch,
+  orgName?: string | null,
+  membershipPatch?: MembershipPatch
+) {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("profiles")
@@ -279,11 +323,11 @@ async function updatePlanByUserId(userId: string, patch: ProfilePatch, orgName?:
       .select("id,email")
       .maybeSingle();
     if (fallbackError) throw fallbackError;
-    await ensureMembershipForProfile(userId, fallbackData?.email ?? null, orgName);
+    await ensureMembershipForProfile(userId, fallbackData?.email ?? null, orgName, membershipPatch);
     return;
   }
 
-  await ensureMembershipForProfile(userId, data?.email ?? null, orgName);
+  await ensureMembershipForProfile(userId, data?.email ?? null, orgName, membershipPatch);
 }
 
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
@@ -318,6 +362,12 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         plan: checkoutPlan,
         stripe_customer_id: customerId
       };
+      let membershipPatch: MembershipPatch = {
+        role: "member",
+        plan_name: toSubscriptionName(checkoutPlan),
+        stripe_price_id: null,
+        stripe_product_id: null
+      };
 
       if (typeof session.subscription === "string") {
         const subscription = await getStripe().subscriptions.retrieve(session.subscription);
@@ -325,17 +375,23 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
           ...patch,
           ...buildSubscriptionPatch(subscription)
         };
+        membershipPatch = {
+          role: "member",
+          plan_name: toSubscriptionName(checkoutPlan),
+          stripe_price_id: patch.stripe_price_id ?? null,
+          stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
+        };
       } else {
         patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
       if (email) {
-        await updatePlanByEmail(email, patch, orgNameFromMetadata);
+        await updatePlanByEmail(email, patch, orgNameFromMetadata, membershipPatch);
         await sendPostCheckoutEmails(email, checkoutPlan, session);
       } else if (userIdFromMetadata) {
-        await updatePlanByUserId(userIdFromMetadata, patch, orgNameFromMetadata);
+        await updatePlanByUserId(userIdFromMetadata, patch, orgNameFromMetadata, membershipPatch);
       } else if (customerId) {
-        await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata);
+        await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata, membershipPatch);
       } else {
         throw new Error("Missing identifiers in checkout.session.completed webhook");
       }
@@ -352,7 +408,12 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         ...buildSubscriptionPatch(subscription),
         stripe_customer_id: customerId
       };
-      await updatePlanByCustomerId(customerId, patch);
+      await updatePlanByCustomerId(customerId, patch, null, {
+        role: "member",
+        plan_name: toSubscriptionName(resolvePlanFromSubscription(subscription)),
+        stripe_price_id: patch.stripe_price_id ?? null,
+        stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
+      });
       break;
     }
 
