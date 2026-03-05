@@ -20,8 +20,8 @@ export default function RouteErrorPage() {
   })();
 
   return (
-    <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl items-center justify-center p-6">
-      <Card className="w-full space-y-4 p-6">
+    <div className="layout-main mx-auto flex min-h-[60vh] w-full max-w-3xl items-center justify-center">
+      <Card className="card-pad w-full space-y-4">
         <div className="space-y-1">
           <p className="text-sm font-semibold uppercase tracking-wide text-red-500">Erreur application</p>
           <h1 className="text-2xl font-bold">Impossible d'afficher cette page</h1>

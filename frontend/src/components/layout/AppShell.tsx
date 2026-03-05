@@ -1,4 +1,4 @@
-import { Bell, CircleUser, CreditCard, FileText, LogOut, Settings, Users } from "lucide-react";
+import { Bell, CircleUser, CreditCard, FileText, Home, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -46,8 +46,8 @@ export function AppShell({ plan, demoData = false, children }: Props) {
 
   return (
     <div className="min-h-screen bg-transparent text-[#111] dark:text-white">
-      <div className="grid min-h-screen grid-cols-[64px_1fr]">
-        <aside className="group/sidebar sticky top-0 z-30 flex h-screen w-16 flex-col overflow-hidden rounded-r-3xl bg-brand-500 px-2 py-4 transition-all duration-300 hover:w-56 dark:bg-[#1A1A1A]">
+      <div className="grid min-h-screen lg:grid-cols-[64px_1fr]">
+        <aside className="group/sidebar sticky top-0 z-30 hidden h-screen w-16 flex-col overflow-hidden rounded-r-3xl bg-brand-500 px-2 py-4 transition-all duration-300 hover:w-56 dark:bg-[#1A1A1A] lg:flex">
           <Link
             to="/briefings"
             title="Aller au dashboard"
@@ -94,9 +94,58 @@ export function AppShell({ plan, demoData = false, children }: Props) {
         </aside>
         <div className="min-w-0">
           <Navbar plan={plan} demoData={demoData} />
-          <main className="mx-auto max-w-[1500px] p-6 lg:p-8">{children}</main>
+          <main className="layout-main mx-auto max-w-[1500px] pb-24 lg:pb-8">{children}</main>
         </div>
       </div>
+      <nav className="fixed bottom-3 left-3 right-3 z-30 rounded-2xl border border-[#e6e8f2] bg-white/95 p-2 shadow-panel backdrop-blur dark:border-white/10 dark:bg-[#121212]/95 lg:hidden">
+        <div className="grid grid-cols-5 gap-1">
+          <NavLink
+            to="/briefings"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <Home size={16} />
+            Briefings
+          </NavLink>
+          <NavLink
+            to="/staff"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <Users size={16} />
+            Staff
+          </NavLink>
+          <NavLink
+            to="/settings/billing"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <CreditCard size={16} />
+            Offre
+          </NavLink>
+          <NavLink
+            to="/notifications"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <Bell size={16} />
+            Alerts
+          </NavLink>
+          <NavLink
+            to="/account"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <CircleUser size={16} />
+            Compte
+          </NavLink>
+        </div>
+      </nav>
     </div>
   );
 }

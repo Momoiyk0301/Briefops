@@ -61,34 +61,121 @@ function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch
   };
 }
 
+function formatOrgNameFromEmail(email: string | null | undefined) {
+  if (!email) return "BriefOPS Workspace";
+  const local = email.split("@")[0]?.trim();
+  if (!local) return "BriefOPS Workspace";
+  const cleaned = local.replace(/[._-]+/g, " ").trim();
+  return cleaned ? `${cleaned} workspace` : "BriefOPS Workspace";
+}
+
+async function ensureMembershipForProfile(userId: string, email?: string | null) {
+  const admin = createServiceRoleClient();
+  const { data: membership, error: membershipError } = await admin
+    .from("memberships")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipError) throw membershipError;
+  if (membership) return;
+
+  let orgId: string | null = null;
+  const { data: org, error: orgError } = await admin
+    .from("organizations")
+    .select("id")
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (orgError) throw orgError;
+  if (org?.id) {
+    orgId = org.id;
+  } else {
+    const { data: createdOrg, error: createOrgError } = await admin
+      .from("organizations")
+      .insert({
+        owner_id: userId,
+        name: formatOrgNameFromEmail(email)
+      })
+      .select("id")
+      .single();
+    if (createOrgError) throw createOrgError;
+    orgId = createdOrg.id;
+  }
+
+  const { error: insertMembershipError } = await admin.from("memberships").upsert(
+    {
+      org_id: orgId,
+      user_id: userId,
+      role: "owner"
+    },
+    { onConflict: "user_id" }
+  );
+  if (insertMembershipError) throw insertMembershipError;
+}
+
 async function updatePlanByEmail(email: string, patch: ProfilePatch) {
   const admin = createServiceRoleClient();
 
   const normalizedEmail = email.toLowerCase().trim();
-  const { error } = await admin.from("profiles").update(patch).eq("email", normalizedEmail);
-  if (!error) return;
+  const { data, error } = await admin
+    .from("profiles")
+    .update(patch)
+    .eq("email", normalizedEmail)
+    .select("id,email")
+    .maybeSingle();
+  let fallbackData: { id?: string; email?: string } | null = null;
+  if (error) {
+    if (!shouldFallbackToLegacyColumns(error)) {
+      throw error;
+    }
 
-  if (!shouldFallbackToLegacyColumns(error)) {
-    throw error;
+    const fallback = toPatchWithFallback(patch);
+    const { data: resolvedFallbackData, error: fallbackError } = await admin
+      .from("profiles")
+      .update(fallback)
+      .eq("email", normalizedEmail)
+      .select("id,email")
+      .maybeSingle();
+    if (fallbackError) throw fallbackError;
+    fallbackData = resolvedFallbackData;
   }
 
-  const fallback = toPatchWithFallback(patch);
-  const { error: fallbackError } = await admin.from("profiles").update(fallback).eq("email", normalizedEmail);
-  if (fallbackError) throw fallbackError;
+  const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
+  if (resolvedUserId) {
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail);
+  }
 }
 
 async function updatePlanByCustomerId(customerId: string, patch: ProfilePatch) {
   const admin = createServiceRoleClient();
-  const { error } = await admin.from("profiles").update(patch).eq("stripe_customer_id", customerId);
-  if (!error) return;
+  const { data, error } = await admin
+    .from("profiles")
+    .update(patch)
+    .eq("stripe_customer_id", customerId)
+    .select("id,email")
+    .maybeSingle();
+  let fallbackData: { id?: string; email?: string } | null = null;
+  if (error) {
+    if (!shouldFallbackToLegacyColumns(error)) {
+      throw error;
+    }
 
-  if (!shouldFallbackToLegacyColumns(error)) {
-    throw error;
+    const fallback = { plan: patch.plan };
+    const { data: resolvedFallbackData, error: fallbackError } = await admin
+      .from("profiles")
+      .update(fallback)
+      .eq("stripe_customer_id", customerId)
+      .select("id,email")
+      .maybeSingle();
+    if (fallbackError) throw fallbackError;
+    fallbackData = resolvedFallbackData;
   }
 
-  const fallback = { plan: patch.plan };
-  const { error: fallbackError } = await admin.from("profiles").update(fallback).eq("stripe_customer_id", customerId);
-  if (fallbackError) throw fallbackError;
+  const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
+  if (resolvedUserId) {
+    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null);
+  }
 }
 
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {

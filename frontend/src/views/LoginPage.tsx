@@ -31,11 +31,16 @@ export default function LoginPage() {
     try {
       if (mode === "login") {
         await signInWithPassword(values.email, values.password);
+        const me = await getMe();
+        navigate(me.org ? "/briefings" : "/onboarding");
       } else {
-        await signUpWithPassword(values.email, values.password);
+        const signUpResult = await signUpWithPassword(values.email, values.password);
+        if (signUpResult.session) {
+          navigate("/settings/billing?fromSignup=1");
+        } else {
+          navigate(`/auth/check-email?email=${encodeURIComponent(values.email)}`);
+        }
       }
-      const me = await getMe();
-      navigate(me.org ? "/briefings" : "/onboarding");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Auth error";
       toast.error(message);
@@ -43,8 +48,8 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="grid min-h-full grid-cols-1 items-center gap-6 p-6 lg:grid-cols-[1.2fr_460px] lg:p-10">
-      <section className="relative overflow-hidden rounded-panel border border-white/30 bg-gradient-to-br from-brand-500 via-[#6f72ff] to-[#45a5ff] p-8 text-white shadow-panel">
+    <div className="grid min-h-full grid-cols-1 items-center gap-6 px-[var(--space-page-x)] py-[var(--space-page-y)] lg:grid-cols-[1.2fr_460px]">
+      <section className="relative overflow-hidden rounded-panel border border-white/30 bg-gradient-to-br from-brand-500 via-[#6f72ff] to-[#45a5ff] p-[var(--space-card-pad)] text-white shadow-panel">
         <div className="absolute -left-20 -top-16 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
         <div className="absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#ff8b3d]/30 blur-3xl" />
         <p className="relative text-sm font-medium uppercase tracking-wide text-white/85">Event Ops SaaS</p>
@@ -59,7 +64,7 @@ export default function LoginPage() {
         </ul>
       </section>
 
-      <Card className="w-full max-w-md justify-self-center p-6">
+      <Card className="card-pad w-full max-w-md justify-self-center">
         <Tabs
           tabs={[
             { key: "login", label: t("auth.login") },

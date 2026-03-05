@@ -47,7 +47,7 @@ export default function OnboardingPage() {
   });
 
   return (
-    <Card className="mx-auto max-w-xl p-6">
+    <Card className="card-pad mx-auto max-w-xl">
       <h1 className="mb-1 text-2xl font-semibold">{t("onboarding.title")}</h1>
       <p className="mb-4 text-sm text-[#888]">Configure ton espace en moins d'une minute.</p>
       <form className="space-y-3" onSubmit={submit}>

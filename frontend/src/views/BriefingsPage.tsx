@@ -140,7 +140,7 @@ export default function BriefingsPage() {
 
   if (briefingsQuery.isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="stack-section">
         <Skeleton className="h-12 w-60" />
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />
@@ -150,8 +150,8 @@ export default function BriefingsPage() {
   if (briefingsQuery.error) return <p>{toApiMessage(briefingsQuery.error)}</p>;
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-3">
+    <div className="stack-page">
+      <div className="cards-grid-3">
         <Card>
           <p className="text-xs text-[#888]">Briefings par statut</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -200,7 +200,7 @@ export default function BriefingsPage() {
       </div>
 
       {viewMode === "calendar" ? (
-        <Card className="p-5">
+        <Card className="card-pad">
           <div className="mb-4">
             <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Vue mensuelle</p>
             <h2 className="text-xl font-bold">
@@ -241,7 +241,7 @@ export default function BriefingsPage() {
         </Card>
       ) : null}
 
-      <div className={`space-y-3 ${viewMode === "calendar" ? "hidden" : ""}`}>
+      <div className={`stack-section ${viewMode === "calendar" ? "hidden" : ""}`}>
         {briefings.length === 0 && (
           <Card className="text-center">
             <p className="text-lg font-medium">{t("briefings.empty")}</p>

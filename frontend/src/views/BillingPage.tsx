@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { useSearchParams } from "react-router-dom";
 
 import { createStripeCheckoutSession, createStripePortalSession, getMe, toApiMessage } from "@/lib/api";
+import { resendSignupConfirmation } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 export default function BillingPage() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
+  const [searchParams] = useSearchParams();
   const [submittingPlan, setSubmittingPlan] = useState<"starter" | "plus" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
 
   const usage = meQuery.data?.usage;
   const currentPlan = meQuery.data?.plan ?? "free";
@@ -26,6 +30,29 @@ export default function BillingPage() {
     usage?.pdf_exports_remaining === null
       ? "Illimité"
       : `${usage?.pdf_exports_remaining ?? 0} restant(s)`;
+
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    const alreadySent = searchParams.get("confirmResent") === "1";
+    const email = meQuery.data?.user?.email;
+
+    if (checkoutStatus !== "success" || alreadySent || !email || resendingConfirmation) return;
+
+    setResendingConfirmation(true);
+    void resendSignupConfirmation(email)
+      .then(() => {
+        toast.success("Email de confirmation renvoye.");
+        const next = new URLSearchParams(searchParams);
+        next.set("confirmResent", "1");
+        window.history.replaceState(null, "", `${window.location.pathname}?${next.toString()}`);
+      })
+      .catch((error) => {
+        toast.error(toApiMessage(error));
+      })
+      .finally(() => {
+        setResendingConfirmation(false);
+      });
+  }, [meQuery.data?.user?.email, resendingConfirmation, searchParams]);
 
   const openCheckout = async (plan: "starter" | "plus" | "pro") => {
     try {
@@ -53,15 +80,25 @@ export default function BillingPage() {
   if (meQuery.error) return <Card>{toApiMessage(meQuery.error)}</Card>;
 
   return (
-    <section className="space-y-5">
+    <section className="stack-page">
       <div>
         <h1 className="text-2xl font-bold">Facturation</h1>
         <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
           Donnees d'utilisation et choix de plan.
         </p>
+        {searchParams.get("fromSignup") === "1" ? (
+          <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
+            Choisis ton offre (Starter, Plus ou Pro), puis finalise ton checkout Stripe.
+          </p>
+        ) : null}
+        {searchParams.get("checkout") === "success" ? (
+          <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
+            Paiement confirme. Un email de confirmation de compte est envoye avec un lien vers `/auth/confirmed`.
+          </p>
+        ) : null}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="cards-grid-3">
         <Card>
           <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Plan actuel</p>
           <p className="mt-2 text-2xl font-semibold">{currentPlan}</p>
@@ -76,10 +113,10 @@ export default function BillingPage() {
         </Card>
       </div>
 
-      <Card className="p-6">
+      <Card className="card-pad">
         <h2 className="text-lg font-semibold">Choisir un abonnement</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#e6e8f2] p-4 dark:border-white/10">
+        <div className="cards-grid-3 mt-4">
+          <div className="surface-pad rounded-2xl border border-[#e6e8f2] dark:border-white/10">
             <p className="text-sm font-semibold">Starter</p>
             <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">100 exports PDF/mois</p>
             <Button
@@ -91,7 +128,7 @@ export default function BillingPage() {
             </Button>
           </div>
 
-          <div className="rounded-2xl border border-[#e6e8f2] p-4 dark:border-white/10">
+          <div className="surface-pad rounded-2xl border border-[#e6e8f2] dark:border-white/10">
             <p className="text-sm font-semibold">Plus</p>
             <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">300 exports PDF/mois</p>
             <Button
@@ -103,7 +140,7 @@ export default function BillingPage() {
             </Button>
           </div>
 
-          <div className="rounded-2xl border border-brand-500/40 bg-brand-500/5 p-4 dark:border-brand-400/30 dark:bg-brand-400/10">
+          <div className="surface-pad rounded-2xl border border-brand-500/40 bg-brand-500/5 dark:border-brand-400/30 dark:bg-brand-400/10">
             <p className="text-sm font-semibold">Pro</p>
             <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Exports PDF illimites</p>
             <Button

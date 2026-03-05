@@ -77,11 +77,31 @@ export async function signInWithPassword(email: string, password: string) {
 export async function signUpWithPassword(email: string, password: string) {
   if (isE2eMockAuth) {
     localStorage.setItem("briefops:e2e-auth", "1");
-    return { user: { email } };
+    return { user: { email }, session: null };
   }
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const emailRedirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/confirmed` : undefined;
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo
+    }
+  });
   if (error) throw error;
   return data;
+}
+
+export async function resendSignupConfirmation(email: string) {
+  if (isE2eMockAuth) return;
+  const emailRedirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/confirmed` : undefined;
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo
+    }
+  });
+  if (error) throw error;
 }
 
 export async function signOut() {

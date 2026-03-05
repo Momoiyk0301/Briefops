@@ -79,21 +79,21 @@ export default function NotificationsPage() {
   }
 
   return (
-    <section className="space-y-5">
+    <section className="stack-page">
       <div>
         <h1 className="text-2xl font-bold">Notifications</h1>
         <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
           Récap détaillé des briefings à venir.
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="stack-section">
         {notifications.length === 0 ? (
           <Card>
             <p className="font-medium">Aucune notification pour le moment.</p>
           </Card>
         ) : null}
         {notifications.map((item) => (
-          <Card key={item.id} className="p-5">
+          <Card key={item.id} className="card-pad">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold">{item.title}</p>

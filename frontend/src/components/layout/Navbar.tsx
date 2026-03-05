@@ -118,7 +118,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               <Bell size={16} />
             </Button>
             {notificationsOpen ? (
-              <div className="absolute right-0 top-[calc(100%+10px)] w-[340px] rounded-2xl border border-[#ececf2] bg-white p-4 shadow-panel dark:border-white/10 dark:bg-[#151515]">
+              <div className="absolute right-0 top-[calc(100%+10px)] w-[min(340px,calc(100vw-1.5rem))] rounded-2xl border border-[#ececf2] bg-white p-4 shadow-panel dark:border-white/10 dark:bg-[#151515]">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Aperçu</p>
                   <button

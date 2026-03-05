@@ -21,6 +21,15 @@ body {
   background-size: 18px 18px;
 }
 
+:root {
+  --space-page-x: clamp(1rem, 1.2vw + 0.7rem, 2rem);
+  --space-page-y: clamp(1rem, 1.4vw + 0.7rem, 2rem);
+  --space-stack-1: clamp(0.75rem, 0.7vw + 0.55rem, 1rem);
+  --space-stack-2: clamp(1rem, 0.9vw + 0.7rem, 1.25rem);
+  --space-stack-3: clamp(1.25rem, 1.2vw + 0.85rem, 1.5rem);
+  --space-card-pad: clamp(1rem, 0.9vw + 0.7rem, 1.5rem);
+}
+
 h1,
 h2,
 h3,
@@ -39,4 +48,57 @@ h6 {
 .a4-frame {
   aspect-ratio: 210 / 297;
   width: min(100%, 740px);
+}
+
+@layer components {
+  .layout-main {
+    padding: var(--space-page-y) var(--space-page-x);
+  }
+
+  .stack-page {
+    display: grid;
+    gap: var(--space-stack-3);
+  }
+
+  .stack-section {
+    display: grid;
+    gap: var(--space-stack-2);
+  }
+
+  .stack-tight {
+    display: grid;
+    gap: var(--space-stack-1);
+  }
+
+  .card-pad {
+    padding: var(--space-card-pad);
+  }
+
+  .cards-grid-2 {
+    display: grid;
+    gap: var(--space-stack-2);
+    grid-template-columns: 1fr;
+  }
+
+  .cards-grid-3 {
+    display: grid;
+    gap: var(--space-stack-2);
+    grid-template-columns: 1fr;
+  }
+
+  .surface-pad {
+    padding: clamp(0.875rem, 0.8vw + 0.65rem, 1.25rem);
+  }
+
+  @media (min-width: 640px) {
+    .cards-grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .cards-grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
 }

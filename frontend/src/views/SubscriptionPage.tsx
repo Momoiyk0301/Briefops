@@ -16,7 +16,7 @@ export default function SubscriptionPage() {
   const usage = meQuery.data?.usage;
 
   return (
-    <section className="space-y-5">
+    <section className="stack-page">
       <div>
         <h1 className="text-2xl font-bold">Abonnement</h1>
         <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
@@ -24,8 +24,8 @@ export default function SubscriptionPage() {
         </p>
       </div>
 
-      <Card className="p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+      <Card className="card-pad">
+        <div className="cards-grid-2">
           <div>
             <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Plan</p>
             <p className="mt-1 text-2xl font-semibold">{plan}</p>

@@ -28,10 +28,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="stack-page">
       <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>
 
-      <Card className="max-w-2xl">
+      <Card className="card-pad max-w-2xl">
         <h2 className="text-lg font-semibold">{t("settings.languageTitle")}</h2>
         <p className="mt-1 text-sm text-slate-500">{t("settings.languageHint")}</p>
         <div className="mt-4 flex items-center gap-2">
@@ -50,7 +50,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="max-w-2xl">
+      <Card className="card-pad max-w-2xl">
         <h2 className="text-lg font-semibold">{t("settings.appearanceTitle")}</h2>
         <p className="mt-1 text-sm text-slate-500">{t("settings.appearanceHint")}</p>
         <div className="mt-4 flex items-center gap-2">
@@ -69,10 +69,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="max-w-2xl">
+      <Card className="card-pad max-w-2xl">
         <h2 className="text-lg font-semibold">{t("settings.preferencesTitle")}</h2>
         <p className="mt-1 text-sm text-slate-500">{t("settings.preferencesHint")}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="cards-grid-3 mt-4">
           <div>
             <p className="mb-1 text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("settings.hourFormat")}</p>
             <select
@@ -111,7 +111,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="max-w-2xl">
+      <Card className="card-pad max-w-2xl">
         <h2 className="text-lg font-semibold">{t("settings.activityTitle")}</h2>
         <div className="mt-4 space-y-2">
           {[

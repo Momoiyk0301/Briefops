@@ -53,7 +53,7 @@ export default function StaffPage() {
   };
 
   return (
-    <section className="space-y-5">
+    <section className="stack-page">
       <div>
         <h1 className="text-2xl font-bold">{t("staff.title")}</h1>
         <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
@@ -61,9 +61,9 @@ export default function StaffPage() {
         </p>
       </div>
 
-      <Card className="p-6">
+      <Card className="card-pad">
         <h2 className="text-lg font-semibold">{t("staff.addTitle")}</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="cards-grid-2 mt-4">
           <select
             className="w-full rounded-2xl border border-[#e6e8f2] bg-white px-4 py-2.5 text-sm text-[#111] outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-[#151515] dark:text-white"
             value={briefingId}
@@ -89,7 +89,7 @@ export default function StaffPage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="card-pad">
         <h2 className="text-lg font-semibold">{t("staff.listTitle")}</h2>
         {staffQuery.isLoading ? <p className="mt-3 text-sm">{t("app.loading")}</p> : null}
         {staffQuery.error ? <p className="mt-3 text-sm text-red-600">{toApiMessage(staffQuery.error)}</p> : null}

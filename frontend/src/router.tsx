@@ -6,9 +6,11 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/lib/auth";
 import { getMe } from "@/lib/api";
 import AccountPage from "@/views/AccountPage";
+import AuthConfirmedPage from "@/views/AuthConfirmedPage";
 import BillingPage from "@/views/BillingPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
 import BriefingsPage from "@/views/BriefingsPage";
+import CheckEmailPage from "@/views/CheckEmailPage";
 import LoginPage from "@/views/LoginPage";
 import NotificationsPage from "@/views/NotificationsPage";
 import OnboardingPage from "@/views/OnboardingPage";
@@ -57,6 +59,16 @@ function LoginGate() {
 }
 
 export const router = createBrowserRouter([
+  {
+    path: "/auth/confirmed",
+    element: <AuthConfirmedPage />,
+    errorElement: <RouteErrorPage />
+  },
+  {
+    path: "/auth/check-email",
+    element: <CheckEmailPage />,
+    errorElement: <RouteErrorPage />
+  },
   {
     path: "/login",
     element: <LoginGate />,
