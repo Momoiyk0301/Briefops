@@ -22,3 +22,9 @@ ok - Sécurite
 
 Vercel deploy
 
+https://briefops-backend.vercel.app/api/stripe/webhook
+
+
+Rajouter une page pour dire qu'on a enoyvéu mail de confirmation 
+chaque fois qu'il ya un paiement il faut crée nune ligne dans la table membership 
+Rajoute en plus sans modifier ce qui est deja la pour la version PC de l'UI/UX pour les mobiles 

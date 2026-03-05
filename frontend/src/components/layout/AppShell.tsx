@@ -1,4 +1,4 @@
-import { Bell, CircleUser, CreditCard, FileText, Home, LogOut, Settings, Users } from "lucide-react";
+import { Bell, CircleUser, CreditCard, FileText, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -98,14 +98,14 @@ export function AppShell({ plan, demoData = false, children }: Props) {
         </div>
       </div>
       <nav className="fixed bottom-3 left-3 right-3 z-30 rounded-2xl border border-[#e6e8f2] bg-white/95 p-2 shadow-panel backdrop-blur dark:border-white/10 dark:bg-[#121212]/95 lg:hidden">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           <NavLink
             to="/briefings"
             className={({ isActive }) =>
               `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
             }
           >
-            <Home size={16} />
+            <FileText size={16} />
             Briefings
           </NavLink>
           <NavLink
@@ -124,7 +124,16 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <CreditCard size={16} />
-            Offre
+            Abonnement
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <Settings size={16} />
+            Settings
           </NavLink>
           <NavLink
             to="/notifications"
@@ -133,7 +142,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <Bell size={16} />
-            Alerts
+            Notifications
           </NavLink>
           <NavLink
             to="/account"
@@ -144,6 +153,14 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             <CircleUser size={16} />
             Compte
           </NavLink>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium text-[#6f748a] dark:text-[#a8afc6]"
+          >
+            <LogOut size={16} />
+            Déconnexion
+          </button>
         </div>
       </nav>
     </div>
