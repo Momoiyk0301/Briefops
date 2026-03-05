@@ -5,7 +5,7 @@ test.describe("BriefOPS e2e", () => {
     let briefings: Array<{ id: string; title: string; event_date: string | null; location_text: string | null }> = [];
     await page.addInitScript(() => localStorage.setItem("briefops:e2e-auth", "1"));
 
-    await page.route("**://localhost:3000/api/**", async (route) => {
+    await page.route("**/api/**", async (route) => {
       const req = route.request();
       const method = req.method();
       const url = new URL(req.url());
@@ -112,7 +112,7 @@ test.describe("BriefOPS e2e", () => {
       logs.push(msg.text());
     });
 
-    await page.route("**://localhost:3000/api/me", async (route) => {
+    await page.route("**/api/me", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -120,7 +120,7 @@ test.describe("BriefOPS e2e", () => {
       });
     });
 
-    await page.route("**://localhost:3000/api/briefings", async (route) => {
+    await page.route("**/api/briefings", async (route) => {
       await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "down" }) });
     });
 
@@ -132,7 +132,7 @@ test.describe("BriefOPS e2e", () => {
 
   test("language + dark mode toggles", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("briefops:e2e-auth", "1"));
-    await page.route("**://localhost:3000/api/me", async (route) => {
+    await page.route("**/api/me", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -140,7 +140,7 @@ test.describe("BriefOPS e2e", () => {
       });
     });
 
-    await page.route("**://localhost:3000/api/briefings", async (route) => {
+    await page.route("**/api/briefings", async (route) => {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) });
     });
 

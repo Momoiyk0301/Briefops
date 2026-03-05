@@ -11,10 +11,6 @@ import {
 
 const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
 
-if (!API_URL) {
-  throw new Error("Missing NEXT_PUBLIC_API_URL");
-}
-
 type ApiError = {
   status: number;
   message: string;

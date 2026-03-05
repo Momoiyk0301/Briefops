@@ -1,40 +1,40 @@
-# Deploy Monorepo sur Vercel
+# Deploy Vercel (Projet Unique)
 
-Ce repo est pret pour un deploiement monorepo avec **2 projets Vercel** relies au meme repository:
-
-1. `briefops-backend` (Root Directory: `backend`)
-2. `briefops-frontend` (Root Directory: `frontend`)
-
-## 1) Projet Backend
-
-- Framework detecte: Next.js (`backend/vercel.json`)
-- Root Directory: `backend`
-- Variables d'environnement a configurer:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-  - `STRIPE_SECRET_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
-  - `STRIPE_START_PRICE_ID`
-  - `STRIPE_PRO_PRICE_ID`
-  - `APP_URL` (URL frontend publique)
-
-## 2) Projet Frontend
-
-- Framework detecte: Vite (`frontend/vercel.json`)
+Ce repo se deploye maintenant avec **un seul projet Vercel**:
 - Root Directory: `frontend`
-- Variable d'environnement:
-  - `VITE_API_URL=https://<url-backend-vercel>`
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-- La rewrite SPA est deja configuree pour React Router.
+- Framework: Next.js
 
-## 3) Deploiement CLI (optionnel)
+## 1) Import du repo sur Vercel
 
-Prerequis: chaque dossier (`backend`, `frontend`) deja lie a son projet Vercel.
+1. `Add New Project` puis choisir le repository.
+2. Dans `Root Directory`, selectionner `frontend`.
+3. Laisser les commandes par defaut Next.js (`build` / `start`) detectees par Vercel.
+
+## 2) Variables d'environnement a configurer
+
+Ajouter ces variables dans Vercel (Production + Preview, et Development si besoin):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_STARTER_ID`
+- `STRIPE_PLUS_ID`
+- `STRIPE_PRO_ID`
+- `APP_URL` (URL publique du frontend, ex: `https://briefops.vercel.app`)
+- `NODE_ENV=production`
+
+Optionnel:
+- `NEXT_PUBLIC_API_URL` vide pour utiliser le meme domaine (`/api`)
+- `NEXT_PUBLIC_E2E_MOCK_AUTH=false`
+
+## 3) Commandes locales utiles
+
+Depuis la racine du repo:
 
 ```bash
-./scripts/vercel-deploy-all.sh
+npm run dev          # frontend only
+npm run dev:all      # frontend + backend legacy en parallele
+npm run test         # env + backend tests + frontend tests + e2e
 ```
-
-Ce script declenche un deploy backend puis frontend depuis le monorepo.

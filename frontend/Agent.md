@@ -630,3 +630,5 @@ Le MVP doit inclure
 - planning
 - génération de briefing
 - export PDF
+
+S'il un bouton mmais qu'il n'a pas encore d'effet tu mets un notification Bientot disponible 

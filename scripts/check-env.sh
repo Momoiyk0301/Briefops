@@ -37,8 +37,18 @@ check_env_file() {
 
   local missing=0
   while IFS= read -r key; do
-    if ! grep -Eq "^${key}=.+" "$target_file"; then
-      echo "[env] ${label}: ${key} is missing or empty in ${target_file}"
+    local pattern="^${key}=.+"
+    if [[ "$label" == "frontend" && "$key" == "NEXT_PUBLIC_API_URL" ]]; then
+      # Single-project mode allows empty API URL to use same-origin /api.
+      pattern="^${key}="
+    fi
+
+    if ! grep -Eq "$pattern" "$target_file"; then
+      if [[ "$pattern" == "^${key}=" ]]; then
+        echo "[env] ${label}: ${key} is missing in ${target_file}"
+      else
+        echo "[env] ${label}: ${key} is missing or empty in ${target_file}"
+      fi
       missing=1
     fi
   done < <(extract_keys "$example_file")

@@ -4,59 +4,7 @@ ok  -  frontend React)
 ok - Supabase : schéma + RLS + auth
 ok - table 
 
-brieifng UI
-Modules : toggle + form + save JSON
-
-
-Il faut quand dans l'editeur De briefing :
-Permettre de modifier les champs du directement sur le partie de gauche 
-Mettre une fine ligne autour de chaque bloc de module 
-
-
-Aussi l'abonnement dans le header il est affiché dans ldiv profile c'est bien mais il faut enelve du coup celui qui est a droite 
-enleve la nav status aussi 
-Enleve le mot notificaiton il faut juste iconne dans le header 
-le bouton jour nuir dans le header tu peux retirer 
- il faut regler jour et nui dans les parametres 
-
-
-Afficher la nav sidebar afficher l'icon 
-L'icone parametres de la sidebar mets la séparé tout en bas de a sidebar 
-Le trio de bouton dashbord payment compte mes le a gauche de div profile 
-Page compte : 
-Rajouter numero de telephone 
-adresse de facture 
-
-
-
-Rajouter un bouton retour sur les pages 
-Quand on va sur le détail il faut qu'on soit en mode lecture et quand on appuie sur modificer l'editeur s'affiche 
-L'icone Notifcaiton en bas de la sidebar 
-et quand la sidebar est fermer tu peux mettre une icone de l'app au dessus avec un arondsi d'une autre couleur moderne avec du glassmoprhism 
-il faut modifer la page billing pour qu"elle prenne les bonnne donnée Affiche le restant de pdf 
-dns e bouton upgrade ca emmene vers la page de selectionne d'abonnement 
-La page abonnement ca afffiche juste l'utilisation et quelle plan il a 
-Branche le staff a la table staff checker que les staff on un oragnaisation ID ausssi 
-
-
-Rajoute une croix pour supprimer les notifcaiton sur l'onglet 
-Une croix dans le briefing pour supprimer 
-enleve le payment dans dashbord/compte 
-TanStack Query (React Query), rajotue ca pour réduire le nombre de requete et fais des logs clair des requetes API fait simplement 
-
-
-
-
-PDF : 
-Affichage 
-Ne pas afficher les modules off 
-Donner le nom du pdf c'est le nom input 
-
-
-
-
-
-
+ok - Ediiton de briefing :brieifng UI
 ok - assets /couleur /logo
 
 ok - stripe 
@@ -65,11 +13,11 @@ ok - stripe webhook
 ok - subscription status
 ok - plan restriction
 
-- PDF
-- Gestion du supabase storage  
-- Share link : token public (lecture seule)
-- Export PDFdtorzge supabse 
-- Sécurite 
+ok - PDF
+ok- Gestion du supabase storage  
+ok - Share link : token public (lecture seule)
+ok - Export PDFdtorzge supabse 
+ok - Sécurite 
 
 
 Vercel deploy

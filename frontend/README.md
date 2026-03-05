@@ -18,7 +18,16 @@ npm run dev
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_API_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_STARTER_ID=
+STRIPE_PLUS_ID=
+STRIPE_PRO_ID=
+APP_URL=http://localhost:3000
+NODE_ENV=development
+# Optional for single-project deployment: leave empty to call /api on same origin
+NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_E2E_MOCK_AUTH=false
 ```
 
