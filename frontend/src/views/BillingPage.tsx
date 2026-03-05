@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
 
 import { createStripeCheckoutSession, createStripePortalSession, getMe, toApiMessage } from "@/lib/api";
-import { resendSignupConfirmation } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -13,7 +12,6 @@ export default function BillingPage() {
   const [searchParams] = useSearchParams();
   const [submittingPlan, setSubmittingPlan] = useState<"starter" | "plus" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
-  const [resendingConfirmation, setResendingConfirmation] = useState(false);
 
   const usage = meQuery.data?.usage;
   const currentPlan = meQuery.data?.plan ?? "free";
@@ -30,29 +28,6 @@ export default function BillingPage() {
     usage?.pdf_exports_remaining === null
       ? "Illimité"
       : `${usage?.pdf_exports_remaining ?? 0} restant(s)`;
-
-  useEffect(() => {
-    const checkoutStatus = searchParams.get("checkout");
-    const alreadySent = searchParams.get("confirmResent") === "1";
-    const email = meQuery.data?.user?.email;
-
-    if (checkoutStatus !== "success" || alreadySent || !email || resendingConfirmation) return;
-
-    setResendingConfirmation(true);
-    void resendSignupConfirmation(email)
-      .then(() => {
-        toast.success("Email de confirmation renvoye.");
-        const next = new URLSearchParams(searchParams);
-        next.set("confirmResent", "1");
-        window.history.replaceState(null, "", `${window.location.pathname}?${next.toString()}`);
-      })
-      .catch((error) => {
-        toast.error(toApiMessage(error));
-      })
-      .finally(() => {
-        setResendingConfirmation(false);
-      });
-  }, [meQuery.data?.user?.email, resendingConfirmation, searchParams]);
 
   const openCheckout = async (plan: "starter" | "plus" | "pro") => {
     try {
@@ -93,7 +68,7 @@ export default function BillingPage() {
         ) : null}
         {searchParams.get("checkout") === "success" ? (
           <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
-            Paiement confirme. Un email de confirmation de compte est envoye avec un lien vers `/auth/confirmed`.
+            Paiement confirme. Les emails de confirmation de commande et de compte sont envoyes par webhook Stripe.
           </p>
         ) : null}
       </div>

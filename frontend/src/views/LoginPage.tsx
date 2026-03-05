@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [pendingRegistration, setPendingRegistration] = useState<Values | null>(null);
   const [submittingOffer, setSubmittingOffer] = useState<"free" | "starter" | "plus" | "pro" | null>(null);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
+  const isOfferStep = mode === "register" && registerStep === "offer";
 
   const continueWithOffer = async (plan: "free" | "starter" | "plus" | "pro") => {
     if (!pendingRegistration) return;
@@ -75,7 +76,8 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="grid min-h-full grid-cols-1 items-center gap-8 px-[var(--space-page-x)] py-[var(--space-page-y)] lg:grid-cols-[1.2fr_minmax(520px,42vw)] lg:gap-10">
+    <div className={`grid min-h-full items-center gap-8 px-[var(--space-page-x)] py-[var(--space-page-y)] ${isOfferStep ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-[1.2fr_minmax(520px,42vw)] lg:gap-10"}`}>
+      {!isOfferStep ? (
       <section className="relative min-h-[420px] overflow-hidden rounded-panel border border-white/30 bg-gradient-to-br from-brand-500 via-[#6f72ff] to-[#45a5ff] p-[var(--space-card-pad)] text-white shadow-panel lg:min-h-[540px]">
         <div className="absolute -left-20 -top-16 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
         <div className="absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#ff8b3d]/30 blur-3xl" />
@@ -90,8 +92,9 @@ export default function LoginPage() {
           <li>• Vue A4 en temps réel pour éviter les erreurs sur site</li>
         </ul>
       </section>
+      ) : null}
 
-      <Card className="card-pad w-full max-w-xl justify-self-center">
+      <Card className={`card-pad w-full justify-self-center ${isOfferStep ? "max-w-4xl border-white/45 bg-white/18 backdrop-blur-xl dark:border-white/20 dark:bg-white/5" : "max-w-xl"}`}>
         <Tabs
           tabs={[
             { key: "login", label: t("auth.login") },
@@ -106,17 +109,34 @@ export default function LoginPage() {
           }}
         >
           {mode === "register" && registerStep === "offer" ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Choisis ton offre avant la création du compte:</p>
-              <Button className="w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("starter")}>
-                {submittingOffer === "starter" ? "Redirection..." : "Starter"}
-              </Button>
-              <Button className="w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("plus")}>
-                {submittingOffer === "plus" ? "Redirection..." : "Plus"}
-              </Button>
-              <Button className="w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("pro")}>
-                {submittingOffer === "pro" ? "Redirection..." : "Pro"}
-              </Button>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-[#4f5570] dark:text-[#b4bdd5]">Ton compte est prêt.</p>
+                <h2 className="mt-1 text-2xl font-bold">Choisis ton offre pour continuer vers le checkout Stripe</h2>
+              </div>
+              <div className="cards-grid-3">
+                <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
+                  <p className="text-lg font-semibold">Starter</p>
+                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Pour démarrer rapidement</p>
+                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("starter")}>
+                    {submittingOffer === "starter" ? "Redirection..." : "Choisir Starter"}
+                  </Button>
+                </div>
+                <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
+                  <p className="text-lg font-semibold">Plus</p>
+                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Plus de volume et confort</p>
+                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("plus")}>
+                    {submittingOffer === "plus" ? "Redirection..." : "Choisir Plus"}
+                  </Button>
+                </div>
+                <div className="surface-pad rounded-2xl border border-brand-500/40 bg-brand-500/10 dark:border-brand-400/30 dark:bg-brand-400/10">
+                  <p className="text-lg font-semibold">Pro</p>
+                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Le plan le plus complet</p>
+                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("pro")}>
+                    {submittingOffer === "pro" ? "Redirection..." : "Choisir Pro"}
+                  </Button>
+                </div>
+              </div>
               <Button variant="secondary" className="w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("free")}>
                 {submittingOffer === "free" ? "Création..." : "Continuer en Free"}
               </Button>

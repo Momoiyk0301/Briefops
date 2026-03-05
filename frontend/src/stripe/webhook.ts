@@ -1,9 +1,15 @@
 import Stripe from "stripe";
 
+import { env } from "@/env";
 import { createServiceRoleClient } from "@/supabase/server";
 import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
 const processedEventIds = new Set<string>();
+
+type ResendConfig = {
+  apiKey: string;
+  from: string;
+};
 
 type ProfilePatch = {
   plan: "free" | "starter" | "plus" | "pro";
@@ -44,6 +50,78 @@ function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro") {
   if (plan === "plus") return "Plus";
   if (plan === "starter") return "Starter";
   return "Free";
+}
+
+function getResendConfig(): ResendConfig | null {
+  const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
+  const from = String(process.env.MAIL_FROM ?? "").trim();
+  if (!apiKey || !from) return null;
+  return { apiKey, from };
+}
+
+async function sendResendEmail(config: ResendConfig, to: string, subject: string, html: string) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: [to],
+      subject,
+      html
+    })
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`Resend error: ${message}`);
+  }
+}
+
+async function sendPostCheckoutEmails(email: string, plan: "free" | "starter" | "plus" | "pro", session: Stripe.Checkout.Session) {
+  const config = getResendConfig();
+  if (!config) {
+    if (isDev) {
+      console.info("[mail] skipped: RESEND_API_KEY or MAIL_FROM missing");
+    }
+    return;
+  }
+
+  const appUrl = env.APP_URL.replace(/\/$/, "");
+  if (plan === "free") return;
+  const sessionId = session.id ?? "n/a";
+  const amount = typeof session.amount_total === "number" ? (session.amount_total / 100).toFixed(2) : null;
+  const currency = (session.currency ?? "eur").toUpperCase();
+
+  await sendResendEmail(
+    config,
+    email,
+    `Commande BriefOPS confirmée (${plan.toUpperCase()})`,
+    `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;">
+        <h2>Merci pour ta commande BriefOPS</h2>
+        <p>Ton abonnement <strong>${plan.toUpperCase()}</strong> est actif.</p>
+        <p>Session Stripe: <code>${sessionId}</code></p>
+        ${amount ? `<p>Montant: <strong>${amount} ${currency}</strong></p>` : ""}
+        <p>Accéder à ton espace: <a href="${appUrl}/briefings">${appUrl}/briefings</a></p>
+      </div>
+    `
+  );
+
+  await sendResendEmail(
+    config,
+    email,
+    "Confirmation de compte BriefOPS",
+    `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;">
+        <h2>Compte BriefOPS confirmé</h2>
+        <p>Ton paiement a été validé, ton compte est bien activé.</p>
+        <p>Tu peux continuer ici: <a href="${appUrl}/auth/confirmed">${appUrl}/auth/confirmed</a></p>
+      </div>
+    `
+  );
 }
 
 function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
@@ -222,6 +300,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       }
 
       await updatePlanByEmail(email, patch);
+      await sendPostCheckoutEmails(email, checkoutPlan, session);
       break;
     }
 
