@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { downloadPdf, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
-import { tryResizeModuleRect } from "@/lib/moduleLayout";
+import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
@@ -17,6 +17,43 @@ import { Card } from "@/components/ui/Card";
 const CANVAS_COLS = 12;
 const CANVAS_ROWS = 24;
 
+function rectTouchesOrOverlaps(a: GridRect, b: GridRect) {
+  return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+}
+
+function normalizeLayouts(modules: EditorState["modules"]) {
+  const placed: GridRect[] = [];
+  const next = { ...modules } as Record<ModuleKey, EditorState["modules"][ModuleKey]>;
+
+  moduleEntries.forEach((entry, index) => {
+    const current = next[entry.key];
+    if (!current.enabled) return;
+
+    let rect = { ...current.layout.desktop };
+    let attempts = 0;
+
+    while (placed.some((p) => rectTouchesOrOverlaps(rect, p)) && attempts < CANVAS_ROWS) {
+      rect = {
+        ...rect,
+        y: Math.min(CANVAS_ROWS - rect.h, Math.max(0, rect.y + 1 + (index % 2)))
+      };
+      attempts += 1;
+    }
+
+    next[entry.key] = {
+      ...current,
+      layout: {
+        ...current.layout,
+        desktop: rect
+      }
+    };
+
+    placed.push(rect);
+  });
+
+  return next as EditorState["modules"];
+}
+
 export function buildInitialState(
   briefing: Briefing,
   rows: BriefingModuleRow[],
@@ -25,7 +62,7 @@ export function buildInitialState(
   const rowMap = new Map(rows.map((row) => [row.module_key, row]));
   const registryMap = new Map(registryModules.map((mod) => [mod.type, mod]));
 
-  const modules = Object.fromEntries(
+  const rawModules = Object.fromEntries(
     moduleEntries.map((entry) => {
       const parsed = parseModuleRow({
         key: entry.key,
@@ -48,6 +85,8 @@ export function buildInitialState(
       ];
     })
   ) as EditorState["modules"];
+
+  const modules = normalizeLayouts(rawModules);
 
   const defaultSelected = (moduleEntries.find((entry) => entry.key !== "metadata" && modules[entry.key].enabled)?.key ?? "access") as Exclude<
     ModuleKey,
@@ -81,10 +120,23 @@ function toCanvasStyle(layout: EditorState["modules"][ModuleKey]["layout"]) {
   };
 }
 
+const RESIZE_HANDLES: Array<{ key: ResizeHandle; className: string; cursor: string }> = [
+  { key: "nw", className: "left-0 top-0 -translate-x-1/2 -translate-y-1/2", cursor: "nwse-resize" },
+  { key: "ne", className: "right-0 top-0 translate-x-1/2 -translate-y-1/2", cursor: "nesw-resize" },
+  { key: "se", className: "bottom-0 right-0 translate-x-1/2 translate-y-1/2", cursor: "nwse-resize" },
+  { key: "sw", className: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2", cursor: "nesw-resize" },
+  { key: "w", className: "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+  { key: "e", className: "right-0 top-1/2 translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+  { key: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "ns-resize" }
+];
+
 export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [saving, setSaving] = useState(false);
+  const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const lastSaved = useRef("");
 
   useEffect(() => {
@@ -154,29 +206,66 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     }
   };
 
-  const handleResizeModule = (key: ModuleKey, deltaW: number, deltaH: number) => {
-    setState((prev) => {
-      const current = prev.modules[key];
-      const others = (Object.keys(prev.modules) as ModuleKey[])
-        .filter((otherKey) => otherKey !== key && prev.modules[otherKey].enabled)
-        .map((otherKey) => prev.modules[otherKey].layout.desktop);
+  const startPointerInteraction = (
+    event: ReactPointerEvent,
+    key: ModuleKey,
+    mode: "move" | "resize",
+    handle?: ResizeHandle
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-      const resized = tryResizeModuleRect({
-        current: current.layout.desktop,
-        others,
-        deltaW,
-        deltaH,
-        minW: current.layout.constraints.minW,
-        minH: current.layout.constraints.minH,
-        maxW: current.layout.constraints.maxW,
-        maxH: current.layout.constraints.maxH,
-        cols: CANVAS_COLS,
-        rows: CANVAS_ROWS
-      });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      if (!resized) return prev;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const bodyStyle = document.body.style;
+    const prevTouchAction = bodyStyle.touchAction;
+    const prevUserSelect = bodyStyle.userSelect;
+    bodyStyle.touchAction = "none";
+    bodyStyle.userSelect = "none";
+    const cellW = canvas.clientWidth / CANVAS_COLS;
+    const cellH = canvas.clientHeight / CANVAS_ROWS;
 
-      return {
+    const initialRect = { ...state.modules[key].layout.desktop };
+    const constraints = state.modules[key].layout.constraints;
+    const others = (Object.keys(state.modules) as ModuleKey[])
+      .filter((otherKey) => otherKey !== key && state.modules[otherKey].enabled)
+      .map((otherKey) => state.modules[otherKey].layout.desktop);
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = Math.round((moveEvent.clientX - startX) / cellW);
+      const deltaY = Math.round((moveEvent.clientY - startY) / cellH);
+
+      if (deltaX === 0 && deltaY === 0) return;
+
+      const nextRect = mode === "move"
+        ? tryMoveModuleRect({
+            current: initialRect,
+            others,
+            deltaX,
+            deltaY,
+            cols: CANVAS_COLS,
+            rows: CANVAS_ROWS
+          })
+        : tryResizeModuleRect({
+            current: initialRect,
+            others,
+            handle: handle!,
+            deltaX,
+            deltaY,
+            minW: constraints.minW,
+            minH: constraints.minH,
+            maxW: constraints.maxW,
+            maxH: constraints.maxH,
+            cols: CANVAS_COLS,
+            rows: CANVAS_ROWS
+          });
+
+      if (!nextRect) return;
+
+      setState((prev) => ({
         ...prev,
         modules: {
           ...prev.modules,
@@ -184,17 +273,24 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             ...prev.modules[key],
             layout: {
               ...prev.modules[key].layout,
-              desktop: resized,
-              mobile: {
-                ...prev.modules[key].layout.mobile,
-                w: Math.min(resized.w, CANVAS_COLS),
-                h: Math.max(prev.modules[key].layout.mobile.h, 1)
-              }
+              desktop: nextRect
             }
           }
         }
-      };
-    });
+      }));
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      bodyStyle.touchAction = prevTouchAction;
+      bodyStyle.userSelect = prevUserSelect;
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   };
 
   const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
@@ -203,20 +299,26 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
       <Card className="flex justify-center p-4">
         <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-300 bg-white p-4 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          <div className="relative mx-auto aspect-[210/297] w-full overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]">
+          <div
+            ref={canvasRef}
+            className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
+          >
             {visibleModules.map((entry) => {
               const module = state.modules[entry.key];
               const style = toCanvasStyle(module.layout);
               const isSelected = state.selectedModuleKey === entry.key;
+              const isActive = hoveredModuleKey === entry.key || isSelected;
               const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
 
               return (
                 <section
                   key={entry.key}
                   style={style}
-                  className={`absolute overflow-hidden rounded-md border bg-white/95 p-2 shadow-sm dark:bg-[#151515] ${
-                    isSelected ? "border-brand-500" : "border-[#dfe3ef] dark:border-white/10"
+                  className={`absolute touch-none overflow-hidden rounded-md border bg-white/95 p-2 shadow-sm transition dark:bg-[#151515] ${
+                    isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
                   }`}
+                  onMouseEnter={() => setHoveredModuleKey(entry.key)}
+                  onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
                   onClick={() => {
                     if (entry.key !== "metadata") {
                       setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
@@ -240,50 +342,27 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    aria-label={`resize-${entry.key}-shrink`}
-                    className="absolute left-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleResizeModule(entry.key, -1, -1);
-                    }}
-                  >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`resize-${entry.key}-wider`}
-                    className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleResizeModule(entry.key, +1, 0);
-                    }}
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`resize-${entry.key}-taller`}
-                    className="absolute bottom-1 left-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleResizeModule(entry.key, 0, +1);
-                    }}
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`resize-${entry.key}-grow`}
-                    className="absolute bottom-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleResizeModule(entry.key, +1, +1);
-                    }}
-                  >
-                    +
-                  </button>
+                  {isActive ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-label={`move-${entry.key}`}
+                        className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
+                        onPointerDown={(event) => startPointerInteraction(event, entry.key, "move")}
+                      />
+
+                      {RESIZE_HANDLES.map((handle) => (
+                        <button
+                          key={handle.key}
+                          type="button"
+                          aria-label={`resize-${entry.key}-${handle.key}`}
+                          className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
+                          style={{ cursor: handle.cursor }}
+                          onPointerDown={(event) => startPointerInteraction(event, entry.key, "resize", handle.key)}
+                        />
+                      ))}
+                    </>
+                  ) : null}
                 </section>
               );
             })}
@@ -292,7 +371,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       </Card>
 
       <Card className="space-y-4">
-        <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
+        <div className="grid grid-cols-3 gap-2 xl:hidden">
+          <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
+          <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
+          <Button variant={mobilePanel === "edit" ? "primary" : "secondary"} onClick={() => setMobilePanel("edit")}>Edition</Button>
+        </div>
+
+        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "meta" ? "hidden xl:block" : ""}`}>
           <MetadataForm
             core={state.core}
             metadata={state.modules.metadata.data}
@@ -309,28 +394,31 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           />
         </div>
 
-        <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
+        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "modules" ? "hidden xl:block" : ""}`}>
           <ModuleList
             state={state}
             selected={state.selectedModuleKey}
-            onSelect={(key) => setState((prev) => ({ ...prev, selectedModuleKey: key }))}
+            onSelect={(key) => {
+              setState((prev) => ({ ...prev, selectedModuleKey: key }));
+              setMobilePanel("edit");
+            }}
             onToggle={(key, enabled) =>
               setState((prev) => ({
                 ...prev,
-                modules: {
+                modules: normalizeLayouts({
                   ...prev.modules,
                   [key]: {
                     ...prev.modules[key],
                     enabled,
                     metadata: { ...prev.modules[key].metadata, enabled }
                   }
-                }
+                })
               }))
             }
           />
         </div>
 
-        <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
+        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "edit" ? "hidden xl:block" : ""}`}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
           <ModulePanel
             state={state}

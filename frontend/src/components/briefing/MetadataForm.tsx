@@ -3,9 +3,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { DateInput } from "@/components/input/date";
+import { TelephoneInput } from "@/components/input/telephone";
+import { TextAreaInput, TextInput } from "@/components/input/text";
 import { EditorCore, MetadataExtra } from "@/lib/types";
-import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -69,12 +70,12 @@ export function MetadataForm({ core, metadata, onChange }: Props) {
 
   return (
     <div className="space-y-2">
-      <Input placeholder="Title" {...form.register("title")} />
-      <Input type="date" {...form.register("event_date")} />
-      <Input placeholder="Location" {...form.register("location_text")} />
-      <Input placeholder="Main contact name" {...form.register("main_contact_name")} />
-      <Input placeholder="Main contact phone" {...form.register("main_contact_phone")} />
-      <Textarea rows={3} placeholder="Global notes" {...form.register("global_notes")} />
+      <TextInput placeholder="Title" {...form.register("title")} />
+      <DateInput {...form.register("event_date")} />
+      <TextInput placeholder="Location" {...form.register("location_text")} />
+      <TextInput placeholder="Main contact name" {...form.register("main_contact_name")} />
+      <TelephoneInput placeholder="Main contact phone" {...form.register("main_contact_phone")} />
+      <TextAreaInput rows={3} placeholder="Global notes" {...form.register("global_notes")} />
     </div>
   );
 }
