@@ -131,6 +131,17 @@ const RESIZE_HANDLES: Array<{ key: ResizeHandle; className: string; cursor: stri
   { key: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "ns-resize" }
 ];
 
+const MODULE_TONE_CLASS: Record<ModuleKey, string> = {
+  metadata: "border-sky-200/90 bg-sky-50/80",
+  access: "border-emerald-200/90 bg-emerald-50/80",
+  delivery: "border-amber-200/90 bg-amber-50/80",
+  vehicle: "border-violet-200/90 bg-violet-50/80",
+  equipment: "border-cyan-200/90 bg-cyan-50/80",
+  staff: "border-rose-200/90 bg-rose-50/80",
+  notes: "border-indigo-200/90 bg-indigo-50/80",
+  contact: "border-orange-200/90 bg-orange-50/80"
+};
+
 export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
@@ -318,9 +329,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
-      <Card className="flex justify-center p-4">
-        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-300 bg-white p-4 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_420px]">
+      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-2 dark:border-white/10 dark:bg-[#121212]">
+        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-200 bg-white p-2 shadow-panel dark:border-slate-700 dark:bg-slate-900">
           <div
             ref={canvasRef}
             className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
@@ -336,7 +347,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                 <section
                   key={entry.key}
                   style={style}
-                  className={`absolute touch-none overflow-hidden rounded-md border bg-white/95 p-2 shadow-sm transition dark:bg-[#151515] ${
+                  className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
+                    MODULE_TONE_CLASS[entry.key]
+                  } ${
                     isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
                   }`}
                   onMouseEnter={() => setHoveredModuleKey(entry.key)}
@@ -347,11 +360,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                     }
                   }}
                 >
-                  <p className="mb-1 truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                     {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
                   </p>
 
-                  <div className="max-h-[calc(100%-20px)] overflow-auto text-xs">
+                  <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
                     {entry.key === "metadata" ? (
                       <MetadataPreview
                         title={state.core.title}
@@ -392,14 +405,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         </div>
       </Card>
 
-      <Card className="space-y-4">
+      <Card className="space-y-3 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-3 dark:border-white/10 dark:bg-[#121212]">
         <div className="grid grid-cols-3 gap-2 xl:hidden">
           <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
           <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
           <Button variant={mobilePanel === "edit" ? "primary" : "secondary"} onClick={() => setMobilePanel("edit")}>Edition</Button>
         </div>
 
-        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "meta" ? "hidden xl:block" : ""}`}>
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "meta" ? "hidden" : ""}`}>
           <MetadataForm
             core={state.core}
             metadata={state.modules.metadata.data}
@@ -416,7 +429,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           />
         </div>
 
-        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "modules" ? "hidden xl:block" : ""}`}>
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "modules" ? "hidden" : ""}`}>
           <ModuleList
             state={state}
             selected={state.selectedModuleKey}
@@ -440,7 +453,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           />
         </div>
 
-        <div className={`rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10 ${mobilePanel !== "edit" ? "hidden xl:block" : ""}`}>
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
           <ModulePanel
             state={state}
@@ -455,6 +468,69 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                     data: data as ModuleDataMap[typeof key]
                   }
                 }
+              }))
+            }
+          />
+        </div>
+
+        <div className="hidden xl:grid xl:grid-cols-2 xl:gap-2">
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition</p>
+            <ModulePanel
+              state={state}
+              selected={state.selectedModuleKey}
+              onChange={(key, data) =>
+                setState((prev) => ({
+                  ...prev,
+                  modules: {
+                    ...prev.modules,
+                    [key]: {
+                      ...prev.modules[key],
+                      data: data as ModuleDataMap[typeof key]
+                    }
+                  }
+                }))
+              }
+            />
+          </div>
+
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+            <MetadataForm
+              core={state.core}
+              metadata={state.modules.metadata.data}
+              onChange={(core, metadata) => {
+                setState((prev) => ({
+                  ...prev,
+                  core,
+                  modules: {
+                    ...prev.modules,
+                    metadata: { ...prev.modules.metadata, data: metadata }
+                  }
+                }));
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="hidden rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:block">
+          <ModuleList
+            state={state}
+            selected={state.selectedModuleKey}
+            onSelect={(key) => {
+              setState((prev) => ({ ...prev, selectedModuleKey: key }));
+              setMobilePanel("edit");
+            }}
+            onToggle={(key, enabled) =>
+              setState((prev) => ({
+                ...prev,
+                modules: normalizeLayouts({
+                  ...prev.modules,
+                  [key]: {
+                    ...prev.modules[key],
+                    enabled,
+                    metadata: { ...prev.modules[key].metadata, enabled }
+                  }
+                })
               }))
             }
           />

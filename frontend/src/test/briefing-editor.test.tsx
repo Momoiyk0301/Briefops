@@ -45,9 +45,9 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    expect(screen.getByText(/Edition module/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Edition module/i).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /Edition/i }));
-    expect(screen.getByPlaceholderText(/Address/i)).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("move-access")).toBeInTheDocument();
     expect(screen.queryByLabelText("move-notes")).not.toBeInTheDocument();
 
@@ -58,7 +58,7 @@ describe("BriefingEditor", () => {
     expect(notesItem).toBeTruthy();
     await user.click(notesItem!);
 
-    expect(screen.getByPlaceholderText(/^Notes$/i)).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText(/^Notes$/i).length).toBeGreaterThan(0);
   });
 
   it("shows mobile panel tabs for meta/modules/edition", () => {
