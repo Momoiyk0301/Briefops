@@ -55,9 +55,25 @@ export type Briefing = {
 export type BriefingModuleRow = {
   id: string;
   briefing_id: string;
+  module_id?: string | null;
   module_key: ModuleKey;
   enabled: boolean;
   data_json: unknown;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RegistryModule = {
+  id: string;
+  org_id: string;
+  name: string;
+  type: ModuleKey;
+  version: number;
+  icon: string;
+  category: string;
+  enabled: boolean;
+  default_layout: unknown;
+  default_data: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -159,9 +175,40 @@ export type ModuleDataMap = {
 };
 
 export type ModuleState<K extends ModuleKey> = {
+  module_id?: string | null;
   key: K;
   enabled: boolean;
+  metadata: ModuleMetadata;
+  audience: ModuleAudience;
+  layout: ModuleLayout;
   data: ModuleDataMap[K];
+};
+
+export type ModuleMetadata = {
+  type: string;
+  label: string;
+  version: number;
+  enabled: boolean;
+  order: number;
+  description: string;
+  icon: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModuleAudience = {
+  mode: "all" | "teams";
+  teams: string[];
+  visibility: "visible" | "hidden";
+};
+
+export type ModuleLayout = {
+  desktop: { x: number; y: number; w: number; h: number };
+  mobile: { x: number; y: number; w: number; h: number };
+  constraints: { minW: number; minH: number; maxW: number; maxH: number };
+  behavior: { draggable: boolean; resizable: boolean };
+  style: { variant: string; shape: string; density: string };
 };
 
 export type EditorCore = {

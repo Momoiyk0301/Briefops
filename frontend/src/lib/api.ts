@@ -5,6 +5,7 @@ import {
   MeResponse,
   ModuleDataMap,
   ModuleKey,
+  RegistryModule,
   StaffMember,
   UserPlan
 } from "@/lib/types";
@@ -223,7 +224,7 @@ export async function getBriefingModules(id: string) {
 
 export async function upsertBriefingModules(
   id: string,
-  modules: Array<{ module_key: ModuleKey; enabled: boolean; data_json: ModuleDataMap[ModuleKey] }>
+  modules: Array<{ module_id?: string | null; module_key: ModuleKey; enabled: boolean; data_json: ModuleDataMap[ModuleKey] | Record<string, unknown> }>
 ) {
   const responses = await Promise.all(
     modules.map((mod) =>
@@ -234,6 +235,19 @@ export async function upsertBriefingModules(
     )
   );
   return responses.map((item) => item.data);
+}
+
+export async function getRegistryModules() {
+  const response = await requestJson<{ data: RegistryModule[] }>(`/api/modules`);
+  return response.data;
+}
+
+export async function updateRegistryModuleEnabled(id: string, enabled: boolean) {
+  const response = await requestJson<{ data: RegistryModule }>(`/api/modules`, {
+    method: "PUT",
+    body: { id, enabled }
+  });
+  return response.data;
 }
 
 export async function downloadPdf(id: string): Promise<Blob> {

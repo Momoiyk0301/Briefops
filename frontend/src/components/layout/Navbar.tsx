@@ -29,6 +29,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   const pageTitle = (() => {
     if (pathname.startsWith("/briefings/")) return "Détail briefing";
     if (pathname.startsWith("/briefings")) return t("nav.briefings");
+    if (pathname.startsWith("/modules")) return "Modules";
     if (pathname.startsWith("/staff")) return "Staff";
     if (pathname.startsWith("/account")) return "Compte";
     if (pathname.startsWith("/abonnement")) return "Abonnement";

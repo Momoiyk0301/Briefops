@@ -32,3 +32,6 @@ pnpm-debug.log*
 
 # OS
 .DS_Store
+
+# Sentry Config File
+.env.sentry-build-plugin

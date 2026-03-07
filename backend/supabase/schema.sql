@@ -77,9 +77,26 @@ create table if not exists public.briefings (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.organizations(id) on delete cascade,
+  name text not null,
+  type text not null,
+  version integer not null default 1,
+  icon text not null default 'box',
+  category text not null default 'general',
+  enabled boolean not null default true,
+  default_layout jsonb not null default '{}'::jsonb,
+  default_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (org_id, type)
+);
+
 create table if not exists public.briefing_modules (
   id uuid primary key default gen_random_uuid(),
   briefing_id uuid not null references public.briefings(id) on delete cascade,
+  module_id uuid references public.modules(id) on delete set null,
   module_key text not null,
   enabled boolean not null default true,
   data_json jsonb not null default '{}'::jsonb,
@@ -127,8 +144,12 @@ create index if not exists idx_memberships_org_role on public.memberships(org_id
 
 create index if not exists idx_briefings_org_id on public.briefings(org_id);
 create index if not exists idx_briefings_org_event_date on public.briefings(org_id, event_date);
+create index if not exists idx_modules_registry_org_id on public.modules(org_id);
+create index if not exists idx_modules_registry_type on public.modules(type);
+create index if not exists idx_modules_registry_enabled on public.modules(enabled);
 
 create index if not exists idx_modules_briefing_id on public.briefing_modules(briefing_id);
+create index if not exists idx_modules_briefing_module_id on public.briefing_modules(module_id);
 create index if not exists idx_modules_data_json_gin on public.briefing_modules using gin (data_json);
 create index if not exists idx_staff_org_id on public.staff(org_id);
 create index if not exists idx_staff_briefing_id on public.staff(briefing_id);
@@ -286,6 +307,12 @@ before update on public.briefings
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_modules_updated_at on public.modules;
+create trigger trg_modules_updated_at
+before update on public.modules
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_profiles_updated_at on public.profiles;
 create trigger trg_profiles_updated_at
 before update on public.profiles
@@ -322,6 +349,7 @@ grant select, insert, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.organizations to authenticated;
 grant select, insert, update, delete on public.memberships to authenticated;
 grant select, insert, update, delete on public.briefings to authenticated;
+grant select, insert, update, delete on public.modules to authenticated;
 grant select, insert, update, delete on public.briefing_modules to authenticated;
 grant select, insert, update, delete on public.staff to authenticated;
 grant select, insert, update, delete on public.public_links to authenticated;
@@ -335,6 +363,7 @@ alter table public.profiles enable row level security;
 alter table public.organizations enable row level security;
 alter table public.memberships enable row level security;
 alter table public.briefings enable row level security;
+alter table public.modules enable row level security;
 alter table public.briefing_modules enable row level security;
 alter table public.staff enable row level security;
 alter table public.public_links enable row level security;
@@ -344,6 +373,7 @@ alter table public.profiles force row level security;
 alter table public.organizations force row level security;
 alter table public.memberships force row level security;
 alter table public.briefings force row level security;
+alter table public.modules force row level security;
 alter table public.briefing_modules force row level security;
 alter table public.staff force row level security;
 alter table public.public_links force row level security;
@@ -367,6 +397,11 @@ drop policy if exists briefings_select on public.briefings;
 drop policy if exists briefings_insert on public.briefings;
 drop policy if exists briefings_update on public.briefings;
 drop policy if exists briefings_delete on public.briefings;
+
+drop policy if exists modules_registry_select on public.modules;
+drop policy if exists modules_registry_insert on public.modules;
+drop policy if exists modules_registry_update on public.modules;
+drop policy if exists modules_registry_delete on public.modules;
 
 drop policy if exists modules_select on public.briefing_modules;
 drop policy if exists modules_insert on public.briefing_modules;
@@ -484,6 +519,31 @@ with check (public.has_org_role(org_id, array['owner','admin','member']));
 
 create policy briefings_delete
 on public.briefings
+for delete
+to authenticated
+using (public.has_org_role(org_id, array['owner','admin']));
+
+create policy modules_registry_select
+on public.modules
+for select
+to authenticated
+using (public.is_org_member(org_id));
+
+create policy modules_registry_insert
+on public.modules
+for insert
+to authenticated
+with check (public.has_org_role(org_id, array['owner','admin']));
+
+create policy modules_registry_update
+on public.modules
+for update
+to authenticated
+using (public.has_org_role(org_id, array['owner','admin']))
+with check (public.has_org_role(org_id, array['owner','admin']));
+
+create policy modules_registry_delete
+on public.modules
 for delete
 to authenticated
 using (public.has_org_role(org_id, array['owner','admin']));

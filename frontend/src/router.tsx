@@ -12,6 +12,7 @@ import BriefingDetailPage from "@/views/BriefingDetailPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
 import LoginPage from "@/views/LoginPage";
+import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
 import OnboardingPage from "@/views/OnboardingPage";
 import RouteErrorPage from "@/views/RouteErrorPage";
@@ -86,6 +87,7 @@ export const router = createBrowserRouter([
           { path: "/onboarding", element: <OnboardingPage /> },
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
+          { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },
           { path: "/abonnement", element: <SubscriptionPage /> },
           { path: "/notifications", element: <NotificationsPage /> },

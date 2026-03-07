@@ -3,15 +3,45 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { downloadPdf, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
-import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey } from "@/lib/types";
+import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
 import { MetadataForm } from "@/components/briefing/MetadataForm";
 import { ModuleList } from "@/components/briefing/ModuleList";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
-export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[]): EditorState {
-  const map = new Map(rows.map((row) => [row.module_key, row]));
+export function buildInitialState(
+  briefing: Briefing,
+  rows: BriefingModuleRow[],
+  registryModules: RegistryModule[] = []
+): EditorState {
+  const rowMap = new Map(rows.map((row) => [row.module_key, row]));
+  const registryMap = new Map(registryModules.map((mod) => [mod.type, mod]));
+
+  const modules = Object.fromEntries(
+    moduleEntries.map((entry) => {
+      const parsed = parseModuleRow({
+        key: entry.key,
+        row: rowMap.get(entry.key),
+        entry,
+        registryModule: registryMap.get(entry.key) as RegistryModule | undefined
+      });
+
+      return [
+        entry.key,
+        {
+          module_id: parsed.module_id,
+          key: entry.key,
+          enabled: parsed.enabled,
+          metadata: parsed.metadata,
+          audience: parsed.audience,
+          layout: parsed.layout,
+          data: parsed.data
+        }
+      ];
+    })
+  ) as EditorState["modules"];
 
   return {
     core: {
@@ -20,59 +50,19 @@ export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[])
       location_text: briefing.location_text ?? ""
     },
     selectedModuleKey: "access",
-    modules: {
-      metadata: {
-        key: "metadata",
-        enabled: true,
-        data: moduleRegistry.metadata.schema.parse(map.get("metadata")?.data_json ?? moduleRegistry.metadata.defaultData)
-      },
-      access: {
-        key: "access",
-        enabled: map.get("access")?.enabled ?? moduleRegistry.access.defaultEnabled,
-        data: moduleRegistry.access.schema.parse(map.get("access")?.data_json ?? moduleRegistry.access.defaultData)
-      },
-      delivery: {
-        key: "delivery",
-        enabled: map.get("delivery")?.enabled ?? moduleRegistry.delivery.defaultEnabled,
-        data: moduleRegistry.delivery.schema.parse(map.get("delivery")?.data_json ?? moduleRegistry.delivery.defaultData)
-      },
-      vehicle: {
-        key: "vehicle",
-        enabled: map.get("vehicle")?.enabled ?? moduleRegistry.vehicle.defaultEnabled,
-        data: moduleRegistry.vehicle.schema.parse(map.get("vehicle")?.data_json ?? moduleRegistry.vehicle.defaultData)
-      },
-      equipment: {
-        key: "equipment",
-        enabled: map.get("equipment")?.enabled ?? moduleRegistry.equipment.defaultEnabled,
-        data: moduleRegistry.equipment.schema.parse(map.get("equipment")?.data_json ?? moduleRegistry.equipment.defaultData)
-      },
-      staff: {
-        key: "staff",
-        enabled: map.get("staff")?.enabled ?? moduleRegistry.staff.defaultEnabled,
-        data: moduleRegistry.staff.schema.parse(map.get("staff")?.data_json ?? moduleRegistry.staff.defaultData)
-      },
-      notes: {
-        key: "notes",
-        enabled: map.get("notes")?.enabled ?? moduleRegistry.notes.defaultEnabled,
-        data: moduleRegistry.notes.schema.parse(map.get("notes")?.data_json ?? moduleRegistry.notes.defaultData)
-      },
-      contact: {
-        key: "contact",
-        enabled: map.get("contact")?.enabled ?? moduleRegistry.contact.defaultEnabled,
-        data: moduleRegistry.contact.schema.parse(map.get("contact")?.data_json ?? moduleRegistry.contact.defaultData)
-      }
-    }
+    modules
   };
 }
 
 type Props = {
   briefing: Briefing;
   modules: BriefingModuleRow[];
+  registryModules?: RegistryModule[];
 };
 
-export function BriefingEditor({ briefing, modules }: Props) {
+export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules));
+  const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [saving, setSaving] = useState(false);
   const lastSaved = useRef("");
 
@@ -95,9 +85,17 @@ export function BriefingEditor({ briefing, modules }: Props) {
   const payload = useMemo(
     () =>
       (Object.keys(state.modules) as ModuleKey[]).map((key) => ({
+        module_id: state.modules[key].module_id ?? null,
         module_key: key,
         enabled: state.modules[key].enabled,
-        data_json: state.modules[key].data
+        data_json: toCanonicalModuleJson({
+          key,
+          moduleId: state.modules[key].module_id ?? null,
+          metadata: { ...state.modules[key].metadata, enabled: state.modules[key].enabled },
+          audience: state.modules[key].audience,
+          layout: state.modules[key].layout,
+          data: state.modules[key].data
+        })
       })),
     [state.modules]
   );
@@ -207,13 +205,37 @@ export function BriefingEditor({ briefing, modules }: Props) {
         <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
           <ModuleList
             state={state}
-            onToggle={(key, enabled) => setState((prev) => ({
-              ...prev,
-              modules: {
-                ...prev.modules,
-                [key]: { ...prev.modules[key], enabled }
-              }
-            }))}
+            onToggle={(key, enabled) =>
+              setState((prev) => ({
+                ...prev,
+                modules: {
+                  ...prev.modules,
+                  [key]: {
+                    ...prev.modules[key],
+                    enabled,
+                    metadata: { ...prev.modules[key].metadata, enabled }
+                  }
+                }
+              }))
+            }
+            onLayoutChange={(key, layout) =>
+              setState((prev) => ({
+                ...prev,
+                modules: {
+                  ...prev.modules,
+                  [key]: { ...prev.modules[key], layout }
+                }
+              }))
+            }
+            onAudienceChange={(key, audience) =>
+              setState((prev) => ({
+                ...prev,
+                modules: {
+                  ...prev.modules,
+                  [key]: { ...prev.modules[key], audience }
+                }
+              }))
+            }
           />
         </div>
 

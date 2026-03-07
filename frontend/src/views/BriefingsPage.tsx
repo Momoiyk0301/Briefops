@@ -5,9 +5,8 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import { moduleRegistry } from "@/lib/moduleRegistry";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -23,17 +22,6 @@ export default function BriefingsPage() {
 
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
-  const initialModules = [
-    { module_key: "metadata" as const, enabled: true, data_json: moduleRegistry.metadata.defaultData },
-    { module_key: "access" as const, enabled: true, data_json: moduleRegistry.access.defaultData },
-    { module_key: "delivery" as const, enabled: false, data_json: moduleRegistry.delivery.defaultData },
-    { module_key: "vehicle" as const, enabled: false, data_json: moduleRegistry.vehicle.defaultData },
-    { module_key: "equipment" as const, enabled: false, data_json: moduleRegistry.equipment.defaultData },
-    { module_key: "staff" as const, enabled: false, data_json: moduleRegistry.staff.defaultData },
-    { module_key: "notes" as const, enabled: true, data_json: moduleRegistry.notes.defaultData },
-    { module_key: "contact" as const, enabled: false, data_json: moduleRegistry.contact.defaultData }
-  ];
-
   const createMutation = useMutation({
     mutationFn: async () => {
       const orgId = meQuery.data?.org?.id;
@@ -42,15 +30,7 @@ export default function BriefingsPage() {
     },
     onSuccess: (briefing) => {
       navigate(`/briefings/${briefing.id}`, { state: { initializingNewBriefing: true } });
-      void (async () => {
-        try {
-          await upsertBriefingModules(briefing.id, initialModules);
-          await queryClient.invalidateQueries({ queryKey: queryKeys.modules(briefing.id) });
-          await queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
-        } catch (error) {
-          toast.error(toApiMessage(error));
-        }
-      })();
+      void queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
     },
     onError: (error) => toast.error(toApiMessage(error))
   });
