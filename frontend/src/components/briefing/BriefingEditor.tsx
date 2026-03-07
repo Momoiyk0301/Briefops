@@ -215,7 +215,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   useEffect(() => {
     setState((prev) => {
       let changed = false;
-      const nextModules = { ...prev.modules };
+      const nextModules = { ...prev.modules } as EditorState["modules"];
       const teamSet = new Set(definedTeams.map((team) => team.toLowerCase()));
 
       (Object.keys(prev.modules) as ModuleKey[])
@@ -227,7 +227,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
           if (nextMode !== module.audience.mode || filteredTeams.length !== module.audience.teams.length) {
             changed = true;
-            nextModules[key] = {
+            const updatedModule: typeof module = {
               ...module,
               audience: {
                 ...module.audience,
@@ -235,6 +235,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                 teams: filteredTeams
               }
             };
+            (nextModules as Record<string, EditorState["modules"][ModuleKey]>)[key] = updatedModule;
           }
         });
 

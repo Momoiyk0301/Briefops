@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ZodType } from "zod";
+import { ZodType, ZodTypeDef } from "zod";
 
 export type UserPlan = "free" | "starter" | "plus" | "pro";
 export type Locale = "fr" | "en";
@@ -272,7 +272,7 @@ export type ModuleRegistryEntry<K extends ModuleKey> = {
   description: { fr: string; en: string };
   defaultEnabled: boolean;
   isMandatory?: boolean;
-  schema: ZodType<ModuleDataMap[K]>;
+  schema: ZodType<ModuleDataMap[K], ZodTypeDef, unknown>;
   defaultData: ModuleDataMap[K];
   FormComponent: (props: ModuleFormProps<ModuleDataMap[K]>) => ReactNode;
   PreviewComponent: (props: ModulePreviewProps<ModuleDataMap[K]>) => ReactNode;
