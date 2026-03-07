@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { getActivePublicLinkWithPdfPath } from "@/supabase/queries/publicLinks";
+import { PUBLIC_LINK_INVALID_MESSAGE, getActivePublicLinkWithPdfPath } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient } from "@/supabase/server";
 
 export const runtime = "nodejs";
 
-const tokenSchema = z.string().uuid();
+const tokenSchema = z.string().min(10);
 type Params = { params: Promise<{ token: string }> };
 
 export async function GET(_: Request, { params }: Params) {
@@ -19,7 +19,12 @@ export async function GET(_: Request, { params }: Params) {
     const service = createServiceRoleClient();
 
     const link = await getActivePublicLinkWithPdfPath(service, publicToken);
-    if (!link) throw new HttpError(404, "Link not found");
+    if (!link) {
+      return new NextResponse(PUBLIC_LINK_INVALID_MESSAGE, {
+        status: 410,
+        headers: { "content-type": "text/plain; charset=utf-8" }
+      });
+    }
 
     const { data, error } = await service.storage.from("exports").createSignedUrl(link.pdfPath, 60);
     if (error || !data?.signedUrl) {

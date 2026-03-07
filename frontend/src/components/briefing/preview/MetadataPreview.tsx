@@ -15,6 +15,9 @@ export function MetadataPreview({ title, eventDate, location, metadata }: Props)
       {(metadata.main_contact_name || metadata.main_contact_phone) && (
         <p className="mt-2 text-sm">Contact: {metadata.main_contact_name} {metadata.main_contact_phone}</p>
       )}
+      {metadata.team_mode && metadata.teams.length > 0 ? (
+        <p className="mt-2 text-xs text-slate-500">Teams: {metadata.teams.join(", ")}</p>
+      ) : null}
       {metadata.global_notes && <p className="mt-2 whitespace-pre-wrap text-sm">{metadata.global_notes}</p>}
     </section>
   );

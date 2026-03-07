@@ -3,13 +3,17 @@ import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { createServiceRoleClient, requireAuthContext } from "@/supabase/server";
-import { getStripe, getStripePriceIdForPlan } from "@/stripe/stripe";
+import { getPlanFromStripePriceId, getStripe, getStripePriceIdForPlan } from "@/stripe/stripe";
 import { env } from "@/env";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({
-  plan: z.enum(["starter", "plus", "pro"]),
+  plan: z.enum(["starter", "plus", "pro"]).optional(),
+  stripe_price_id: z.string().trim().min(1).optional(),
+  workspace_id: z.string().uuid().optional(),
   org_name: z.string().trim().min(2).max(120).optional()
+    .or(z.literal("")),
+  source: z.enum(["billing", "onboarding"]).optional()
 });
 const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, plus: 2, pro: 3 };
 
@@ -27,7 +31,13 @@ export async function POST(request: Request) {
     const admin = createServiceRoleClient();
     const appUrl = resolveAppUrl(request);
     const body = bodySchema.parse(await request.json());
-    const requestedPlan = body.plan;
+    const requestedPlan = body.plan ?? (body.stripe_price_id ? getPlanFromStripePriceId(body.stripe_price_id) : null);
+    const source = body.source ?? "billing";
+    const priceId = body.stripe_price_id ?? (body.plan ? getStripePriceIdForPlan(body.plan) : null);
+
+    if (!priceId) {
+      throw new HttpError(400, "Missing price identifier");
+    }
 
     const { error: profileUpsertError } = await admin
       .from("profiles")
@@ -49,9 +59,18 @@ export async function POST(request: Request) {
     if (!profile) throw new HttpError(500, "Profile not found after upsert");
 
     const currentPlan = profile?.plan ?? "free";
-    if ((planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
+    if (requestedPlan && (planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
       throw new HttpError(409, `Already on ${currentPlan} plan or higher`);
     }
+
+    const { data: membership, error: membershipError } = await admin
+      .from("memberships")
+      .select("org_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (membershipError) throw membershipError;
+
+    const workspaceId = body.workspace_id ?? membership?.org_id ?? null;
 
     const stripe = getStripe();
     let customerId = profile?.stripe_customer_id ?? null;
@@ -73,14 +92,19 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: getStripePriceIdForPlan(requestedPlan), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
-      success_url: `${appUrl}/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/settings/billing?checkout=cancel`,
+      success_url:
+        source === "onboarding"
+          ? `${appUrl}/onboarding?step=demo&checkout=success&session_id={CHECKOUT_SESSION_ID}`
+          : `${appUrl}/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: source === "onboarding" ? `${appUrl}/onboarding?step=products&checkout=cancel` : `${appUrl}/settings/billing?checkout=cancel`,
       metadata: {
         user_id: userId,
-        plan: requestedPlan,
-        org_name: body.org_name ?? ""
+        workspace_id: workspaceId ?? "",
+        plan: requestedPlan ?? "",
+        org_name: body.org_name ?? "",
+        onboarding_source: source
       }
     });
 

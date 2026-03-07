@@ -17,6 +17,7 @@
   },
   "nav": {
     "briefings": "Briefings",
+    "modules": "Modules",
     "account": "Compte",
     "billing": "Facturation",
     "settings": "Paramètres",

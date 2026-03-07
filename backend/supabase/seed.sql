@@ -24,14 +24,14 @@ begin
   on conflict (id) do update
     set email = excluded.email;
 
-  insert into public.organizations (name, owner_id)
+  insert into public.workspaces (name, owner_id)
   values ('Demo Org', v_user_id)
   on conflict (owner_id) do update
     set name = excluded.name
   returning id into v_org_id;
 
   if v_org_id is null then
-    select id into v_org_id from public.organizations where owner_id = v_user_id;
+    select id into v_org_id from public.workspaces where owner_id = v_user_id;
   end if;
 
   insert into public.memberships (org_id, user_id, role)

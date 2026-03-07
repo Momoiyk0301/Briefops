@@ -12,10 +12,10 @@ export default function AuthConfirmedPage() {
         </p>
         <div className="mt-5">
           <Link
-            to="/briefings"
+            to="/onboarding"
             className="inline-flex items-center justify-center rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-600"
           >
-            Ouvrir BriefOPS
+            Continuer l'onboarding
           </Link>
         </div>
       </Card>

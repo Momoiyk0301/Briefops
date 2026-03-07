@@ -1,18 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Share2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import { moduleRegistry } from "@/lib/moduleRegistry";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DraggableConfirmModal } from "@/components/ui/DraggableConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SharePanel } from "@/components/briefing/SharePanel";
 
 export default function BriefingsPage() {
   const { t } = useTranslation();
@@ -20,20 +20,10 @@ export default function BriefingsPage() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [briefingToDelete, setBriefingToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [shareBriefing, setShareBriefing] = useState<{ id: string; hasPdf: boolean } | null>(null);
 
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
-  const initialModules = [
-    { module_key: "metadata" as const, enabled: true, data_json: moduleRegistry.metadata.defaultData },
-    { module_key: "access" as const, enabled: true, data_json: moduleRegistry.access.defaultData },
-    { module_key: "delivery" as const, enabled: false, data_json: moduleRegistry.delivery.defaultData },
-    { module_key: "vehicle" as const, enabled: false, data_json: moduleRegistry.vehicle.defaultData },
-    { module_key: "equipment" as const, enabled: false, data_json: moduleRegistry.equipment.defaultData },
-    { module_key: "staff" as const, enabled: false, data_json: moduleRegistry.staff.defaultData },
-    { module_key: "notes" as const, enabled: true, data_json: moduleRegistry.notes.defaultData },
-    { module_key: "contact" as const, enabled: false, data_json: moduleRegistry.contact.defaultData }
-  ];
-
   const createMutation = useMutation({
     mutationFn: async () => {
       const orgId = meQuery.data?.org?.id;
@@ -42,15 +32,7 @@ export default function BriefingsPage() {
     },
     onSuccess: (briefing) => {
       navigate(`/briefings/${briefing.id}`, { state: { initializingNewBriefing: true } });
-      void (async () => {
-        try {
-          await upsertBriefingModules(briefing.id, initialModules);
-          await queryClient.invalidateQueries({ queryKey: queryKeys.modules(briefing.id) });
-          await queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
-        } catch (error) {
-          toast.error(toApiMessage(error));
-        }
-      })();
+      void queryClient.invalidateQueries({ queryKey: queryKeys.briefingsFallback });
     },
     onError: (error) => toast.error(toApiMessage(error))
   });
@@ -263,18 +245,31 @@ export default function BriefingsPage() {
                 <p className="font-medium">{briefing.title}</p>
                 <p className="text-sm text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>
               </div>
-              <button
-                type="button"
-                aria-label="Supprimer le briefing"
-                className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (deleteMutation.isPending) return;
-                  setBriefingToDelete({ id: briefing.id, title: briefing.title });
-                }}
-              >
-                <X size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Partager le briefing"
+                  className="rounded-full p-1 text-[#8a90a5] transition hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-900/20"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShareBriefing({ id: briefing.id, hasPdf: Boolean(briefing.pdf_path) });
+                  }}
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Supprimer le briefing"
+                  className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (deleteMutation.isPending) return;
+                    setBriefingToDelete({ id: briefing.id, title: briefing.title });
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           </Card>
         ))}
@@ -295,6 +290,12 @@ export default function BriefingsPage() {
           if (!briefingToDelete) return;
           deleteMutation.mutate(briefingToDelete.id);
         }}
+      />
+      <SharePanel
+        open={Boolean(shareBriefing)}
+        onClose={() => setShareBriefing(null)}
+        briefingId={shareBriefing?.id ?? ""}
+        hasPdf={Boolean(shareBriefing?.hasPdf)}
       />
     </div>
   );

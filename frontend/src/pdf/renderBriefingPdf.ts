@@ -1,67 +1,49 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 
-type BriefingPayload = {
-  id: string;
-  title: string;
-  event_date: string | null;
-  location_text: string | null;
-  modules: Array<{
-    module_key: string;
-    enabled: boolean;
-    data_json: Record<string, unknown>;
-  }>;
-};
+import { BriefingHtmlInput, buildBriefingHtml } from "@/pdf/buildBriefingHtml";
 
-export async function renderBriefingPdf(input: BriefingPayload): Promise<Uint8Array> {
-  const pdf = await PDFDocument.create();
-  let page = pdf.addPage([595, 842]);
-  const titleFont = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const bodyFont = await pdf.embedFont(StandardFonts.Helvetica);
+type BriefingPayload = BriefingHtmlInput;
 
-  let y = 800;
-
-  page.drawText("Event Briefing", {
-    x: 50,
-    y,
-    size: 24,
-    font: titleFont,
-    color: rgb(0.1, 0.1, 0.1)
-  });
-
-  y -= 36;
-  page.drawText(`Title: ${input.title}`, { x: 50, y, size: 12, font: bodyFont });
-  y -= 20;
-  page.drawText(`Date: ${input.event_date ?? "N/A"}`, { x: 50, y, size: 12, font: bodyFont });
-  y -= 20;
-  page.drawText(`Location: ${input.location_text ?? "N/A"}`, { x: 50, y, size: 12, font: bodyFont });
-
-  y -= 30;
-  page.drawText("Modules", { x: 50, y, size: 16, font: titleFont });
-  y -= 24;
-
-  for (const mod of input.modules) {
-    const serialized = JSON.stringify(mod.data_json);
-    const line = `[${mod.enabled ? "on" : "off"}] ${mod.module_key}: ${serialized}`;
-
-    const chunks = chunkText(line, 85);
-    for (const chunk of chunks) {
-      if (y < 60) {
-        y = 800;
-        page = pdf.addPage([595, 842]);
-      }
-      page.drawText(chunk, { x: 50, y, size: 10, font: bodyFont });
-      y -= 16;
-    }
-    y -= 8;
+async function resolveExecutablePath(): Promise<string> {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
 
-  return pdf.save();
+  const resolved = await chromium.executablePath();
+  if (!resolved) {
+    throw new Error("Chromium executable path is not available");
+  }
+  return resolved;
 }
 
-function chunkText(text: string, size: number): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < text.length; i += size) {
-    out.push(text.slice(i, i + size));
+export async function renderBriefingPdf(input: BriefingPayload): Promise<Uint8Array> {
+  const html = buildBriefingHtml(input);
+  const executablePath = await resolveExecutablePath();
+
+  const browser = await puppeteer.launch({
+    executablePath,
+    args: chromium.args,
+    headless: true
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "14mm",
+        right: "12mm",
+        bottom: "14mm",
+        left: "12mm"
+      }
+    });
+
+    return new Uint8Array(pdf);
+  } finally {
+    await browser.close();
   }
-  return out;
 }

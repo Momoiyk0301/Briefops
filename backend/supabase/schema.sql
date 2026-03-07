@@ -30,6 +30,7 @@ create table if not exists public.profiles (
   email text not null unique,
   full_name text,
   plan text not null default 'free' check (plan in ('free', 'starter', 'plus', 'pro')),
+  onboarding_step text not null default 'workspace' check (onboarding_step in ('workspace', 'products', 'demo', 'done')),
   stripe_customer_id text unique,
   stripe_subscription_id text unique,
   stripe_price_id text,
@@ -45,16 +46,24 @@ alter table public.profiles
 alter table public.profiles
   add constraint profiles_plan_check check (plan in ('free', 'starter', 'plus', 'pro'));
 
-create table if not exists public.organizations (
+create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  country text not null default 'Belgium',
+  team_size integer,
+  vat_number text,
   owner_id uuid not null unique references public.profiles(id) on delete restrict,
   created_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.workspaces
+  drop constraint if exists workspaces_team_size_check;
+alter table public.workspaces
+  add constraint workspaces_team_size_check check (team_size is null or team_size > 0);
+
 create table if not exists public.memberships (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
+  org_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner', 'admin', 'member')),
   plan_name text,
@@ -67,7 +76,7 @@ create table if not exists public.memberships (
 
 create table if not exists public.briefings (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
+  org_id uuid not null references public.workspaces(id) on delete cascade,
   title text not null,
   event_date date,
   location_text text,
@@ -77,9 +86,26 @@ create table if not exists public.briefings (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.workspaces(id) on delete cascade,
+  name text not null,
+  type text not null,
+  version integer not null default 1,
+  icon text not null default 'box',
+  category text not null default 'general',
+  enabled boolean not null default true,
+  default_layout jsonb not null default '{}'::jsonb,
+  default_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (org_id, type)
+);
+
 create table if not exists public.briefing_modules (
   id uuid primary key default gen_random_uuid(),
   briefing_id uuid not null references public.briefings(id) on delete cascade,
+  module_id uuid references public.modules(id) on delete set null,
   module_key text not null,
   enabled boolean not null default true,
   data_json jsonb not null default '{}'::jsonb,
@@ -90,7 +116,7 @@ create table if not exists public.briefing_modules (
 
 create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.organizations(id) on delete cascade,
+  org_id uuid not null references public.workspaces(id) on delete cascade,
   briefing_id uuid not null references public.briefings(id) on delete cascade,
   full_name text not null,
   role text not null default 'staff',
@@ -105,6 +131,7 @@ create table if not exists public.public_links (
   id uuid primary key default gen_random_uuid(),
   token text not null unique default gen_random_uuid()::text,
   briefing_id uuid not null references public.briefings(id) on delete cascade,
+  resource_type text not null default 'pdf',
   created_by uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz,
   revoked_at timestamptz,
@@ -127,14 +154,20 @@ create index if not exists idx_memberships_org_role on public.memberships(org_id
 
 create index if not exists idx_briefings_org_id on public.briefings(org_id);
 create index if not exists idx_briefings_org_event_date on public.briefings(org_id, event_date);
+create index if not exists idx_modules_registry_org_id on public.modules(org_id);
+create index if not exists idx_modules_registry_type on public.modules(type);
+create index if not exists idx_modules_registry_enabled on public.modules(enabled);
 
 create index if not exists idx_modules_briefing_id on public.briefing_modules(briefing_id);
+create index if not exists idx_modules_briefing_module_id on public.briefing_modules(module_id);
 create index if not exists idx_modules_data_json_gin on public.briefing_modules using gin (data_json);
 create index if not exists idx_staff_org_id on public.staff(org_id);
 create index if not exists idx_staff_briefing_id on public.staff(briefing_id);
 
 create index if not exists idx_public_links_token on public.public_links(token);
 create index if not exists idx_public_links_briefing_id on public.public_links(briefing_id);
+create index if not exists idx_public_links_resource_type on public.public_links(resource_type);
+create index if not exists idx_public_links_briefing_resource on public.public_links(briefing_id, resource_type);
 create index if not exists idx_public_links_expires_at on public.public_links(expires_at);
 create index if not exists idx_public_links_created_by on public.public_links(created_by);
 
@@ -286,6 +319,12 @@ before update on public.briefings
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists trg_modules_updated_at on public.modules;
+create trigger trg_modules_updated_at
+before update on public.modules
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists trg_profiles_updated_at on public.profiles;
 create trigger trg_profiles_updated_at
 before update on public.profiles
@@ -319,31 +358,34 @@ execute function public.set_updated_at();
 grant usage on schema public to anon, authenticated;
 
 grant select, insert, update on public.profiles to authenticated;
-grant select, insert, update, delete on public.organizations to authenticated;
+grant select on public.briefings to anon;
+grant select on public.briefing_modules to anon;
+grant select on public.public_links to anon;
+grant select, insert, update, delete on public.workspaces to authenticated;
 grant select, insert, update, delete on public.memberships to authenticated;
 grant select, insert, update, delete on public.briefings to authenticated;
+grant select, insert, update, delete on public.modules to authenticated;
 grant select, insert, update, delete on public.briefing_modules to authenticated;
 grant select, insert, update, delete on public.staff to authenticated;
 grant select, insert, update, delete on public.public_links to authenticated;
-grant select on public.public_links to anon;
-grant select on public.briefings to anon;
-grant select on public.briefing_modules to anon;
 grant select on public.usage_counters to authenticated;
 grant execute on function public.consume_pdf_export(uuid, integer) to authenticated;
 
 alter table public.profiles enable row level security;
-alter table public.organizations enable row level security;
+alter table public.workspaces enable row level security;
 alter table public.memberships enable row level security;
 alter table public.briefings enable row level security;
+alter table public.modules enable row level security;
 alter table public.briefing_modules enable row level security;
 alter table public.staff enable row level security;
 alter table public.public_links enable row level security;
 alter table public.usage_counters enable row level security;
 
 alter table public.profiles force row level security;
-alter table public.organizations force row level security;
+alter table public.workspaces force row level security;
 alter table public.memberships force row level security;
 alter table public.briefings force row level security;
+alter table public.modules force row level security;
 alter table public.briefing_modules force row level security;
 alter table public.staff force row level security;
 alter table public.public_links force row level security;
@@ -353,10 +395,10 @@ drop policy if exists profiles_select on public.profiles;
 drop policy if exists profiles_insert on public.profiles;
 drop policy if exists profiles_update on public.profiles;
 
-drop policy if exists orgs_select on public.organizations;
-drop policy if exists orgs_insert on public.organizations;
-drop policy if exists orgs_update on public.organizations;
-drop policy if exists orgs_delete on public.organizations;
+drop policy if exists orgs_select on public.workspaces;
+drop policy if exists orgs_insert on public.workspaces;
+drop policy if exists orgs_update on public.workspaces;
+drop policy if exists orgs_delete on public.workspaces;
 
 drop policy if exists memberships_select on public.memberships;
 drop policy if exists memberships_insert on public.memberships;
@@ -364,11 +406,18 @@ drop policy if exists memberships_update on public.memberships;
 drop policy if exists memberships_delete on public.memberships;
 
 drop policy if exists briefings_select on public.briefings;
+drop policy if exists briefings_select_invite on public.briefings;
 drop policy if exists briefings_insert on public.briefings;
 drop policy if exists briefings_update on public.briefings;
 drop policy if exists briefings_delete on public.briefings;
 
+drop policy if exists modules_registry_select on public.modules;
+drop policy if exists modules_registry_insert on public.modules;
+drop policy if exists modules_registry_update on public.modules;
+drop policy if exists modules_registry_delete on public.modules;
+
 drop policy if exists modules_select on public.briefing_modules;
+drop policy if exists modules_select_invite on public.briefing_modules;
 drop policy if exists modules_insert on public.briefing_modules;
 drop policy if exists modules_update on public.briefing_modules;
 drop policy if exists modules_delete on public.briefing_modules;
@@ -408,26 +457,26 @@ using (id = auth.uid())
 with check (id = auth.uid());
 
 create policy orgs_select
-on public.organizations
+on public.workspaces
 for select
 to authenticated
 using (public.is_org_member(id));
 
 create policy orgs_insert
-on public.organizations
+on public.workspaces
 for insert
 to authenticated
 with check (owner_id = auth.uid());
 
 create policy orgs_update
-on public.organizations
+on public.workspaces
 for update
 to authenticated
 using (public.has_org_role(id, array['owner','admin']))
 with check (public.has_org_role(id, array['owner','admin']));
 
 create policy orgs_delete
-on public.organizations
+on public.workspaces
 for delete
 to authenticated
 using (public.has_org_role(id, array['owner','admin']));
@@ -460,10 +509,17 @@ using (public.has_org_role(org_id, array['owner','admin']));
 create policy briefings_select
 on public.briefings
 for select
-to anon, authenticated
+to authenticated
 using (
   public.is_org_member(org_id)
-  or public.can_read_briefing_via_token(id)
+);
+
+create policy briefings_select_invite
+on public.briefings
+for select
+to anon
+using (
+  public.can_read_briefing_via_token(id)
 );
 
 create policy briefings_insert
@@ -488,20 +544,50 @@ for delete
 to authenticated
 using (public.has_org_role(org_id, array['owner','admin']));
 
+create policy modules_registry_select
+on public.modules
+for select
+to authenticated
+using (public.is_org_member(org_id));
+
+create policy modules_registry_insert
+on public.modules
+for insert
+to authenticated
+with check (public.has_org_role(org_id, array['owner','admin']));
+
+create policy modules_registry_update
+on public.modules
+for update
+to authenticated
+using (public.has_org_role(org_id, array['owner','admin']))
+with check (public.has_org_role(org_id, array['owner','admin']));
+
+create policy modules_registry_delete
+on public.modules
+for delete
+to authenticated
+using (public.has_org_role(org_id, array['owner','admin']));
+
 create policy modules_select
 on public.briefing_modules
 for select
-to anon, authenticated
+to authenticated
 using (
   exists (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and (
-        public.is_org_member(b.org_id)
-        or public.can_read_briefing_via_token(b.id)
-      )
+      and public.is_org_member(b.org_id)
   )
+);
+
+create policy modules_select_invite
+on public.briefing_modules
+for select
+to anon
+using (
+  public.can_read_briefing_via_token(briefing_id)
 );
 
 create policy modules_insert
@@ -614,7 +700,7 @@ using (
 create policy public_links_select_token_only
 on public.public_links
 for select
-to anon, authenticated
+to anon
 using (
   token = public.request_header('x-briefing-token')
   and revoked_at is null

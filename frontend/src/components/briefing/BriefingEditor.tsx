@@ -1,17 +1,99 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Loader2, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { downloadPdf, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
+import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
-import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey } from "@/lib/types";
+import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
 import { MetadataForm } from "@/components/briefing/MetadataForm";
+import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
 import { ModuleList } from "@/components/briefing/ModuleList";
+import { ModulePanel } from "@/components/briefing/ModulePanel";
+import { SharePanel } from "@/components/briefing/SharePanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
-export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[]): EditorState {
-  const map = new Map(rows.map((row) => [row.module_key, row]));
+const CANVAS_COLS = 12;
+const CANVAS_ROWS = 24;
+
+function rectTouchesOrOverlaps(a: GridRect, b: GridRect) {
+  return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
+}
+
+function normalizeLayouts(modules: EditorState["modules"]) {
+  const placed: GridRect[] = [];
+  const next = { ...modules } as Record<ModuleKey, EditorState["modules"][ModuleKey]>;
+
+  moduleEntries.forEach((entry, index) => {
+    const current = next[entry.key];
+    if (!current.enabled) return;
+
+    let rect = { ...current.layout.desktop };
+    let attempts = 0;
+
+    while (placed.some((p) => rectTouchesOrOverlaps(rect, p)) && attempts < CANVAS_ROWS) {
+      rect = {
+        ...rect,
+        y: Math.min(CANVAS_ROWS - rect.h, Math.max(0, rect.y + 1 + (index % 2)))
+      };
+      attempts += 1;
+    }
+
+    next[entry.key] = {
+      ...current,
+      layout: {
+        ...current.layout,
+        desktop: rect
+      }
+    };
+
+    placed.push(rect);
+  });
+
+  return next as EditorState["modules"];
+}
+
+export function buildInitialState(
+  briefing: Briefing,
+  rows: BriefingModuleRow[],
+  registryModules: RegistryModule[] = []
+): EditorState {
+  const rowMap = new Map(rows.map((row) => [row.module_key, row]));
+  const registryMap = new Map(registryModules.map((mod) => [mod.type, mod]));
+
+  const rawModules = Object.fromEntries(
+    moduleEntries.map((entry) => {
+      const parsed = parseModuleRow({
+        key: entry.key,
+        row: rowMap.get(entry.key),
+        entry,
+        registryModule: registryMap.get(entry.key) as RegistryModule | undefined
+      });
+
+      return [
+        entry.key,
+        {
+          module_id: parsed.module_id,
+          key: entry.key,
+          enabled: parsed.enabled,
+          metadata: parsed.metadata,
+          audience: parsed.audience,
+          layout: parsed.layout,
+          data: parsed.data
+        }
+      ];
+    })
+  ) as EditorState["modules"];
+
+  const modules = normalizeLayouts(rawModules);
+
+  const defaultSelected = (moduleEntries.find((entry) => entry.key !== "metadata" && modules[entry.key].enabled)?.key ?? "access") as Exclude<
+    ModuleKey,
+    "metadata"
+  >;
 
   return {
     core: {
@@ -19,61 +101,62 @@ export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[])
       event_date: briefing.event_date,
       location_text: briefing.location_text ?? ""
     },
-    selectedModuleKey: "access",
-    modules: {
-      metadata: {
-        key: "metadata",
-        enabled: true,
-        data: moduleRegistry.metadata.schema.parse(map.get("metadata")?.data_json ?? moduleRegistry.metadata.defaultData)
-      },
-      access: {
-        key: "access",
-        enabled: map.get("access")?.enabled ?? moduleRegistry.access.defaultEnabled,
-        data: moduleRegistry.access.schema.parse(map.get("access")?.data_json ?? moduleRegistry.access.defaultData)
-      },
-      delivery: {
-        key: "delivery",
-        enabled: map.get("delivery")?.enabled ?? moduleRegistry.delivery.defaultEnabled,
-        data: moduleRegistry.delivery.schema.parse(map.get("delivery")?.data_json ?? moduleRegistry.delivery.defaultData)
-      },
-      vehicle: {
-        key: "vehicle",
-        enabled: map.get("vehicle")?.enabled ?? moduleRegistry.vehicle.defaultEnabled,
-        data: moduleRegistry.vehicle.schema.parse(map.get("vehicle")?.data_json ?? moduleRegistry.vehicle.defaultData)
-      },
-      equipment: {
-        key: "equipment",
-        enabled: map.get("equipment")?.enabled ?? moduleRegistry.equipment.defaultEnabled,
-        data: moduleRegistry.equipment.schema.parse(map.get("equipment")?.data_json ?? moduleRegistry.equipment.defaultData)
-      },
-      staff: {
-        key: "staff",
-        enabled: map.get("staff")?.enabled ?? moduleRegistry.staff.defaultEnabled,
-        data: moduleRegistry.staff.schema.parse(map.get("staff")?.data_json ?? moduleRegistry.staff.defaultData)
-      },
-      notes: {
-        key: "notes",
-        enabled: map.get("notes")?.enabled ?? moduleRegistry.notes.defaultEnabled,
-        data: moduleRegistry.notes.schema.parse(map.get("notes")?.data_json ?? moduleRegistry.notes.defaultData)
-      },
-      contact: {
-        key: "contact",
-        enabled: map.get("contact")?.enabled ?? moduleRegistry.contact.defaultEnabled,
-        data: moduleRegistry.contact.schema.parse(map.get("contact")?.data_json ?? moduleRegistry.contact.defaultData)
-      }
-    }
+    selectedModuleKey: defaultSelected,
+    modules
   };
 }
 
 type Props = {
   briefing: Briefing;
   modules: BriefingModuleRow[];
+  registryModules?: RegistryModule[];
 };
 
-export function BriefingEditor({ briefing, modules }: Props) {
+function toCanvasStyle(layout: EditorState["modules"][ModuleKey]["layout"]) {
+  const desktop = layout.desktop;
+  return {
+    left: `${(desktop.x / CANVAS_COLS) * 100}%`,
+    top: `${(desktop.y / CANVAS_ROWS) * 100}%`,
+    width: `${(desktop.w / CANVAS_COLS) * 100}%`,
+    height: `${(desktop.h / CANVAS_ROWS) * 100}%`
+  };
+}
+
+const RESIZE_HANDLES: Array<{ key: ResizeHandle; className: string; cursor: string }> = [
+  { key: "nw", className: "left-0 top-0 -translate-x-1/2 -translate-y-1/2", cursor: "nwse-resize" },
+  { key: "ne", className: "right-0 top-0 translate-x-1/2 -translate-y-1/2", cursor: "nesw-resize" },
+  { key: "se", className: "bottom-0 right-0 translate-x-1/2 translate-y-1/2", cursor: "nwse-resize" },
+  { key: "sw", className: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2", cursor: "nesw-resize" },
+  { key: "w", className: "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+  { key: "e", className: "right-0 top-1/2 translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+  { key: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "ns-resize" }
+];
+
+const MODULE_TONE_CLASS: Record<ModuleKey, string> = {
+  metadata: "border-sky-200/90 bg-sky-50/80",
+  access: "border-emerald-200/90 bg-emerald-50/80",
+  delivery: "border-amber-200/90 bg-amber-50/80",
+  vehicle: "border-violet-200/90 bg-violet-50/80",
+  equipment: "border-cyan-200/90 bg-cyan-50/80",
+  staff: "border-rose-200/90 bg-rose-50/80",
+  notes: "border-indigo-200/90 bg-indigo-50/80",
+  contact: "border-orange-200/90 bg-orange-50/80"
+};
+
+export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules));
+  const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [saving, setSaving] = useState(false);
+  const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
+  const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfPath, setPdfPath] = useState<string | null>(briefing.pdf_path ?? null);
+  const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
+  const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const lastSaved = useRef("");
 
   useEffect(() => {
@@ -86,18 +169,95 @@ export function BriefingEditor({ briefing, modules }: Props) {
     if (snapshot === lastSaved.current) return;
 
     const id = window.setTimeout(() => {
+      setSaveIndicator("saving");
       void handleSave(false);
     }, 800);
 
     return () => window.clearTimeout(id);
   }, [state]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!briefing.pdf_path) return;
+      try {
+        const signedUrl = await getStorageSignedUrl("exports", briefing.pdf_path, 3600);
+        if (!cancelled) {
+          setPdfUrl(signedUrl);
+          setPdfPath(briefing.pdf_path);
+          setPdfButtonState("ready");
+        }
+      } catch {
+        if (!cancelled) setPdfUrl(null);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [briefing.pdf_path]);
+
+  const teamModeEnabled = state.modules.metadata.data.team_mode;
+  const definedTeams = state.modules.metadata.data.teams;
+
+  useEffect(() => {
+    if (!teamModeEnabled) {
+      if (selectedPdfTeam !== "all") setSelectedPdfTeam("all");
+      return;
+    }
+    if (selectedPdfTeam === "all") return;
+    const stillExists = definedTeams.some((team) => team.toLowerCase() === selectedPdfTeam.toLowerCase());
+    if (!stillExists) setSelectedPdfTeam("all");
+  }, [definedTeams, selectedPdfTeam, teamModeEnabled]);
+
+  useEffect(() => {
+    setState((prev) => {
+      let changed = false;
+      const nextModules = { ...prev.modules } as EditorState["modules"];
+      const teamSet = new Set(definedTeams.map((team) => team.toLowerCase()));
+
+      (Object.keys(prev.modules) as ModuleKey[])
+        .filter((key) => key !== "metadata")
+        .forEach((key) => {
+          const module = prev.modules[key];
+          const filteredTeams = module.audience.teams.filter((team) => teamSet.has(team.toLowerCase()));
+          const nextMode = teamModeEnabled && filteredTeams.length > 0 ? "teams" : "all";
+
+          if (nextMode !== module.audience.mode || filteredTeams.length !== module.audience.teams.length) {
+            changed = true;
+            const updatedModule: typeof module = {
+              ...module,
+              audience: {
+                ...module.audience,
+                mode: nextMode,
+                teams: filteredTeams
+              }
+            };
+            (nextModules as Record<string, EditorState["modules"][ModuleKey]>)[key] = updatedModule;
+          }
+        });
+
+      if (!changed) return prev;
+      return { ...prev, modules: nextModules };
+    });
+  }, [definedTeams, teamModeEnabled]);
+
   const payload = useMemo(
     () =>
       (Object.keys(state.modules) as ModuleKey[]).map((key) => ({
+        module_id: state.modules[key].module_id ?? null,
         module_key: key,
         enabled: state.modules[key].enabled,
-        data_json: state.modules[key].data
+        data_json: toCanonicalModuleJson({
+          key,
+          moduleId: state.modules[key].module_id ?? null,
+          metadata: { ...state.modules[key].metadata, enabled: state.modules[key].enabled },
+          audience: state.modules[key].audience,
+          layout: state.modules[key].layout,
+          data: state.modules[key].data
+        })
       })),
     [state.modules]
   );
@@ -113,6 +273,7 @@ export function BriefingEditor({ briefing, modules }: Props) {
       await upsertBriefingModules(briefing.id, payload);
       lastSaved.current = JSON.stringify(state);
       if (manual) toast.success(t("editor.saved"));
+      if (!manual) setSaveIndicator("saved");
     } catch (error) {
       toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
     } finally {
@@ -121,73 +282,251 @@ export function BriefingEditor({ briefing, modules }: Props) {
   };
 
   const handlePdf = async () => {
+    const targetTeam = teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null;
+
+    if (pdfButtonState === "ready" && !targetTeam) {
+      try {
+        if (pdfPath) {
+          const signedUrl = await getStorageSignedUrl("exports", pdfPath, 3600);
+          setPdfUrl(signedUrl);
+          window.open(signedUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        if (pdfUrl) {
+          window.open(pdfUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+      } catch (error) {
+        toast.error(toApiMessage(error));
+      }
+    }
+
+    const toastId = toast.loading(targetTeam ? `PDF team "${targetTeam}" en cours...` : "PDF en cours de generation...");
+    let generated = false;
     try {
-      const blob = await downloadPdf(briefing.id);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `briefing-${briefing.id}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      setPdfButtonState("loading");
+      const result = await generateBriefingPdf(briefing.id, targetTeam);
+      setPdfUrl(result.pdf_url);
+      setPdfPath(result.pdf_path);
+      if (targetTeam) {
+        setTeamPdfPaths((prev) => ({
+          ...prev,
+          [targetTeam]: result.pdf_path
+        }));
+      }
+      setPdfButtonState("ready");
+      generated = true;
+      toast.success(targetTeam ? `PDF team "${targetTeam}" pret` : "PDF pret", { id: toastId });
     } catch (error) {
       const msg = toApiMessage(error);
-      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg);
+      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
+      setPdfButtonState("idle");
+    } finally {
+      if (!generated) setPdfButtonState("idle");
     }
   };
 
-  return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
-      <Card className="flex justify-center p-4">
-        <div className="a4-frame overflow-auto rounded-xl border border-slate-300 bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          <section className="mb-5 rounded-lg border border-[#e8eaf3] p-4 dark:border-white/10">
-            <h2 className="text-xl font-bold">{state.core.title || "Sans titre"}</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {(state.core.event_date || "Date non définie")} · {(state.core.location_text || "Lieu non défini")}
-            </p>
-            {(state.modules.metadata.data.main_contact_name || state.modules.metadata.data.main_contact_phone) ? (
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Contact: {state.modules.metadata.data.main_contact_name || "—"} · {state.modules.metadata.data.main_contact_phone || "—"}
-              </p>
-            ) : null}
-          </section>
+  const startPointerInteraction = (
+    event: ReactPointerEvent,
+    key: ModuleKey,
+    mode: "move" | "resize",
+    handle?: ResizeHandle
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-          <div className="space-y-4">
-            {moduleEntries
-              .filter((entry) => entry.key !== "metadata" && state.modules[entry.key].enabled)
-              .map((entry) => {
-                const Form = moduleRegistry[entry.key].FormComponent as (props: {
-                  value: unknown;
-                  onChange: (value: unknown) => void;
-                }) => any;
-                return (
-                  <section key={entry.key} className="rounded-lg border border-[#e8eaf3] p-4 dark:border-white/10">
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                      {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
-                    </h3>
-                    <Form
-                      value={state.modules[entry.key].data}
-                      onChange={(value) =>
-                        setState((prev) => ({
-                          ...prev,
-                          modules: {
-                            ...prev.modules,
-                            [entry.key]: {
-                              ...prev.modules[entry.key],
-                              data: value as ModuleDataMap[typeof entry.key]
-                            }
-                          }
-                        }))
-                      }
-                    />
-                  </section>
-                );
-              })}
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const bodyStyle = document.body.style;
+    const prevTouchAction = bodyStyle.touchAction;
+    const prevUserSelect = bodyStyle.userSelect;
+    bodyStyle.touchAction = "none";
+    bodyStyle.userSelect = "none";
+    const cellW = canvas.clientWidth / CANVAS_COLS;
+    const cellH = canvas.clientHeight / CANVAS_ROWS;
+
+    const initialRect = { ...state.modules[key].layout.desktop };
+    const constraints = state.modules[key].layout.constraints;
+    const others = (Object.keys(state.modules) as ModuleKey[])
+      .filter((otherKey) => otherKey !== key && state.modules[otherKey].enabled)
+      .map((otherKey) => state.modules[otherKey].layout.desktop);
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = Math.round((moveEvent.clientX - startX) / cellW);
+      const deltaY = Math.round((moveEvent.clientY - startY) / cellH);
+
+      if (deltaX === 0 && deltaY === 0) return;
+
+      const nextRect = mode === "move"
+        ? tryMoveModuleRect({
+            current: initialRect,
+            others,
+            deltaX,
+            deltaY,
+            cols: CANVAS_COLS,
+            rows: CANVAS_ROWS
+          })
+        : tryResizeModuleRect({
+            current: initialRect,
+            others,
+            handle: handle!,
+            deltaX,
+            deltaY,
+            minW: constraints.minW,
+            minH: constraints.minH,
+            maxW: constraints.maxW,
+            maxH: constraints.maxH,
+            cols: CANVAS_COLS,
+            rows: CANVAS_ROWS
+          });
+
+      if (!nextRect) return;
+
+      setState((prev) => ({
+        ...prev,
+        modules: {
+          ...prev.modules,
+          [key]: {
+            ...prev.modules[key],
+            layout: {
+              ...prev.modules[key].layout,
+              desktop: nextRect
+            }
+          }
+        }
+      }));
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      bodyStyle.touchAction = prevTouchAction;
+      bodyStyle.userSelect = prevUserSelect;
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  };
+
+  const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
+  const selectedModule = state.modules[state.selectedModuleKey];
+  const selectedAudienceTeams = selectedModule.audience.teams;
+
+  const toggleTeamForSelectedModule = (team: string) => {
+    setState((prev) => {
+      const module = prev.modules[prev.selectedModuleKey];
+      const exists = module.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
+      const teams = exists
+        ? module.audience.teams.filter((value) => value.toLowerCase() !== team.toLowerCase())
+        : [...module.audience.teams, team];
+
+      return {
+        ...prev,
+        modules: {
+          ...prev.modules,
+          [prev.selectedModuleKey]: {
+            ...module,
+            audience: {
+              ...module.audience,
+              mode: teams.length > 0 ? "teams" : "all",
+              teams
+            }
+          }
+        }
+      };
+    });
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-1.5 dark:border-white/10 dark:bg-[#121212]">
+        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+          <div
+            ref={canvasRef}
+            className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
+          >
+            {visibleModules.map((entry) => {
+              const module = state.modules[entry.key];
+              const style = toCanvasStyle(module.layout);
+              const isSelected = state.selectedModuleKey === entry.key;
+              const isActive = hoveredModuleKey === entry.key || isSelected;
+              const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
+
+              return (
+                <section
+                  key={entry.key}
+                  style={style}
+                  className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
+                    MODULE_TONE_CLASS[entry.key]
+                  } ${
+                    isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
+                  }`}
+                  onMouseEnter={() => setHoveredModuleKey(entry.key)}
+                  onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
+                  onClick={() => {
+                    if (entry.key !== "metadata") {
+                      setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
+                    }
+                  }}
+                >
+                  <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                    {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
+                  </p>
+
+                  <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
+                    {entry.key === "metadata" ? (
+                      <MetadataPreview
+                        title={state.core.title}
+                        eventDate={state.core.event_date}
+                        location={state.core.location_text}
+                        metadata={state.modules.metadata.data}
+                      />
+                    ) : (
+                      <PreviewComponent value={module.data as never} />
+                    )}
+                  </div>
+
+                  {isActive ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-label={`move-${entry.key}`}
+                        className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
+                        onPointerDown={(event) => startPointerInteraction(event, entry.key, "move")}
+                      />
+
+                      {RESIZE_HANDLES.map((handle) => (
+                        <button
+                          key={handle.key}
+                          type="button"
+                          aria-label={`resize-${entry.key}-${handle.key}`}
+                          className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
+                          style={{ cursor: handle.cursor }}
+                          onPointerDown={(event) => startPointerInteraction(event, entry.key, "resize", handle.key)}
+                        />
+                      ))}
+                    </>
+                  ) : null}
+                </section>
+              );
+            })}
           </div>
         </div>
       </Card>
 
-      <Card className="space-y-4">
-        <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
+      <Card className="space-y-2.5 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-2.5 dark:border-white/10 dark:bg-[#121212]">
+        <div className="grid grid-cols-3 gap-2 xl:hidden">
+          <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
+          <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
+          <Button variant={mobilePanel === "edit" ? "primary" : "secondary"} onClick={() => setMobilePanel("edit")}>Edition</Button>
+        </div>
+
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "meta" ? "hidden" : ""}`}>
           <MetadataForm
             core={state.core}
             metadata={state.modules.metadata.data}
@@ -204,24 +543,269 @@ export function BriefingEditor({ briefing, modules }: Props) {
           />
         </div>
 
-        <div className="rounded-2xl border border-[#e8eaf3] p-3 dark:border-white/10">
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "modules" ? "hidden" : ""}`}>
           <ModuleList
             state={state}
-            onToggle={(key, enabled) => setState((prev) => ({
-              ...prev,
-              modules: {
-                ...prev.modules,
-                [key]: { ...prev.modules[key], enabled }
-              }
-            }))}
+            selected={state.selectedModuleKey}
+            onSelect={(key) => {
+              setState((prev) => ({ ...prev, selectedModuleKey: key }));
+              setMobilePanel("edit");
+            }}
+            onToggle={(key, enabled) =>
+              setState((prev) => ({
+                ...prev,
+                modules: normalizeLayouts({
+                  ...prev.modules,
+                  [key]: {
+                    ...prev.modules[key],
+                    enabled,
+                    metadata: { ...prev.modules[key].metadata, enabled }
+                  }
+                })
+              }))
+            }
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  className={`rounded-full border px-2 py-1 text-[11px] ${
+                    selectedAudienceTeams.length === 0
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
+                      : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                  }`}
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      modules: {
+                        ...prev.modules,
+                        [prev.selectedModuleKey]: {
+                          ...prev.modules[prev.selectedModuleKey],
+                          audience: {
+                            ...prev.modules[prev.selectedModuleKey].audience,
+                            mode: "all",
+                            teams: []
+                          }
+                        }
+                      }
+                    }))
+                  }
+                >
+                  All teams
+                </button>
+                {definedTeams.map((team) => {
+                  const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+                  return (
+                    <button
+                      key={team}
+                      type="button"
+                      className={`rounded-full border px-2 py-1 text-[11px] ${
+                        selected
+                          ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
+                          : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                      }`}
+                      onClick={() => toggleTeamForSelectedModule(team)}
+                    >
+                      {team}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <ModulePanel
+            state={state}
+            selected={state.selectedModuleKey}
+            onChange={(key, data) =>
+              setState((prev) => ({
+                ...prev,
+                modules: {
+                  ...prev.modules,
+                  [key]: {
+                    ...prev.modules[key],
+                    data: data as ModuleDataMap[typeof key]
+                  }
+                }
+              }))
+            }
+          />
+        </div>
+
+        <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition</p>
+            {teamModeEnabled && definedTeams.length > 0 ? (
+              <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className={`rounded-full border px-2 py-1 text-[11px] ${
+                      selectedAudienceTeams.length === 0
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
+                        : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                    }`}
+                    onClick={() =>
+                      setState((prev) => ({
+                        ...prev,
+                        modules: {
+                          ...prev.modules,
+                          [prev.selectedModuleKey]: {
+                            ...prev.modules[prev.selectedModuleKey],
+                            audience: {
+                              ...prev.modules[prev.selectedModuleKey].audience,
+                              mode: "all",
+                              teams: []
+                            }
+                          }
+                        }
+                      }))
+                    }
+                  >
+                    All teams
+                  </button>
+                  {definedTeams.map((team) => {
+                    const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+                    return (
+                      <button
+                        key={team}
+                        type="button"
+                        className={`rounded-full border px-2 py-1 text-[11px] ${
+                          selected
+                            ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
+                            : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                        }`}
+                        onClick={() => toggleTeamForSelectedModule(team)}
+                      >
+                        {team}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <ModulePanel
+              state={state}
+              selected={state.selectedModuleKey}
+              onChange={(key, data) =>
+                setState((prev) => ({
+                  ...prev,
+                  modules: {
+                    ...prev.modules,
+                    [key]: {
+                      ...prev.modules[key],
+                      data: data as ModuleDataMap[typeof key]
+                    }
+                  }
+                }))
+              }
+            />
+          </div>
+
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+            <MetadataForm
+              core={state.core}
+              metadata={state.modules.metadata.data}
+              onChange={(core, metadata) => {
+                setState((prev) => ({
+                  ...prev,
+                  core,
+                  modules: {
+                    ...prev.modules,
+                    metadata: { ...prev.modules.metadata, data: metadata }
+                  }
+                }));
+              }}
+            />
+          </div>
+
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edit teams</p>
+              <div className="space-y-2">
+                {definedTeams.map((team) => (
+                  <div key={team} className="flex items-center justify-between rounded-lg border border-[#e8eaf3] px-2 py-1.5 text-xs dark:border-white/10">
+                    <span className="font-medium">{team}</span>
+                    <span className="text-slate-500">
+                      {Object.values(state.modules)
+                        .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
+                        .length} tagged modules
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:block">
+          <ModuleList
+            state={state}
+            selected={state.selectedModuleKey}
+            onSelect={(key) => {
+              setState((prev) => ({ ...prev, selectedModuleKey: key }));
+              setMobilePanel("edit");
+            }}
+            onToggle={(key, enabled) =>
+              setState((prev) => ({
+                ...prev,
+                modules: normalizeLayouts({
+                  ...prev.modules,
+                  [key]: {
+                    ...prev.modules[key],
+                    enabled,
+                    metadata: { ...prev.modules[key].metadata, enabled }
+                  }
+                })
+              }))
+            }
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <select
+              className="h-9 rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
+              value={selectedPdfTeam}
+              onChange={(event) => setSelectedPdfTeam(event.target.value)}
+            >
+              <option value="all">PDF: All modules</option>
+              {definedTeams.map((team) => (
+                <option key={team} value={team}>
+                  PDF: {team}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button variant="secondary" onClick={() => void handlePdf()}>{t("app.downloadPdf")}</Button>
+          <Button variant="secondary" onClick={() => void handlePdf()} disabled={pdfButtonState === "loading"}>
+            {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
+            {pdfButtonState === "ready" ? <Check size={14} /> : null}
+            {pdfButtonState === "idle" ? "PDF" : pdfButtonState === "loading" ? "Loading..." : "Ready"}
+          </Button>
+          <Button variant="secondary" onClick={() => setShareOpen(true)}>
+            <Share2 size={14} />
+            Share
+          </Button>
+          <span className="ml-auto text-xs text-slate-500">
+            {saveIndicator === "saving" ? "Saving..." : saveIndicator === "saved" ? "Saved" : ""}
+          </span>
         </div>
       </Card>
+      <SharePanel
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        briefingId={briefing.id}
+        hasPdf={selectedPdfTeam === "all" ? Boolean(pdfPath) : Boolean(teamPdfPaths[selectedPdfTeam])}
+        teams={teamModeEnabled ? definedTeams : []}
+        selectedTeam={teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null}
+      />
     </div>
   );
 }

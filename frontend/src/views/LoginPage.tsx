@@ -6,8 +6,8 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { createStripeCheckoutSession, getMe, toApiMessage } from "@/lib/api";
-import { signInWithPassword, signOut, signUpWithPassword } from "@/lib/auth";
+import { getMe, toApiMessage } from "@/lib/api";
+import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -24,40 +24,7 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [registerStep, setRegisterStep] = useState<"credentials" | "offer">("credentials");
-  const [pendingRegistration, setPendingRegistration] = useState<Values | null>(null);
-  const [orgName, setOrgName] = useState("");
-  const [submittingOffer, setSubmittingOffer] = useState<"starter" | "plus" | "pro" | null>(null);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
-  const isOfferStep = mode === "register" && registerStep === "offer";
-
-  const continueWithOffer = async (plan: "starter" | "plus" | "pro") => {
-    if (!pendingRegistration) return;
-    const trimmedOrgName = orgName.trim();
-    if (trimmedOrgName.length < 2) {
-      toast.error("Nom d'organisation requis (min 2 caractères).");
-      return;
-    }
-
-    try {
-      setSubmittingOffer(plan);
-      const signUpResult = await signUpWithPassword(pendingRegistration.email, pendingRegistration.password);
-
-      if (!signUpResult.session) {
-        navigate(`/auth/check-email?email=${encodeURIComponent(pendingRegistration.email)}`);
-        return;
-      }
-
-      if (signUpResult.session) {
-        const checkout = await createStripeCheckoutSession(plan, trimmedOrgName);
-        window.location.href = checkout.url;
-        return;
-      }
-    } catch (error) {
-      toast.error(toApiMessage(error));
-      setSubmittingOffer(null);
-    }
-  };
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -65,15 +32,17 @@ export default function LoginPage() {
         await signInWithPassword(values.email, values.password);
         const me = await getMe();
         if (!me.role) {
-          await signOut();
-          toast.error("Aucun membership lié à ce compte.");
-          navigate("/login");
+          navigate("/onboarding");
           return;
         }
         navigate("/briefings");
       } else {
-        setPendingRegistration(values);
-        setRegisterStep("offer");
+        const signUpResult = await signUpWithPassword(values.email, values.password);
+        if (!signUpResult.session) {
+          navigate(`/auth/check-email?email=${encodeURIComponent(values.email)}`);
+          return;
+        }
+        navigate("/onboarding");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Auth error";
@@ -82,8 +51,7 @@ export default function LoginPage() {
   });
 
   return (
-    <div className={`grid min-h-full items-center gap-8 px-[var(--space-page-x)] py-[var(--space-page-y)] ${isOfferStep ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-[1.2fr_minmax(520px,42vw)] lg:gap-10"}`}>
-      {!isOfferStep ? (
+    <div className="grid min-h-full grid-cols-1 items-center gap-8 px-[var(--space-page-x)] py-[var(--space-page-y)] lg:grid-cols-[1.2fr_minmax(520px,42vw)] lg:gap-10">
       <section className="relative min-h-[420px] overflow-hidden rounded-panel border border-white/30 bg-gradient-to-br from-brand-500 via-[#6f72ff] to-[#45a5ff] p-[var(--space-card-pad)] text-white shadow-panel lg:min-h-[540px]">
         <div className="absolute -left-20 -top-16 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
         <div className="absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#ff8b3d]/30 blur-3xl" />
@@ -98,9 +66,8 @@ export default function LoginPage() {
           <li>• Vue A4 en temps réel pour éviter les erreurs sur site</li>
         </ul>
       </section>
-      ) : null}
 
-      <Card className={`card-pad w-full justify-self-center ${isOfferStep ? "max-w-4xl border-white/45 bg-white/18 backdrop-blur-xl dark:border-white/20 dark:bg-white/5" : "max-w-xl"}`}>
+      <Card className="card-pad w-full max-w-xl justify-self-center">
         <Tabs
           tabs={[
             { key: "login", label: t("auth.login") },
@@ -109,70 +76,15 @@ export default function LoginPage() {
           active={mode}
           onChange={(key) => {
             setMode(key as "login" | "register");
-            setRegisterStep("credentials");
-            setPendingRegistration(null);
-            setOrgName("");
-            setSubmittingOffer(null);
           }}
         >
-          {mode === "register" && registerStep === "offer" ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-[#4f5570] dark:text-[#b4bdd5]">Ton compte est prêt.</p>
-                <h2 className="mt-1 text-2xl font-bold">Choisis ton offre pour continuer vers le checkout Stripe</h2>
-                <div className="mt-3">
-                  <Input
-                    placeholder="Nom de l'organisation"
-                    value={orgName}
-                    onChange={(event) => setOrgName(event.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="cards-grid-3">
-                <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
-                  <p className="text-lg font-semibold">Starter</p>
-                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Offre Starter via Stripe Checkout</p>
-                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("starter")}>
-                    {submittingOffer === "starter" ? "Redirection..." : "Choisir Starter"}
-                  </Button>
-                </div>
-                <div className="surface-pad rounded-2xl border border-[#e6e8f2] bg-white/75 dark:border-white/10 dark:bg-white/5">
-                  <p className="text-lg font-semibold">Plus</p>
-                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Plus de volume et confort</p>
-                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("plus")}>
-                    {submittingOffer === "plus" ? "Redirection..." : "Choisir Plus"}
-                  </Button>
-                </div>
-                <div className="surface-pad rounded-2xl border border-brand-500/40 bg-brand-500/10 dark:border-brand-400/30 dark:bg-brand-400/10">
-                  <p className="text-lg font-semibold">Pro</p>
-                  <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Le plan le plus complet</p>
-                  <Button className="mt-4 w-full" disabled={submittingOffer !== null} onClick={() => void continueWithOffer("pro")}>
-                    {submittingOffer === "pro" ? "Redirection..." : "Choisir Pro"}
-                  </Button>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                disabled={submittingOffer !== null}
-                onClick={() => {
-                  setRegisterStep("credentials");
-                  setPendingRegistration(null);
-                }}
-              >
-                Retour
-              </Button>
-            </div>
-          ) : (
-            <form className="space-y-3" onSubmit={onSubmit}>
-              <Input placeholder={t("auth.email")} type="email" {...form.register("email")} />
-              <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
-              <Button type="submit" className="w-full" withArrow>
-                {mode === "login" ? t("auth.submitLogin") : "Continuer"}
-              </Button>
-            </form>
-          )}
+          <form className="space-y-3" onSubmit={onSubmit}>
+            <Input placeholder={t("auth.email")} type="email" {...form.register("email")} />
+            <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
+            <Button type="submit" className="w-full" withArrow>
+              {mode === "login" ? t("auth.submitLogin") : "Continuer"}
+            </Button>
+          </form>
         </Tabs>
       </Card>
     </div>

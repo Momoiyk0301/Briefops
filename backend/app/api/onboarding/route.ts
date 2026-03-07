@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     if (existingMembershipError) throw existingMembershipError;
     if (existingMembership) {
-      throw new HttpError(409, "User already has an organization");
+      throw new HttpError(409, "User already has a workspace");
     }
 
     const admin = createServiceRoleClient();
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const { data: organization, error: organizationError } = await admin
-      .from("organizations")
+      .from("workspaces")
       .insert({
         owner_id: userId,
         name: payload.org_name
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const { error: membershipError } = await admin.from("memberships").insert({
       org_id: organization.id,
       user_id: userId,
-      role: "member"
+      role: "owner"
     });
 
     if (membershipError) throw membershipError;

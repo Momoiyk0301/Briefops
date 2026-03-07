@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ZodType } from "zod";
+import { ZodType, ZodTypeDef } from "zod";
 
 export type UserPlan = "free" | "starter" | "plus" | "pro";
 export type Locale = "fr" | "en";
@@ -23,9 +23,25 @@ export type MeResponse = {
     pdf_exports_remaining: number | null;
   };
   org: { id: string; name: string } | null;
+  workspace?: { id: string; name: string } | null;
+  onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
   is_admin: boolean;
   degraded: boolean;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  stripe_price_id: string | null;
+  price_amount: number;
+  price_currency: string;
+  billing_interval: string;
+  features: string[];
+  is_highlighted: boolean;
+  sort_order: number;
 };
 
 export type StaffMember = {
@@ -47,17 +63,55 @@ export type Briefing = {
   title: string;
   event_date: string | null;
   location_text: string | null;
+  pdf_path?: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
 };
 
+export type PublicLinkStatus = "active" | "expired" | "revoked";
+
+export type PublicLink = {
+  id: string;
+  briefing_id: string;
+  resource_type: string;
+  team?: string | null;
+  token: string;
+  created_by: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  status: PublicLinkStatus;
+  url: string;
+};
+
+export type PublicLinkWithBriefing = PublicLink & {
+  briefing_title: string;
+  pdf_path: string | null;
+};
+
 export type BriefingModuleRow = {
   id: string;
   briefing_id: string;
+  module_id?: string | null;
   module_key: ModuleKey;
   enabled: boolean;
   data_json: unknown;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RegistryModule = {
+  id: string;
+  org_id: string;
+  name: string;
+  type: ModuleKey;
+  version: number;
+  icon: string;
+  category: string;
+  enabled: boolean;
+  default_layout: unknown;
+  default_data: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -85,6 +139,8 @@ export type MetadataExtra = {
   main_contact_name: string;
   main_contact_phone: string;
   global_notes: string;
+  team_mode: boolean;
+  teams: string[];
 };
 
 export type AccessData = {
@@ -159,9 +215,40 @@ export type ModuleDataMap = {
 };
 
 export type ModuleState<K extends ModuleKey> = {
+  module_id?: string | null;
   key: K;
   enabled: boolean;
+  metadata: ModuleMetadata;
+  audience: ModuleAudience;
+  layout: ModuleLayout;
   data: ModuleDataMap[K];
+};
+
+export type ModuleMetadata = {
+  type: string;
+  label: string;
+  version: number;
+  enabled: boolean;
+  order: number;
+  description: string;
+  icon: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModuleAudience = {
+  mode: "all" | "teams";
+  teams: string[];
+  visibility: "visible" | "hidden";
+};
+
+export type ModuleLayout = {
+  desktop: { x: number; y: number; w: number; h: number };
+  mobile: { x: number; y: number; w: number; h: number };
+  constraints: { minW: number; minH: number; maxW: number; maxH: number };
+  behavior: { draggable: boolean; resizable: boolean };
+  style: { variant: string; shape: string; density: string };
 };
 
 export type EditorCore = {
@@ -185,7 +272,7 @@ export type ModuleRegistryEntry<K extends ModuleKey> = {
   description: { fr: string; en: string };
   defaultEnabled: boolean;
   isMandatory?: boolean;
-  schema: ZodType<ModuleDataMap[K]>;
+  schema: ZodType<ModuleDataMap[K], ZodTypeDef, unknown>;
   defaultData: ModuleDataMap[K];
   FormComponent: (props: ModuleFormProps<ModuleDataMap[K]>) => ReactNode;
   PreviewComponent: (props: ModulePreviewProps<ModuleDataMap[K]>) => ReactNode;
