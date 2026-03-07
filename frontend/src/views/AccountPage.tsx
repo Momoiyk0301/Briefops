@@ -20,7 +20,7 @@ export default function AccountPage() {
   }
 
   const user = meQuery.data?.user;
-  const org = meQuery.data?.org;
+  const workspace = meQuery.data?.org;
   const role = meQuery.data?.role ?? "member";
   const plan = meQuery.data?.plan ?? "free";
   const usage = meQuery.data?.usage;
@@ -52,8 +52,8 @@ export default function AccountPage() {
             <p className="mt-1 font-semibold">{user?.id ?? "Non disponible"}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Organisation</p>
-            <p className="mt-1 font-semibold">{org?.name ?? "Aucune"}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Workspace</p>
+            <p className="mt-1 font-semibold">{workspace?.name ?? "Aucun"}</p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Rôle</p>

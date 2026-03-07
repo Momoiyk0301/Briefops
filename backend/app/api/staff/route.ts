@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Organization not found");
+    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
 
     const data = await listStaffByOrg(client, membership.org_id);
     return NextResponse.json({ data });
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Organization not found");
+    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
 
     const { data: briefing, error: briefingError } = await client
       .from("briefings")
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     const data = await createStaff(client, membership.org_id, body);
     if (!data.org_id || data.org_id !== membership.org_id) {
-      throw new HttpError(500, "Invalid staff organization");
+      throw new HttpError(500, "Invalid staff workspace");
     }
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {

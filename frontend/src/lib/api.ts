@@ -5,6 +5,9 @@ import {
   MeResponse,
   ModuleDataMap,
   ModuleKey,
+  PublicLink,
+  PublicLinkWithBriefing,
+  Product,
   RegistryModule,
   StaffMember,
   UserPlan
@@ -119,6 +122,8 @@ export async function getMe(): Promise<MeResponse> {
         pdf_exports_remaining: number | null;
       };
       org: { id: string; name: string } | null;
+      workspace?: { id: string; name: string } | null;
+      onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
       role: "owner" | "admin" | "member" | null;
       is_admin: boolean;
     }>(
@@ -139,11 +144,29 @@ export async function getMe(): Promise<MeResponse> {
   }
 }
 
-export async function postOnboarding(input: { org_name: string }) {
-  return requestJson<{ ok: boolean }>("/api/onboarding", {
+export async function postOnboarding(input: {
+  workspace_name?: string;
+  org_name?: string;
+  country?: string;
+  team_size?: number | null;
+  vat_number?: string | null;
+}) {
+  return requestJson<{ ok: boolean; workspace?: { id: string; name: string } }>("/api/onboarding", {
     method: "POST",
     body: input
   });
+}
+
+export async function updateOnboardingStep(step: "workspace" | "products" | "demo" | "done") {
+  return requestJson<{ ok: boolean; onboarding_step: string }>("/api/onboarding", {
+    method: "POST",
+    body: { onboarding_step: step }
+  });
+}
+
+export async function getProducts(): Promise<Product[]> {
+  const response = await requestJson<{ data: Product[] }>("/api/products");
+  return response.data;
 }
 
 export async function getBriefings() {
@@ -278,9 +301,10 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function generateBriefingPdf(id: string): Promise<{ pdf_path: string; pdf_url: string; generated_at: string }> {
+export async function generateBriefingPdf(id: string, team?: string | null): Promise<{ pdf_path: string; pdf_url: string; generated_at: string; team?: string | null }> {
+  const query = team ? `?format=json&team=${encodeURIComponent(team)}` : "?format=json";
   return requestJson<{ ok: boolean; pdf_path: string; pdf_url: string; generated_at: string }>(
-    `/api/pdf/${id}?format=json`
+    `/api/pdf/${id}${query}`
   );
 }
 
@@ -291,6 +315,35 @@ export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports"
   return response.url;
 }
 
+export async function listBriefingShareLinks(briefingId: string): Promise<PublicLink[]> {
+  const response = await requestJson<{ data: PublicLink[] }>(`/api/briefings/${briefingId}/share`);
+  return response.data;
+}
+
+export async function createBriefingShareLink(
+  briefingId: string,
+  duration: "24h" | "3d" | "1w" | "30d" | "never",
+  team?: string | null
+): Promise<PublicLink> {
+  const response = await requestJson<{ data: PublicLink }>(`/api/briefings/${briefingId}/share`, {
+    method: "POST",
+    body: { duration, team: team ?? null }
+  });
+  return response.data;
+}
+
+export async function revokeBriefingShareLink(briefingId: string, linkId: string): Promise<void> {
+  await requestJson<{ ok: boolean }>(`/api/briefings/${briefingId}/share`, {
+    method: "DELETE",
+    body: { link_id: linkId }
+  });
+}
+
+export async function listPublicLinks(): Promise<PublicLinkWithBriefing[]> {
+  const response = await requestJson<{ data: PublicLinkWithBriefing[] }>("/api/public-links");
+  return response.data;
+}
+
 export async function createStripeCheckoutSession(
   plan: "starter" | "plus" | "pro",
   org_name?: string
@@ -298,6 +351,22 @@ export async function createStripeCheckoutSession(
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
     body: { plan, org_name }
+  });
+}
+
+export async function createOnboardingCheckoutSession(input: {
+  stripe_price_id: string;
+  workspace_id: string;
+  workspace_name?: string;
+}): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/checkout", {
+    method: "POST",
+    body: {
+      stripe_price_id: input.stripe_price_id,
+      workspace_id: input.workspace_id,
+      org_name: input.workspace_name ?? "",
+      source: "onboarding"
+    }
   });
 }
 

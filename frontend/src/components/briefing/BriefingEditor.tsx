@@ -1,5 +1,5 @@
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FileText } from "lucide-react";
+import { Check, Loader2, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -12,6 +12,7 @@ import { MetadataForm } from "@/components/briefing/MetadataForm";
 import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
 import { ModuleList } from "@/components/briefing/ModuleList";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
+import { SharePanel } from "@/components/briefing/SharePanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -148,8 +149,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [saving, setSaving] = useState(false);
   const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
   const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfPath, setPdfPath] = useState<string | null>(briefing.pdf_path ?? null);
+  const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
+  const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const lastSaved = useRef("");
 
@@ -163,6 +169,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     if (snapshot === lastSaved.current) return;
 
     const id = window.setTimeout(() => {
+      setSaveIndicator("saving");
       void handleSave(false);
     }, 800);
 
@@ -176,7 +183,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       if (!briefing.pdf_path) return;
       try {
         const signedUrl = await getStorageSignedUrl("exports", briefing.pdf_path, 3600);
-        if (!cancelled) setPdfUrl(signedUrl);
+        if (!cancelled) {
+          setPdfUrl(signedUrl);
+          setPdfPath(briefing.pdf_path);
+          setPdfButtonState("ready");
+        }
       } catch {
         if (!cancelled) setPdfUrl(null);
       }
@@ -187,6 +198,50 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       cancelled = true;
     };
   }, [briefing.pdf_path]);
+
+  const teamModeEnabled = state.modules.metadata.data.team_mode;
+  const definedTeams = state.modules.metadata.data.teams;
+
+  useEffect(() => {
+    if (!teamModeEnabled) {
+      if (selectedPdfTeam !== "all") setSelectedPdfTeam("all");
+      return;
+    }
+    if (selectedPdfTeam === "all") return;
+    const stillExists = definedTeams.some((team) => team.toLowerCase() === selectedPdfTeam.toLowerCase());
+    if (!stillExists) setSelectedPdfTeam("all");
+  }, [definedTeams, selectedPdfTeam, teamModeEnabled]);
+
+  useEffect(() => {
+    setState((prev) => {
+      let changed = false;
+      const nextModules = { ...prev.modules };
+      const teamSet = new Set(definedTeams.map((team) => team.toLowerCase()));
+
+      (Object.keys(prev.modules) as ModuleKey[])
+        .filter((key) => key !== "metadata")
+        .forEach((key) => {
+          const module = prev.modules[key];
+          const filteredTeams = module.audience.teams.filter((team) => teamSet.has(team.toLowerCase()));
+          const nextMode = teamModeEnabled && filteredTeams.length > 0 ? "teams" : "all";
+
+          if (nextMode !== module.audience.mode || filteredTeams.length !== module.audience.teams.length) {
+            changed = true;
+            nextModules[key] = {
+              ...module,
+              audience: {
+                ...module.audience,
+                mode: nextMode,
+                teams: filteredTeams
+              }
+            };
+          }
+        });
+
+      if (!changed) return prev;
+      return { ...prev, modules: nextModules };
+    });
+  }, [definedTeams, teamModeEnabled]);
 
   const payload = useMemo(
     () =>
@@ -217,6 +272,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       await upsertBriefingModules(briefing.id, payload);
       lastSaved.current = JSON.stringify(state);
       if (manual) toast.success(t("editor.saved"));
+      if (!manual) setSaveIndicator("saved");
     } catch (error) {
       toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
     } finally {
@@ -225,17 +281,47 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   };
 
   const handlePdf = async () => {
-    const toastId = toast.loading("PDF en cours de generation...");
+    const targetTeam = teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null;
+
+    if (pdfButtonState === "ready" && !targetTeam) {
+      try {
+        if (pdfPath) {
+          const signedUrl = await getStorageSignedUrl("exports", pdfPath, 3600);
+          setPdfUrl(signedUrl);
+          window.open(signedUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        if (pdfUrl) {
+          window.open(pdfUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+      } catch (error) {
+        toast.error(toApiMessage(error));
+      }
+    }
+
+    const toastId = toast.loading(targetTeam ? `PDF team "${targetTeam}" en cours...` : "PDF en cours de generation...");
+    let generated = false;
     try {
-      setIsGeneratingPdf(true);
-      const result = await generateBriefingPdf(briefing.id);
+      setPdfButtonState("loading");
+      const result = await generateBriefingPdf(briefing.id, targetTeam);
       setPdfUrl(result.pdf_url);
-      toast.success("PDF pret", { id: toastId });
+      setPdfPath(result.pdf_path);
+      if (targetTeam) {
+        setTeamPdfPaths((prev) => ({
+          ...prev,
+          [targetTeam]: result.pdf_path
+        }));
+      }
+      setPdfButtonState("ready");
+      generated = true;
+      toast.success(targetTeam ? `PDF team "${targetTeam}" pret` : "PDF pret", { id: toastId });
     } catch (error) {
       const msg = toApiMessage(error);
       toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
+      setPdfButtonState("idle");
     } finally {
-      setIsGeneratingPdf(false);
+      if (!generated) setPdfButtonState("idle");
     }
   };
 
@@ -327,11 +413,38 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   };
 
   const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
+  const selectedModule = state.modules[state.selectedModuleKey];
+  const selectedAudienceTeams = selectedModule.audience.teams;
+
+  const toggleTeamForSelectedModule = (team: string) => {
+    setState((prev) => {
+      const module = prev.modules[prev.selectedModuleKey];
+      const exists = module.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
+      const teams = exists
+        ? module.audience.teams.filter((value) => value.toLowerCase() !== team.toLowerCase())
+        : [...module.audience.teams, team];
+
+      return {
+        ...prev,
+        modules: {
+          ...prev.modules,
+          [prev.selectedModuleKey]: {
+            ...module,
+            audience: {
+              ...module.audience,
+              mode: teams.length > 0 ? "teams" : "all",
+              teams
+            }
+          }
+        }
+      };
+    });
+  };
 
   return (
-    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_420px]">
-      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-2 dark:border-white/10 dark:bg-[#121212]">
-        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-200 bg-white p-2 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-1.5 dark:border-white/10 dark:bg-[#121212]">
+        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
           <div
             ref={canvasRef}
             className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
@@ -405,7 +518,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         </div>
       </Card>
 
-      <Card className="space-y-3 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-3 dark:border-white/10 dark:bg-[#121212]">
+      <Card className="space-y-2.5 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-2.5 dark:border-white/10 dark:bg-[#121212]">
         <div className="grid grid-cols-3 gap-2 xl:hidden">
           <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
           <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
@@ -455,6 +568,56 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
         <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  className={`rounded-full border px-2 py-1 text-[11px] ${
+                    selectedAudienceTeams.length === 0
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
+                      : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                  }`}
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      modules: {
+                        ...prev.modules,
+                        [prev.selectedModuleKey]: {
+                          ...prev.modules[prev.selectedModuleKey],
+                          audience: {
+                            ...prev.modules[prev.selectedModuleKey].audience,
+                            mode: "all",
+                            teams: []
+                          }
+                        }
+                      }
+                    }))
+                  }
+                >
+                  All teams
+                </button>
+                {definedTeams.map((team) => {
+                  const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+                  return (
+                    <button
+                      key={team}
+                      type="button"
+                      className={`rounded-full border px-2 py-1 text-[11px] ${
+                        selected
+                          ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
+                          : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                      }`}
+                      onClick={() => toggleTeamForSelectedModule(team)}
+                    >
+                      {team}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <ModulePanel
             state={state}
             selected={state.selectedModuleKey}
@@ -473,9 +636,59 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           />
         </div>
 
-        <div className="hidden xl:grid xl:grid-cols-2 xl:gap-2">
+        <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
           <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition</p>
+            {teamModeEnabled && definedTeams.length > 0 ? (
+              <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className={`rounded-full border px-2 py-1 text-[11px] ${
+                      selectedAudienceTeams.length === 0
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
+                        : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                    }`}
+                    onClick={() =>
+                      setState((prev) => ({
+                        ...prev,
+                        modules: {
+                          ...prev.modules,
+                          [prev.selectedModuleKey]: {
+                            ...prev.modules[prev.selectedModuleKey],
+                            audience: {
+                              ...prev.modules[prev.selectedModuleKey].audience,
+                              mode: "all",
+                              teams: []
+                            }
+                          }
+                        }
+                      }))
+                    }
+                  >
+                    All teams
+                  </button>
+                  {definedTeams.map((team) => {
+                    const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+                    return (
+                      <button
+                        key={team}
+                        type="button"
+                        className={`rounded-full border px-2 py-1 text-[11px] ${
+                          selected
+                            ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
+                            : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                        }`}
+                        onClick={() => toggleTeamForSelectedModule(team)}
+                      >
+                        {team}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <ModulePanel
               state={state}
               selected={state.selectedModuleKey}
@@ -510,6 +723,24 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
               }}
             />
           </div>
+
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edit teams</p>
+              <div className="space-y-2">
+                {definedTeams.map((team) => (
+                  <div key={team} className="flex items-center justify-between rounded-lg border border-[#e8eaf3] px-2 py-1.5 text-xs dark:border-white/10">
+                    <span className="font-medium">{team}</span>
+                    <span className="text-slate-500">
+                      {Object.values(state.modules)
+                        .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
+                        .length} tagged modules
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="hidden rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:block">
@@ -536,24 +767,44 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           />
         </div>
 
-        <div className="flex gap-2">
-          <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button variant="secondary" onClick={() => void handlePdf()} disabled={isGeneratingPdf}>
-            {isGeneratingPdf ? t("app.loading") : t("app.downloadPdf")}
-          </Button>
-          {pdfUrl ? (
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="open-generated-pdf"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#e6e8f2] text-[#d22] transition hover:bg-red-50 dark:border-white/10"
+        <div className="flex items-center gap-2">
+          {teamModeEnabled && definedTeams.length > 0 ? (
+            <select
+              className="h-9 rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
+              value={selectedPdfTeam}
+              onChange={(event) => setSelectedPdfTeam(event.target.value)}
             >
-              <FileText size={18} />
-            </a>
+              <option value="all">PDF: All modules</option>
+              {definedTeams.map((team) => (
+                <option key={team} value={team}>
+                  PDF: {team}
+                </option>
+              ))}
+            </select>
           ) : null}
+          <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
+          <Button variant="secondary" onClick={() => void handlePdf()} disabled={pdfButtonState === "loading"}>
+            {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
+            {pdfButtonState === "ready" ? <Check size={14} /> : null}
+            {pdfButtonState === "idle" ? "PDF" : pdfButtonState === "loading" ? "Loading..." : "Ready"}
+          </Button>
+          <Button variant="secondary" onClick={() => setShareOpen(true)}>
+            <Share2 size={14} />
+            Share
+          </Button>
+          <span className="ml-auto text-xs text-slate-500">
+            {saveIndicator === "saving" ? "Saving..." : saveIndicator === "saved" ? "Saved" : ""}
+          </span>
         </div>
       </Card>
+      <SharePanel
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        briefingId={briefing.id}
+        hasPdf={selectedPdfTeam === "all" ? Boolean(pdfPath) : Boolean(teamPdfPaths[selectedPdfTeam])}
+        teams={teamModeEnabled ? definedTeams : []}
+        selectedTeam={teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null}
+      />
     </div>
   );
 }

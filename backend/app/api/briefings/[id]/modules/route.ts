@@ -78,7 +78,7 @@ function buildCanonicalModuleJson(module: {
 
 async function ensureBriefingModulesAreSeeded(client: Awaited<ReturnType<typeof requireUser>>["client"], userId: string, briefingId: string) {
   const orgId = await getUserOrgId(client, userId);
-  if (!orgId) throw new HttpError(404, "Organization not found");
+  if (!orgId) throw new HttpError(404, "Workspace not found");
 
   const registry = await ensureRegistryModules(client, orgId);
   const existing = await listModules(client, briefingId);

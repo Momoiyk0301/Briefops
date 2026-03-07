@@ -8,12 +8,18 @@ import { Briefing, BriefingModuleRow } from "@/lib/types";
 
 const apiMocks = vi.hoisted(() => ({
   generateBriefingPdf: vi.fn(),
-  getStorageSignedUrl: vi.fn()
+  getStorageSignedUrl: vi.fn(),
+  listBriefingShareLinks: vi.fn().mockResolvedValue([]),
+  createBriefingShareLink: vi.fn(),
+  revokeBriefingShareLink: vi.fn()
 }));
 
 vi.mock("@/lib/api", () => ({
   generateBriefingPdf: apiMocks.generateBriefingPdf,
   getStorageSignedUrl: apiMocks.getStorageSignedUrl,
+  listBriefingShareLinks: apiMocks.listBriefingShareLinks,
+  createBriefingShareLink: apiMocks.createBriefingShareLink,
+  revokeBriefingShareLink: apiMocks.revokeBriefingShareLink,
   patchBriefing: vi.fn().mockResolvedValue({}),
   toApiMessage: vi.fn((e: unknown) => String(e)),
   upsertBriefingModules: vi.fn().mockResolvedValue([])
@@ -81,8 +87,8 @@ describe("BriefingEditor", () => {
 
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /télécharger pdf|download pdf/i }));
-    expect(screen.getByRole("button", { name: /chargement|loading/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /^pdf$/i }));
+    expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
 
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
@@ -90,8 +96,27 @@ describe("BriefingEditor", () => {
       generated_at: "2026-03-07T00:00:00.000Z"
     });
 
+    await waitFor(() => expect(screen.getByRole("button", { name: /ready/i })).toBeInTheDocument());
+  });
+
+  it("opens share drawer and loads links for the current briefing", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getByRole("button", { name: /share/i }));
+    expect(await screen.findByText(/Share PDF/i)).toBeInTheDocument();
+    expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
+  });
+
+  it("shows subtle saved indicator after autosave", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    const titleInput = screen.getAllByPlaceholderText(/Title/i)[0];
+    await user.type(titleInput, " updated");
+
     await waitFor(() => {
-      expect(screen.getByLabelText("open-generated-pdf")).toHaveAttribute("href", "https://example.test/briefing.pdf");
-    });
+      expect(screen.getByText(/Saved/i)).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 });

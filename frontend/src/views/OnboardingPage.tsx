@@ -1,59 +1,151 @@
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { postOnboarding, toApiMessage } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { OnboardingStepKey, OnboardingSteps } from "@/components/onboarding/OnboardingSteps";
+import {
+  createOnboardingCheckoutSession,
+  getMe,
+  getProducts,
+  postOnboarding,
+  toApiMessage,
+  updateOnboardingStep
+} from "@/lib/api";
+import type { Product } from "@/lib/types";
 
-const schema = z.object({ org_name: z.string().min(2) });
-type Values = z.infer<typeof schema>;
+function normalizeStep(raw?: string | null): OnboardingStepKey {
+  if (raw === "products") return "products";
+  if (raw === "demo") return "demo";
+  return "workspace";
+}
 
 export default function OnboardingPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { org_name: "" } });
+  const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const requestedStep = params.get("step");
+  const [submittingProductId, setSubmittingProductId] = useState<string | null>(null);
+  const [demoIndex, setDemoIndex] = useState(0);
 
-  const mutation = useMutation({
+  const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
+  const productsQuery = useQuery({
+    queryKey: ["products"],
+    queryFn: getProducts,
+    enabled: !meQuery.isLoading
+  });
+
+  const onboardingStep = normalizeStep(
+    requestedStep === "demo" ? "demo" : meQuery.data?.onboarding_step
+  );
+
+  const workspace = meQuery.data?.workspace ?? meQuery.data?.org ?? null;
+  const products = useMemo(() => (productsQuery.data ?? []).slice(0, 3), [productsQuery.data]);
+
+  useEffect(() => {
+    if (meQuery.data?.role && meQuery.data?.onboarding_step === "done" && requestedStep !== "demo") {
+      navigate("/briefings", { replace: true });
+    }
+  }, [meQuery.data?.onboarding_step, meQuery.data?.role, navigate, requestedStep]);
+
+  const createWorkspaceMutation = useMutation({
     mutationFn: postOnboarding,
-    onSuccess: () => navigate("/briefings"),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      toast.success("Workspace created");
+    },
     onError: (error) => toast.error(toApiMessage(error))
   });
 
-  const submit = form.handleSubmit(async (values) => {
-    try {
-      await mutation.mutateAsync(values);
-    } catch (error) {
-      const message = toApiMessage(error);
-      if (message.includes("already has an organization")) {
-        toast.success("Organisation déjà créée, redirection.");
-        navigate("/briefings");
-        return;
-      }
-
-      if (message.toLowerCase().includes("unauthorized")) {
-        toast.error("Session expirée. Reconnecte-toi.");
-        navigate("/login");
-        return;
-      }
-
-      toast.error(`${t("onboarding.fallback")} (${message})`);
-    }
+  const saveStepMutation = useMutation({
+    mutationFn: updateOnboardingStep
   });
 
+  useEffect(() => {
+    if (requestedStep === "demo" && meQuery.data?.onboarding_step !== "done" && meQuery.data?.onboarding_step !== "demo") {
+      void saveStepMutation.mutateAsync("demo");
+    }
+  }, [meQuery.data?.onboarding_step, requestedStep, saveStepMutation]);
+
+  const finishDemoMutation = useMutation({
+    mutationFn: async () => {
+      await saveStepMutation.mutateAsync("done");
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      navigate("/briefings");
+    },
+    onError: (error) => toast.error(toApiMessage(error))
+  });
+
+  const handleWorkspaceSubmit = async (input: {
+    workspace_name: string;
+    country: string;
+    team_size: number | null;
+    vat_number: string | null;
+  }) => {
+    await createWorkspaceMutation.mutateAsync(input);
+  };
+
+  const handleProductSelect = async (product: Product) => {
+    if (!workspace?.id) {
+      toast.error("Create your workspace first");
+      return;
+    }
+    if (!product.stripe_price_id) {
+      toast.error("Missing Stripe price for this product");
+      return;
+    }
+
+    setSubmittingProductId(product.id);
+    try {
+      await saveStepMutation.mutateAsync("products");
+      const session = await createOnboardingCheckoutSession({
+        stripe_price_id: product.stripe_price_id,
+        workspace_id: workspace.id,
+        workspace_name: workspace.name
+      });
+      window.location.href = session.url;
+    } catch (error) {
+      toast.error(toApiMessage(error));
+      setSubmittingProductId(null);
+    }
+  };
+
+  const handleBackToWorkspace = async () => {
+    await saveStepMutation.mutateAsync("workspace");
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
+  };
+
+  const handleDemoPrev = () => {
+    setDemoIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleDemoNext = () => {
+    setDemoIndex((prev) => Math.min(prev + 1, 2));
+  };
+
+  const handleDemoFinish = async () => {
+    await finishDemoMutation.mutateAsync();
+  };
+
   return (
-    <Card className="card-pad mx-auto max-w-xl">
-      <h1 className="mb-1 text-2xl font-semibold">{t("onboarding.title")}</h1>
-      <p className="mb-4 text-sm text-[#888]">Configure ton espace en moins d'une minute.</p>
-      <form className="space-y-3" onSubmit={submit}>
-        <Input placeholder={t("onboarding.orgName")} {...form.register("org_name")} />
-        <Button type="submit" disabled={mutation.isPending} withArrow>{t("onboarding.submit")}</Button>
-      </form>
-    </Card>
+    <OnboardingModal step={onboardingStep}>
+      <OnboardingSteps
+        step={onboardingStep}
+        workspaceName={workspace?.name ?? ""}
+        products={products}
+        productsLoading={productsQuery.isLoading}
+        submittingWorkspace={createWorkspaceMutation.isPending}
+        submittingProductId={submittingProductId}
+        demoIndex={demoIndex}
+        finishingDemo={finishDemoMutation.isPending}
+        onWorkspaceSubmit={handleWorkspaceSubmit}
+        onBackToWorkspace={handleBackToWorkspace}
+        onProductSelect={handleProductSelect}
+        onDemoPrev={handleDemoPrev}
+        onDemoNext={handleDemoNext}
+        onDemoFinish={handleDemoFinish}
+      />
+    </OnboardingModal>
   );
 }

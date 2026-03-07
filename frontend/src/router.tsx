@@ -1,4 +1,4 @@
-import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -11,6 +11,7 @@ import BillingPage from "@/views/BillingPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
+import DocumentsPage from "@/views/DocumentsPage";
 import LoginPage from "@/views/LoginPage";
 import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
@@ -30,9 +31,11 @@ function RequireAuth() {
 
 function ProtectedLayout() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
+  const location = useLocation();
 
   if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
-  if (!meQuery.data?.role) return <Navigate to="/login" replace />;
+  if (!meQuery.data?.role && location.pathname !== "/onboarding") return <Navigate to="/onboarding" replace />;
+  if (location.pathname === "/onboarding") return <Outlet />;
 
   return (
     <AppShell
@@ -57,6 +60,7 @@ function LoginGate() {
   if (loading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
   if (session && meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
   if (session && meQuery.data?.role) return <Navigate to="/briefings" replace />;
+  if (session && !meQuery.data?.role) return <Navigate to="/onboarding" replace />;
   return <LoginPage />;
 }
 
@@ -87,6 +91,7 @@ export const router = createBrowserRouter([
           { path: "/onboarding", element: <OnboardingPage /> },
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
+          { path: "/documents", element: <DocumentsPage /> },
           { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },
           { path: "/abonnement", element: <SubscriptionPage /> },

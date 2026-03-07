@@ -63,6 +63,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           <div className="flex h-full flex-col justify-between">
             <nav className="space-y-3">
               <SidebarItem to="/briefings" title="Briefings" icon={<FileText size={18} />} />
+              <SidebarItem to="/documents" title="Documents" icon={<FileText size={18} />} />
               <SidebarItem to="/modules" title="Modules" icon={<Boxes size={18} />} />
               <SidebarItem to="/staff" title="Staff" icon={<Users size={18} />} />
               <SidebarItem to="/account" title="Compte" icon={<CircleUser size={18} />} />
@@ -117,6 +118,15 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           >
             <Boxes size={16} />
             Modules
+          </NavLink>
+          <NavLink
+            to="/documents"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <FileText size={16} />
+            Documents
           </NavLink>
           <NavLink
             to="/staff"

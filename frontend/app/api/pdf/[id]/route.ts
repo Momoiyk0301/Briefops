@@ -11,6 +11,7 @@ import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);
+const teamSchema = z.string().trim().min(1).max(64).optional();
 
 const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
   free: 3,
@@ -21,6 +22,37 @@ const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
 
 type Params = { params: Promise<{ id: string }> };
 
+function normalizeTeamKey(team?: string | null) {
+  if (!team) return null;
+  const normalized = team
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || null;
+}
+
+function isModuleVisibleForTeam(
+  moduleRow: { enabled: boolean; data_json: unknown },
+  selectedTeam: string | null
+) {
+  if (!moduleRow.enabled) return false;
+  if (!moduleRow.data_json || typeof moduleRow.data_json !== "object" || Array.isArray(moduleRow.data_json)) return true;
+
+  const raw = moduleRow.data_json as {
+    metadata?: { enabled?: boolean };
+    audience?: { mode?: string; teams?: string[]; visibility?: string };
+  };
+  const metadataEnabled = raw.metadata?.enabled !== false;
+  const visibilityEnabled = raw.audience?.visibility !== "hidden";
+  if (!metadataEnabled || !visibilityEnabled) return false;
+  if (!selectedTeam) return true;
+  if (raw.audience?.mode !== "teams") return true;
+
+  const teams = Array.isArray(raw.audience?.teams) ? raw.audience?.teams : [];
+  return teams.some((team) => normalizeTeamKey(team) === selectedTeam);
+}
+
 export async function GET(request: Request, { params }: Params) {
   const ctx = createRequestContext("GET /api/pdf/:id");
 
@@ -30,6 +62,7 @@ export async function GET(request: Request, { params }: Params) {
     const briefingId = idSchema.parse(id);
     const requestUrl = new URL(request.url);
     const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
+    const selectedTeam = normalizeTeamKey(teamSchema.parse(requestUrl.searchParams.get("team") ?? undefined));
 
     const briefing = await getBriefingById(client, briefingId);
     const modules = await listModules(client, briefingId);
@@ -58,15 +91,18 @@ export async function GET(request: Request, { params }: Params) {
       title: briefing.title,
       event_date: briefing.event_date,
       location_text: briefing.location_text,
+      team: selectedTeam,
       modules: modules.map((mod) => ({
         module_key: mod.module_key,
         enabled: mod.enabled,
         data_json: mod.data_json
-      }))
+      })).filter((mod) => isModuleVisibleForTeam(mod, selectedTeam))
     });
 
     const service = createServiceRoleClient();
-    const storagePath = `${userId}/${briefing.id}/briefing-${briefing.id}-${Date.now()}.pdf`;
+    const storagePath = selectedTeam
+      ? `${userId}/${briefing.id}/team-${selectedTeam}.pdf`
+      : `${userId}/${briefing.id}/briefing-${briefing.id}-${Date.now()}.pdf`;
 
     const { error: uploadError } = await service.storage
       .from("exports")
@@ -79,13 +115,15 @@ export async function GET(request: Request, { params }: Params) {
       throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
     }
 
-    const { error: persistError } = await client
-      .from("briefings")
-      .update({ pdf_path: storagePath })
-      .eq("id", briefing.id);
+    if (!selectedTeam) {
+      const { error: persistError } = await client
+        .from("briefings")
+        .update({ pdf_path: storagePath })
+        .eq("id", briefing.id);
 
-    if (persistError) {
-      throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`);
+      if (persistError) {
+        throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`);
+      }
     }
 
     const { data: signed, error: signedError } = await service.storage
@@ -103,7 +141,8 @@ export async function GET(request: Request, { params }: Params) {
         ok: true,
         pdf_path: storagePath,
         pdf_url: signed.signedUrl,
-        generated_at: new Date().toISOString()
+        generated_at: new Date().toISOString(),
+        team: selectedTeam
       });
     }
 

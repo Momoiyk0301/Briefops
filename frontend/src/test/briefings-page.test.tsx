@@ -5,6 +5,10 @@ import { vi } from "vitest";
 
 import BriefingsPage from "@/views/BriefingsPage";
 
+const apiMocks = vi.hoisted(() => ({
+  listBriefingShareLinks: vi.fn().mockResolvedValue([])
+}));
+
 vi.mock("@/lib/api", () => ({
   getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),
   getBriefingsWithFallback: vi.fn().mockResolvedValue({
@@ -24,6 +28,10 @@ vi.mock("@/lib/api", () => ({
     ]
   }),
   createBriefing: vi.fn(),
+  deleteBriefing: vi.fn(),
+  listBriefingShareLinks: apiMocks.listBriefingShareLinks,
+  createBriefingShareLink: vi.fn(),
+  revokeBriefingShareLink: vi.fn(),
   upsertBriefingModules: vi.fn(),
   toApiMessage: vi.fn((e: unknown) => String(e))
 }));
@@ -50,6 +58,27 @@ describe("BriefingsPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/Demo data/i)).toBeInTheDocument();
       expect(screen.getByText(/Demo - One/)).toBeInTheDocument();
+    });
+  });
+
+  it("opens share panel for selected briefing", async () => {
+    const client = new QueryClient();
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <BriefingsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Demo - One/)).toBeInTheDocument());
+    await user.click(screen.getByLabelText(/Partager le briefing/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Share PDF/i)).toBeInTheDocument();
+      expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
   });
 });

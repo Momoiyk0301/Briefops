@@ -34,14 +34,14 @@ export async function PATCH(request: Request, { params }: Params) {
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Organization not found");
+    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
 
     const existing = await getStaffById(client, staffId);
     if (!existing) throw new HttpError(404, "Staff not found");
     if (!existing.org_id || existing.org_id !== membership.org_id) throw new HttpError(403, "Forbidden");
 
     const data = await updateStaff(client, staffId, body);
-    if (!data.org_id || data.org_id !== membership.org_id) throw new HttpError(500, "Invalid staff organization");
+    if (!data.org_id || data.org_id !== membership.org_id) throw new HttpError(500, "Invalid staff workspace");
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
@@ -64,7 +64,7 @@ export async function DELETE(request: Request, { params }: Params) {
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Organization not found");
+    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
 
     const existing = await getStaffById(client, staffId);
     if (!existing) throw new HttpError(404, "Staff not found");

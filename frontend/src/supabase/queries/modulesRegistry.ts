@@ -26,7 +26,7 @@ const DEFAULT_MODULES: Array<{
     category: "general",
     enabled: true,
     default_layout: DEFAULT_LAYOUT,
-    default_data: { main_contact_name: "", main_contact_phone: "", global_notes: "" }
+    default_data: { main_contact_name: "", main_contact_phone: "", global_notes: "", team_mode: false, teams: [] }
   },
   {
     name: "Acces",

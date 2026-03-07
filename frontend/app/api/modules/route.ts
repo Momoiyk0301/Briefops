@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   try {
     const { client, userId } = await requireUser(request);
     const orgId = await getUserOrgId(client, userId);
-    if (!orgId) throw new HttpError(404, "Organization not found");
+    if (!orgId) throw new HttpError(404, "Workspace not found");
 
     const data = await ensureRegistryModules(client, orgId);
     return NextResponse.json({ data });
@@ -35,7 +35,7 @@ export async function PUT(request: Request) {
   try {
     const { client, userId } = await requireUser(request);
     const orgId = await getUserOrgId(client, userId);
-    if (!orgId) throw new HttpError(404, "Organization not found");
+    if (!orgId) throw new HttpError(404, "Workspace not found");
 
     const input = updateSchema.parse(await request.json());
     const data = await updateRegistryModuleEnabled(client, orgId, input.id, input.enabled);

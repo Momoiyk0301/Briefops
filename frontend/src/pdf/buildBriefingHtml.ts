@@ -5,6 +5,8 @@ type CanonicalModulePayload = {
     enabled?: boolean;
   };
   audience?: {
+    mode?: "all" | "teams" | string;
+    teams?: string[];
     visibility?: "visible" | "hidden" | string;
   };
   layout?: {
@@ -29,6 +31,7 @@ type BriefingHtmlInput = {
   title: string;
   event_date: string | null;
   location_text: string | null;
+  team?: string | null;
   modules: ModuleInput[];
 };
 
@@ -125,9 +128,35 @@ function parseModuleShape(module: ModuleInput): {
   };
 }
 
+function normalizeTeamKey(team?: string | null) {
+  if (!team) return null;
+  const normalized = team
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || null;
+}
+
 export function buildBriefingHtml(input: BriefingHtmlInput): string {
-  const activeModules = input.modules.map(parseModuleShape).filter((module) => module.enabled);
+  const targetTeam = normalizeTeamKey(input.team);
+  const activeModules = input.modules
+    .map((module) => {
+      const parsed = parseModuleShape(module);
+      if (!parsed.enabled) return null;
+
+      if (!targetTeam) return parsed;
+      if (!module.data_json || typeof module.data_json !== "object" || Array.isArray(module.data_json)) return parsed;
+
+      const raw = module.data_json as CanonicalModulePayload;
+      if (raw.audience?.mode !== "teams") return parsed;
+      const teams = Array.isArray(raw.audience.teams) ? raw.audience.teams : [];
+      const hasTeam = teams.some((team) => normalizeTeamKey(team) === targetTeam);
+      return hasTeam ? parsed : null;
+    })
+    .filter((module): module is NonNullable<typeof module> => Boolean(module));
   const title = input.title?.trim() || "Untitled briefing";
+  const titleWithTeam = targetTeam ? `${title} - team ${targetTeam}` : title;
   const eventDate = input.event_date || "Not set";
   const location = input.location_text || "Not set";
 
@@ -230,7 +259,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
 </head>
 <body>
   <header class="header">
-    <h1>${escapeHtml(title)}</h1>
+    <h1>${escapeHtml(titleWithTeam)}</h1>
     <div class="muted">Briefing ID: ${escapeHtml(input.id)}</div>
     <div class="meta">
       <div><strong>Date:</strong> ${escapeHtml(eventDate)}</div>

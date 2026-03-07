@@ -19,7 +19,9 @@ import { ModuleDataMap, ModuleKey, ModuleRegistryEntry } from "@/lib/types";
 const metadataSchema = z.object({
   main_contact_name: z.string(),
   main_contact_phone: z.string(),
-  global_notes: z.string()
+  global_notes: z.string(),
+  team_mode: z.boolean().optional().default(false),
+  teams: z.array(z.string()).optional().default([])
 });
 
 const accessSchema = z.object({
@@ -91,7 +93,7 @@ export const moduleRegistry: { [K in ModuleKey]: ModuleRegistryEntry<K> } = {
     defaultEnabled: true,
     isMandatory: true,
     schema: metadataSchema,
-    defaultData: { main_contact_name: "", main_contact_phone: "", global_notes: "" },
+    defaultData: { main_contact_name: "", main_contact_phone: "", global_notes: "", team_mode: false, teams: [] },
     FormComponent: () => null,
     PreviewComponent: () => null
   },

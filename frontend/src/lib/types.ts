@@ -23,9 +23,25 @@ export type MeResponse = {
     pdf_exports_remaining: number | null;
   };
   org: { id: string; name: string } | null;
+  workspace?: { id: string; name: string } | null;
+  onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
   is_admin: boolean;
   degraded: boolean;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  stripe_price_id: string | null;
+  price_amount: number;
+  price_currency: string;
+  billing_interval: string;
+  features: string[];
+  is_highlighted: boolean;
+  sort_order: number;
 };
 
 export type StaffMember = {
@@ -51,6 +67,27 @@ export type Briefing = {
   created_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type PublicLinkStatus = "active" | "expired" | "revoked";
+
+export type PublicLink = {
+  id: string;
+  briefing_id: string;
+  resource_type: string;
+  team?: string | null;
+  token: string;
+  created_by: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  status: PublicLinkStatus;
+  url: string;
+};
+
+export type PublicLinkWithBriefing = PublicLink & {
+  briefing_title: string;
+  pdf_path: string | null;
 };
 
 export type BriefingModuleRow = {
@@ -102,6 +139,8 @@ export type MetadataExtra = {
   main_contact_name: string;
   main_contact_phone: string;
   global_notes: string;
+  team_mode: boolean;
+  teams: string[];
 };
 
 export type AccessData = {

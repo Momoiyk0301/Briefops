@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getBriefingByPublicToken } from "@/supabase/queries/publicLinks";
-import { createPublicTokenClient } from "@/supabase/server";
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { PUBLIC_LINK_INVALID_MESSAGE, getActivePublicLinkWithPdfPath } from "@/supabase/queries/publicLinks";
+import { createServiceRoleClient } from "@/supabase/server";
 
 const tokenSchema = z.string().min(10);
 
@@ -15,10 +15,25 @@ export async function GET(_: Request, { params }: Params) {
   try {
     const { token } = await params;
     const publicToken = tokenSchema.parse(token);
-    const client = createPublicTokenClient(publicToken);
-    const data = await getBriefingByPublicToken(client, publicToken);
-    return NextResponse.json({ data });
+    const service = createServiceRoleClient();
+    const resolved = await getActivePublicLinkWithPdfPath(service, publicToken);
+
+    if (!resolved) {
+      throw new HttpError(410, PUBLIC_LINK_INVALID_MESSAGE);
+    }
+
+    const { data: signed, error: signedError } = await service.storage
+      .from("exports")
+      .createSignedUrl(resolved.pdfPath, 3600);
+    if (signedError) throw new HttpError(500, `Signed URL failed: ${signedError.message}`);
+
+    return NextResponse.json({
+      pdf_url: signed.signedUrl,
+      expires_at: resolved.expiresAt
+    });
   } catch (error) {
+    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
     return toErrorResponse(error, ctx.requestId);
   }
 }
+

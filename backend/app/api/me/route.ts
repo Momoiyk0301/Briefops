@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await client
       .from("profiles")
-      .select("plan,subscription_name,subscription_status,stripe_price_id,current_period_end")
+      .select("plan,subscription_name,subscription_status,stripe_price_id,current_period_end,onboarding_step")
       .eq("id", userId)
       .maybeSingle();
 
@@ -26,16 +26,16 @@ export async function GET(request: Request) {
 
     if (membershipError) throw membershipError;
 
-    let org: { id: string; name: string } | null = null;
+    let workspace: { id: string; name: string } | null = null;
     if (membership?.org_id) {
       const { data: organization, error: organizationError } = await client
-        .from("organizations")
+        .from("workspaces")
         .select("id,name")
         .eq("id", membership.org_id)
         .maybeSingle();
 
       if (organizationError) throw organizationError;
-      org = organization ?? null;
+      workspace = organization ?? null;
     }
 
     const usage = await getCurrentMonthUsage(client, userId);
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
 
-    ctx.info("resolved me", { userId, hasOrg: Boolean(org), hasPlan: Boolean(profile?.plan) });
+    ctx.info("resolved me", { userId, hasWorkspace: Boolean(workspace), hasPlan: Boolean(profile?.plan) });
 
     return NextResponse.json({
       user: { id: userId, email: email ?? "" },
@@ -59,7 +59,9 @@ export async function GET(request: Request) {
         pdf_exports_limit: planLimit,
         pdf_exports_remaining: remaining
       },
-      org,
+      org: workspace,
+      workspace,
+      onboarding_step: profile?.onboarding_step ?? null,
       role: membership?.role ?? null,
       is_admin: membership?.role === "owner" || membership?.role === "admin"
     });
