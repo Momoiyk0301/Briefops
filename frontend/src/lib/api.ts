@@ -278,6 +278,19 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
+export async function generateBriefingPdf(id: string): Promise<{ pdf_path: string; pdf_url: string; generated_at: string }> {
+  return requestJson<{ ok: boolean; pdf_path: string; pdf_url: string; generated_at: string }>(
+    `/api/pdf/${id}?format=json`
+  );
+}
+
+export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {
+  const response = await requestJson<{ url: string }>(
+    `/api/storage/signed-url?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}&expires_in=${expiresIn}`
+  );
+  return response.url;
+}
+
 export async function createStripeCheckoutSession(
   plan: "starter" | "plus" | "pro",
   org_name?: string

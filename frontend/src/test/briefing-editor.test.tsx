@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
@@ -6,8 +6,14 @@ import { BriefingEditor } from "@/components/briefing/BriefingEditor";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow } from "@/lib/types";
 
+const apiMocks = vi.hoisted(() => ({
+  generateBriefingPdf: vi.fn(),
+  getStorageSignedUrl: vi.fn()
+}));
+
 vi.mock("@/lib/api", () => ({
-  downloadPdf: vi.fn(),
+  generateBriefingPdf: apiMocks.generateBriefingPdf,
+  getStorageSignedUrl: apiMocks.getStorageSignedUrl,
   patchBriefing: vi.fn().mockResolvedValue({}),
   toApiMessage: vi.fn((e: unknown) => String(e)),
   upsertBriefingModules: vi.fn().mockResolvedValue([])
@@ -60,5 +66,32 @@ describe("BriefingEditor", () => {
     expect(screen.getByRole("button", { name: "Meta" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Modules" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edition" })).toBeInTheDocument();
+  });
+
+  it("shows loading then displays the PDF icon link after generation", async () => {
+    const user = userEvent.setup();
+    let resolveGeneration: ((value: { pdf_path: string; pdf_url: string; generated_at: string }) => void) | null = null;
+
+    apiMocks.generateBriefingPdf.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveGeneration = resolve;
+        })
+    );
+
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getByRole("button", { name: /télécharger pdf|download pdf/i }));
+    expect(screen.getByRole("button", { name: /chargement|loading/i })).toBeDisabled();
+
+    resolveGeneration?.({
+      pdf_path: "u1/b1/briefing.pdf",
+      pdf_url: "https://example.test/briefing.pdf",
+      generated_at: "2026-03-07T00:00:00.000Z"
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("open-generated-pdf")).toHaveAttribute("href", "https://example.test/briefing.pdf");
+    });
   });
 });

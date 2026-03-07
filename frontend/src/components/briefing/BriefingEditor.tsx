@@ -1,8 +1,9 @@
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { downloadPdf, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
 import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
@@ -136,6 +137,8 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [saving, setSaving] = useState(false);
   const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
   const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const lastSaved = useRef("");
 
@@ -154,6 +157,25 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
     return () => window.clearTimeout(id);
   }, [state]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!briefing.pdf_path) return;
+      try {
+        const signedUrl = await getStorageSignedUrl("exports", briefing.pdf_path, 3600);
+        if (!cancelled) setPdfUrl(signedUrl);
+      } catch {
+        if (!cancelled) setPdfUrl(null);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [briefing.pdf_path]);
 
   const payload = useMemo(
     () =>
@@ -192,17 +214,17 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   };
 
   const handlePdf = async () => {
+    const toastId = toast.loading("PDF en cours de generation...");
     try {
-      const blob = await downloadPdf(briefing.id);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `briefing-${briefing.id}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      setIsGeneratingPdf(true);
+      const result = await generateBriefingPdf(briefing.id);
+      setPdfUrl(result.pdf_url);
+      toast.success("PDF pret", { id: toastId });
     } catch (error) {
       const msg = toApiMessage(error);
-      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg);
+      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -440,7 +462,20 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
         <div className="flex gap-2">
           <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button variant="secondary" onClick={() => void handlePdf()}>{t("app.downloadPdf")}</Button>
+          <Button variant="secondary" onClick={() => void handlePdf()} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? t("app.loading") : t("app.downloadPdf")}
+          </Button>
+          {pdfUrl ? (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="open-generated-pdf"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#e6e8f2] text-[#d22] transition hover:bg-red-50 dark:border-white/10"
+            >
+              <FileText size={18} />
+            </a>
+          ) : null}
         </div>
       </Card>
     </div>

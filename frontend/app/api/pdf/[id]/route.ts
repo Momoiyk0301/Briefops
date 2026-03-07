@@ -7,9 +7,11 @@ import { listModules } from "@/supabase/queries/modules";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
+const formatSchema = z.enum(["binary", "json"]);
+
 const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
   free: 3,
   starter: 100,
@@ -26,6 +28,8 @@ export async function GET(request: Request, { params }: Params) {
     const { client, userId } = await requireUser(request);
     const { id } = await params;
     const briefingId = idSchema.parse(id);
+    const requestUrl = new URL(request.url);
+    const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
 
     const briefing = await getBriefingById(client, briefingId);
     const modules = await listModules(client, briefingId);
@@ -57,44 +61,53 @@ export async function GET(request: Request, { params }: Params) {
       modules: modules.map((mod) => ({
         module_key: mod.module_key,
         enabled: mod.enabled,
-        data_json: mod.data_json as Record<string, unknown>
+        data_json: mod.data_json
       }))
     });
 
-    ctx.info("generated pdf", { userId, briefingId });
+    const service = createServiceRoleClient();
+    const storagePath = `${userId}/${briefing.id}/briefing-${briefing.id}-${Date.now()}.pdf`;
 
-    const pdfArrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-    const storagePath = `${userId}/${briefing.id}/${Date.now()}-briefing.pdf`;
+    const { error: uploadError } = await service.storage
+      .from("exports")
+      .upload(storagePath, bytes, {
+        contentType: "application/pdf",
+        upsert: true
+      });
 
-    try {
-      const service = createServiceRoleClient();
-      const { error: uploadError } = await service.storage
-        .from("exports")
-        .upload(storagePath, bytes, {
-          contentType: "application/pdf",
-          upsert: true
-        });
-      if (uploadError) {
-        ctx.warn("storage upload failed", { userId, briefingId, bucket: "exports", error: uploadError.message });
-      } else {
-        const { error: persistError } = await client
-          .from("briefings")
-          .update({ pdf_path: storagePath })
-          .eq("id", briefing.id);
-        if (persistError) {
-          ctx.warn("failed to persist pdf_path", { userId, briefingId, error: persistError.message });
-        }
-        ctx.info("storage upload success", { userId, briefingId, bucket: "exports", path: storagePath });
-      }
-    } catch (storageError) {
-      ctx.warn("storage upload crashed", {
-        userId,
-        briefingId,
-        bucket: "exports",
-        error: storageError instanceof Error ? storageError.message : String(storageError)
+    if (uploadError) {
+      throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
+    }
+
+    const { error: persistError } = await client
+      .from("briefings")
+      .update({ pdf_path: storagePath })
+      .eq("id", briefing.id);
+
+    if (persistError) {
+      throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`);
+    }
+
+    const { data: signed, error: signedError } = await service.storage
+      .from("exports")
+      .createSignedUrl(storagePath, 3600);
+
+    if (signedError) {
+      throw new HttpError(500, `Signed URL failed: ${signedError.message}`);
+    }
+
+    ctx.info("generated and uploaded pdf", { userId, briefingId, storagePath });
+
+    if (format === "json") {
+      return NextResponse.json({
+        ok: true,
+        pdf_path: storagePath,
+        pdf_url: signed.signedUrl,
+        generated_at: new Date().toISOString()
       });
     }
 
+    const pdfArrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     return new NextResponse(pdfArrayBuffer, {
       status: 200,
       headers: {

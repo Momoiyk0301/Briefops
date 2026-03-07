@@ -47,6 +47,7 @@ export type Briefing = {
   title: string;
   event_date: string | null;
   location_text: string | null;
+  pdf_path?: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
