@@ -3,15 +3,19 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { downloadPdf, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
-import { moduleEntries } from "@/lib/moduleRegistry";
+import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
 import { MetadataForm } from "@/components/briefing/MetadataForm";
+import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
 import { ModuleList } from "@/components/briefing/ModuleList";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
-import { A4Preview } from "@/components/briefing/A4Preview";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+
+const CANVAS_COLS = 12;
+const CANVAS_ROWS = 24;
 
 export function buildInitialState(
   briefing: Briefing,
@@ -67,8 +71,18 @@ type Props = {
   registryModules?: RegistryModule[];
 };
 
+function toCanvasStyle(layout: EditorState["modules"][ModuleKey]["layout"]) {
+  const desktop = layout.desktop;
+  return {
+    left: `${(desktop.x / CANVAS_COLS) * 100}%`,
+    top: `${(desktop.y / CANVAS_ROWS) * 100}%`,
+    width: `${(desktop.w / CANVAS_COLS) * 100}%`,
+    height: `${(desktop.h / CANVAS_ROWS) * 100}%`
+  };
+}
+
 export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [saving, setSaving] = useState(false);
   const lastSaved = useRef("");
@@ -140,10 +154,141 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     }
   };
 
+  const handleResizeModule = (key: ModuleKey, deltaW: number, deltaH: number) => {
+    setState((prev) => {
+      const current = prev.modules[key];
+      const others = (Object.keys(prev.modules) as ModuleKey[])
+        .filter((otherKey) => otherKey !== key && prev.modules[otherKey].enabled)
+        .map((otherKey) => prev.modules[otherKey].layout.desktop);
+
+      const resized = tryResizeModuleRect({
+        current: current.layout.desktop,
+        others,
+        deltaW,
+        deltaH,
+        minW: current.layout.constraints.minW,
+        minH: current.layout.constraints.minH,
+        maxW: current.layout.constraints.maxW,
+        maxH: current.layout.constraints.maxH,
+        cols: CANVAS_COLS,
+        rows: CANVAS_ROWS
+      });
+
+      if (!resized) return prev;
+
+      return {
+        ...prev,
+        modules: {
+          ...prev.modules,
+          [key]: {
+            ...prev.modules[key],
+            layout: {
+              ...prev.modules[key].layout,
+              desktop: resized,
+              mobile: {
+                ...prev.modules[key].layout.mobile,
+                w: Math.min(resized.w, CANVAS_COLS),
+                h: Math.max(prev.modules[key].layout.mobile.h, 1)
+              }
+            }
+          }
+        }
+      };
+    });
+  };
+
+  const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
+
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
       <Card className="flex justify-center p-4">
-        <A4Preview state={state} />
+        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-300 bg-white p-4 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+          <div className="relative mx-auto aspect-[210/297] w-full overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]">
+            {visibleModules.map((entry) => {
+              const module = state.modules[entry.key];
+              const style = toCanvasStyle(module.layout);
+              const isSelected = state.selectedModuleKey === entry.key;
+              const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
+
+              return (
+                <section
+                  key={entry.key}
+                  style={style}
+                  className={`absolute overflow-hidden rounded-md border bg-white/95 p-2 shadow-sm dark:bg-[#151515] ${
+                    isSelected ? "border-brand-500" : "border-[#dfe3ef] dark:border-white/10"
+                  }`}
+                  onClick={() => {
+                    if (entry.key !== "metadata") {
+                      setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
+                    }
+                  }}
+                >
+                  <p className="mb-1 truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
+                  </p>
+
+                  <div className="max-h-[calc(100%-20px)] overflow-auto text-xs">
+                    {entry.key === "metadata" ? (
+                      <MetadataPreview
+                        title={state.core.title}
+                        eventDate={state.core.event_date}
+                        location={state.core.location_text}
+                        metadata={state.modules.metadata.data}
+                      />
+                    ) : (
+                      <PreviewComponent value={module.data as never} />
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    aria-label={`resize-${entry.key}-shrink`}
+                    className="absolute left-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleResizeModule(entry.key, -1, -1);
+                    }}
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`resize-${entry.key}-wider`}
+                    className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleResizeModule(entry.key, +1, 0);
+                    }}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`resize-${entry.key}-taller`}
+                    className="absolute bottom-1 left-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleResizeModule(entry.key, 0, +1);
+                    }}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`resize-${entry.key}-grow`}
+                    className="absolute bottom-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d4d9ea] bg-white text-[10px] font-bold"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleResizeModule(entry.key, +1, +1);
+                    }}
+                  >
+                    +
+                  </button>
+                </section>
+              );
+            })}
+          </div>
+        </div>
       </Card>
 
       <Card className="space-y-4">

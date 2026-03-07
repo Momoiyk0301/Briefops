@@ -42,7 +42,12 @@ describe("BriefingEditor", () => {
     expect(screen.getByText(/Edition module/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Address/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Notes/i }));
+    const notesItem = screen
+      .getAllByText(/^Notes$/i)
+      .map((node) => node.closest('[role="button"]'))
+      .find((node): node is HTMLElement => Boolean(node));
+    expect(notesItem).toBeTruthy();
+    await user.click(notesItem!);
 
     expect(screen.getByPlaceholderText(/^Notes$/i)).toBeInTheDocument();
   });
