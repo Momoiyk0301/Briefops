@@ -18,7 +18,7 @@ describe("module layout engine", () => {
       rows: 24
     });
 
-    expect(next).toEqual({ x: 0, y: 0, w: 6, h: 4 });
+    expect(next).toEqual({ x: 0, y: 0, w: 6, h: 4, page: 0 });
   });
 
   it("blocks resize when touching another module", () => {
@@ -49,7 +49,7 @@ describe("module layout engine", () => {
       rows: 24
     });
 
-    expect(next).toEqual({ x: 3, y: 2, w: 3, h: 3 });
+    expect(next).toEqual({ x: 3, y: 2, w: 3, h: 3, page: 0 });
   });
 
   it("blocks move when touching another module", () => {

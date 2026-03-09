@@ -244,7 +244,7 @@ export type ModuleAudience = {
 };
 
 export type ModuleLayout = {
-  desktop: { x: number; y: number; w: number; h: number };
+  desktop: { x: number; y: number; w: number; h: number; page: number };
   mobile: { x: number; y: number; w: number; h: number };
   constraints: { minW: number; minH: number; maxW: number; maxH: number };
   behavior: { draggable: boolean; resizable: boolean };

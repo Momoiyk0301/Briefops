@@ -3,6 +3,7 @@ type GridRect = {
   y?: number;
   w?: number;
   h?: number;
+  page?: number;
 };
 
 const CANVAS_COLS = 12;
@@ -40,4 +41,3 @@ export function gridRectToInlineStyle(input?: GridRect): string {
 
   return `left:${left}%;top:${top}%;width:${width}%;height:${height}%;`;
 }
-

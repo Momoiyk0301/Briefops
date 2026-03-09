@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { getMe, toApiMessage } from "@/lib/api";
-import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
+import { resetPasswordForEmail, signInWithPassword, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -50,43 +50,101 @@ export default function LoginPage() {
     }
   });
 
+  const handleForgotPassword = async () => {
+    const email = form.getValues("email").trim();
+    if (!email) {
+      toast.error("Renseigne d'abord ton email");
+      return;
+    }
+
+    const parsed = z.string().email().safeParse(email);
+    if (!parsed.success) {
+      toast.error("Email invalide");
+      return;
+    }
+
+    try {
+      await resetPasswordForEmail(parsed.data);
+      toast.success("Email de réinitialisation envoyé");
+    } catch (error) {
+      toast.error(toApiMessage(error));
+    }
+  };
+
   return (
-    <div className="grid min-h-full grid-cols-1 items-center gap-8 px-[var(--space-page-x)] py-[var(--space-page-y)] lg:grid-cols-[1.2fr_minmax(520px,42vw)] lg:gap-10">
-      <section className="relative min-h-[420px] overflow-hidden rounded-panel border border-white/30 bg-gradient-to-br from-brand-500 via-[#6f72ff] to-[#45a5ff] p-[var(--space-card-pad)] text-white shadow-panel lg:min-h-[540px]">
-        <div className="absolute -left-20 -top-16 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
-        <div className="absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#ff8b3d]/30 blur-3xl" />
-        <p className="relative text-sm font-medium uppercase tracking-wide text-white/85">Event Ops SaaS</p>
-        <h1 className="relative mt-3 text-4xl font-semibold tracking-tight">BriefOPS</h1>
-        <p className="relative mt-3 max-w-xl text-white/90">
-          Crée des briefings opérationnels en quelques minutes, partage une version claire avec ton staff et garde le contrôle terrain.
-        </p>
-        <ul className="relative mt-6 grid gap-2 text-sm text-white/95">
-          <li>• Briefings modulaires prêts à exporter en PDF</li>
-          <li>• Workflow simple pour équipes prod, road et staffing</li>
-          <li>• Vue A4 en temps réel pour éviter les erreurs sur site</li>
-        </ul>
+    <div className="grid min-h-screen grid-cols-1 bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_45%,#f3efe8_100%)] lg:grid-cols-[minmax(0,1.15fr)_minmax(520px,0.85fr)] dark:bg-[#0b1120]">
+      <section className="relative flex min-h-[50vh] items-end overflow-hidden px-6 py-10 lg:min-h-screen lg:px-12 lg:py-12">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(84,119,255,0.28),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(0,186,255,0.16),transparent_24%),linear-gradient(135deg,#0f2747_0%,#1954c9_45%,#56a9ff_100%)]" />
+        <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:34px_34px]" />
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 translate-x-1/4 translate-y-1/4 rounded-full bg-[#ffb86c]/25 blur-3xl" />
+
+        <div className="relative z-10 max-w-2xl text-white">
+          <p className="text-sm font-medium uppercase tracking-[0.22em] text-white/80">Event Ops Workspace</p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight lg:text-6xl">BriefOPS</h1>
+          <p className="mt-5 max-w-xl text-base leading-7 text-white/88 lg:text-lg">
+            Le cockpit opérationnel pour monter, valider et partager des briefings terrain lisibles en quelques minutes.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-3xl border border-white/20 bg-white/10 p-4 backdrop-blur">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/65">A4</p>
+              <p className="mt-2 text-sm font-medium">Prévisualisation page par page</p>
+            </div>
+            <div className="rounded-3xl border border-white/20 bg-white/10 p-4 backdrop-blur">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/65">Modules</p>
+              <p className="mt-2 text-sm font-medium">Briefings composables selon l’événement</p>
+            </div>
+            <div className="rounded-3xl border border-white/20 bg-white/10 p-4 backdrop-blur">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/65">Partage</p>
+              <p className="mt-2 text-sm font-medium">Exports PDF et liens pour le staff</p>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <Card className="card-pad w-full max-w-xl justify-self-center">
-        <Tabs
-          tabs={[
-            { key: "login", label: t("auth.login") },
-            { key: "register", label: t("auth.register") }
-          ]}
-          active={mode}
-          onChange={(key) => {
-            setMode(key as "login" | "register");
-          }}
-        >
-          <form className="space-y-3" onSubmit={onSubmit}>
-            <Input placeholder={t("auth.email")} type="email" {...form.register("email")} />
-            <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
-            <Button type="submit" className="w-full" withArrow>
-              {mode === "login" ? t("auth.submitLogin") : "Continuer"}
-            </Button>
-          </form>
-        </Tabs>
-      </Card>
+      <section className="flex min-h-[50vh] items-center justify-center px-6 py-10 lg:min-h-screen lg:px-10">
+        <Card className="w-full max-w-xl rounded-[32px] border-white/70 p-8 shadow-[0_30px_80px_rgba(20,30,60,0.12)]">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-brand-500 text-xl font-bold text-white shadow-panel">
+              B
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight text-[#111827] dark:text-white">Connexion</h2>
+            <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+              Accède à ton espace et reprends tes briefings là où tu les as laissés.
+            </p>
+          </div>
+
+          <Tabs
+            tabs={[
+              { key: "login", label: t("auth.login") },
+              { key: "register", label: t("auth.register") }
+            ]}
+            active={mode}
+            onChange={(key) => {
+              setMode(key as "login" | "register");
+            }}
+          >
+            <form className="space-y-3" onSubmit={onSubmit}>
+              <Input placeholder={t("auth.email")} type="email" {...form.register("email")} />
+              <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
+              {mode === "login" ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400"
+                    onClick={() => void handleForgotPassword()}
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
+              ) : null}
+              <Button type="submit" className="w-full" withArrow>
+                {mode === "login" ? t("auth.submitLogin") : "Continuer"}
+              </Button>
+            </form>
+          </Tabs>
+        </Card>
+      </section>
     </div>
   );
 }

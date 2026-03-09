@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { getEnabledPageCount } from "@/lib/briefingPages";
 import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
@@ -20,6 +21,7 @@ const CANVAS_COLS = 12;
 const CANVAS_ROWS = 24;
 
 function rectTouchesOrOverlaps(a: GridRect, b: GridRect) {
+  if ((a.page ?? 0) !== (b.page ?? 0)) return false;
   return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
 }
 
@@ -156,7 +158,8 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [pdfPath, setPdfPath] = useState<string | null>(briefing.pdf_path ?? null);
   const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
   const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
-  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [pageCountOverride, setPageCountOverride] = useState<number>(() => getEnabledPageCount(buildInitialState(briefing, modules, registryModules).modules));
+  const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const lastSaved = useRef("");
 
   useEffect(() => {
@@ -329,13 +332,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const startPointerInteraction = (
     event: ReactPointerEvent,
     key: ModuleKey,
+    page: number,
     mode: "move" | "resize",
     handle?: ResizeHandle
   ) => {
     event.preventDefault();
     event.stopPropagation();
 
-    const canvas = canvasRef.current;
+    const canvas = canvasRefs.current[page];
     if (!canvas) return;
 
     const startX = event.clientX;
@@ -351,7 +355,12 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     const initialRect = { ...state.modules[key].layout.desktop };
     const constraints = state.modules[key].layout.constraints;
     const others = (Object.keys(state.modules) as ModuleKey[])
-      .filter((otherKey) => otherKey !== key && state.modules[otherKey].enabled)
+      .filter(
+        (otherKey) =>
+          otherKey !== key &&
+          state.modules[otherKey].enabled &&
+          state.modules[otherKey].layout.desktop.page === page
+      )
       .map((otherKey) => state.modules[otherKey].layout.desktop);
 
     const onPointerMove = (moveEvent: PointerEvent) => {
@@ -390,13 +399,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         modules: {
           ...prev.modules,
           [key]: {
-            ...prev.modules[key],
-            layout: {
-              ...prev.modules[key].layout,
-              desktop: nextRect
+              ...prev.modules[key],
+              layout: {
+                ...prev.modules[key].layout,
+                desktop: { ...nextRect, page }
+              }
             }
           }
-        }
       }));
     };
 
@@ -416,6 +425,16 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
   const selectedModule = state.modules[state.selectedModuleKey];
   const selectedAudienceTeams = selectedModule.audience.teams;
+  const pageCount = Math.max(pageCountOverride, getEnabledPageCount(state.modules));
+
+  const visibleModulesByPage = useMemo(
+    () =>
+      Array.from({ length: pageCount }, (_, pageIndex) => ({
+        pageIndex,
+        items: visibleModules.filter((entry) => state.modules[entry.key].layout.desktop.page === pageIndex)
+      })),
+    [pageCount, state.modules, visibleModules]
+  );
 
   const toggleTeamForSelectedModule = (team: string) => {
     setState((prev) => {
@@ -442,79 +461,123 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     });
   };
 
+  const updateSelectedModulePage = (page: number) => {
+    setState((prev) => ({
+      ...prev,
+      modules: {
+        ...prev.modules,
+        [prev.selectedModuleKey]: {
+          ...prev.modules[prev.selectedModuleKey],
+          layout: {
+            ...prev.modules[prev.selectedModuleKey].layout,
+            desktop: {
+              ...prev.modules[prev.selectedModuleKey].layout.desktop,
+              page
+            }
+          }
+        }
+      }
+    }));
+  };
+
+  const handleAddPage = () => {
+    setPageCountOverride((prev) => prev + 1);
+  };
+
   return (
     <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_390px]">
       <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-1.5 dark:border-white/10 dark:bg-[#121212]">
-        <div className="a4-frame w-full max-w-[820px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          <div
-            ref={canvasRef}
-            className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
-          >
-            {visibleModules.map((entry) => {
-              const module = state.modules[entry.key];
-              const style = toCanvasStyle(module.layout);
-              const isSelected = state.selectedModuleKey === entry.key;
-              const isActive = hoveredModuleKey === entry.key || isSelected;
-              const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
+        <div className="a4-frame w-full max-w-[820px] space-y-3 rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+          {visibleModulesByPage.map(({ pageIndex, items }) => (
+            <div key={pageIndex} className="space-y-1.5">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Page {pageIndex + 1}
+                </p>
+                {pageIndex === selectedModule.layout.desktop.page ? (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-900/20 dark:text-brand-300">
+                    Module en cours
+                  </span>
+                ) : null}
+              </div>
+              <div
+                ref={(node) => {
+                  canvasRefs.current[pageIndex] = node;
+                }}
+                className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
+              >
+                {items.map((entry) => {
+                  const module = state.modules[entry.key];
+                  const style = toCanvasStyle(module.layout);
+                  const isSelected = state.selectedModuleKey === entry.key;
+                  const isActive = hoveredModuleKey === entry.key || isSelected;
+                  const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
 
-              return (
-                <section
-                  key={entry.key}
-                  style={style}
-                  className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
-                    MODULE_TONE_CLASS[entry.key]
-                  } ${
-                    isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
-                  }`}
-                  onMouseEnter={() => setHoveredModuleKey(entry.key)}
-                  onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
-                  onClick={() => {
-                    if (entry.key !== "metadata") {
-                      setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
-                    }
-                  }}
-                >
-                  <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                    {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
-                  </p>
+                  return (
+                    <section
+                      key={entry.key}
+                      style={style}
+                      className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
+                        MODULE_TONE_CLASS[entry.key]
+                      } ${
+                        isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
+                      }`}
+                      onMouseEnter={() => setHoveredModuleKey(entry.key)}
+                      onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
+                      onClick={() => {
+                        if (entry.key !== "metadata") {
+                          setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
+                        }
+                      }}
+                    >
+                      <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                        {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
+                      </p>
 
-                  <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
-                    {entry.key === "metadata" ? (
-                      <MetadataPreview
-                        title={state.core.title}
-                        eventDate={state.core.event_date}
-                        location={state.core.location_text}
-                        metadata={state.modules.metadata.data}
-                      />
-                    ) : (
-                      <PreviewComponent value={module.data as never} />
-                    )}
-                  </div>
+                      <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
+                        {entry.key === "metadata" ? (
+                          <MetadataPreview
+                            title={state.core.title}
+                            eventDate={state.core.event_date}
+                            location={state.core.location_text}
+                            metadata={state.modules.metadata.data}
+                          />
+                        ) : (
+                          <PreviewComponent value={module.data as never} />
+                        )}
+                      </div>
 
-                  {isActive ? (
-                    <>
-                      <button
-                        type="button"
-                        aria-label={`move-${entry.key}`}
-                        className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
-                        onPointerDown={(event) => startPointerInteraction(event, entry.key, "move")}
-                      />
+                      {isActive ? (
+                        <>
+                          <button
+                            type="button"
+                            aria-label={`move-${entry.key}`}
+                            className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
+                            onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "move")}
+                          />
 
-                      {RESIZE_HANDLES.map((handle) => (
-                        <button
-                          key={handle.key}
-                          type="button"
-                          aria-label={`resize-${entry.key}-${handle.key}`}
-                          className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
-                          style={{ cursor: handle.cursor }}
-                          onPointerDown={(event) => startPointerInteraction(event, entry.key, "resize", handle.key)}
-                        />
-                      ))}
-                    </>
-                  ) : null}
-                </section>
-              );
-            })}
+                          {RESIZE_HANDLES.map((handle) => (
+                            <button
+                              key={handle.key}
+                              type="button"
+                              aria-label={`resize-${entry.key}-${handle.key}`}
+                              className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
+                              style={{ cursor: handle.cursor }}
+                              onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "resize", handle.key)}
+                            />
+                          ))}
+                        </>
+                      ) : null}
+                    </section>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-center pt-1">
+            <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleAddPage}>
+              Ajouter une page
+            </Button>
           </div>
         </div>
       </Card>
@@ -569,6 +632,26 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
         <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
+          <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="page-selector-mobile"
+                className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
+                value={selectedModule.layout.desktop.page}
+                onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
+              >
+                {Array.from({ length: pageCount }, (_, pageIndex) => (
+                  <option key={pageIndex} value={pageIndex}>
+                    Page {pageIndex + 1}
+                  </option>
+                ))}
+              </select>
+              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
+                Ajouter une page
+              </Button>
+            </div>
+          </div>
           {teamModeEnabled && definedTeams.length > 0 ? (
             <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
@@ -640,6 +723,26 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
           <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition</p>
+            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="page-selector-desktop"
+                  className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
+                  value={selectedModule.layout.desktop.page}
+                  onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
+                >
+                  {Array.from({ length: pageCount }, (_, pageIndex) => (
+                    <option key={pageIndex} value={pageIndex}>
+                      Page {pageIndex + 1}
+                    </option>
+                  ))}
+                </select>
+                <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
+                  Ajouter une page
+                </Button>
+              </div>
+            </div>
             {teamModeEnabled && definedTeams.length > 0 ? (
               <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>

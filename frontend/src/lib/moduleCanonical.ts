@@ -16,7 +16,7 @@ const DEFAULT_AUDIENCE: ModuleAudience = {
 };
 
 const DEFAULT_LAYOUT: ModuleLayout = {
-  desktop: { x: 0, y: 0, w: 12, h: 3 },
+  desktop: { x: 0, y: 0, w: 12, h: 3, page: 0 },
   mobile: { x: 0, y: 0, w: 12, h: 4 },
   constraints: { minW: 3, minH: 2, maxW: 12, maxH: 8 },
   behavior: { draggable: true, resizable: true },
@@ -48,7 +48,8 @@ function parseLayout(value: unknown): ModuleLayout {
       x: Number(desktop.x ?? DEFAULT_LAYOUT.desktop.x),
       y: Number(desktop.y ?? DEFAULT_LAYOUT.desktop.y),
       w: Number(desktop.w ?? DEFAULT_LAYOUT.desktop.w),
-      h: Number(desktop.h ?? DEFAULT_LAYOUT.desktop.h)
+      h: Number(desktop.h ?? DEFAULT_LAYOUT.desktop.h),
+      page: Math.max(0, Number(desktop.page ?? DEFAULT_LAYOUT.desktop.page))
     },
     mobile: {
       x: Number(mobile.x ?? DEFAULT_LAYOUT.mobile.x),

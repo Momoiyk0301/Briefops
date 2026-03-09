@@ -32,9 +32,8 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
     if (pathname.startsWith("/modules")) return "Modules";
     if (pathname.startsWith("/staff")) return "Staff";
     if (pathname.startsWith("/account")) return "Compte";
-    if (pathname.startsWith("/abonnement")) return "Abonnement";
     if (pathname.startsWith("/notifications")) return "Notifications";
-    if (pathname.startsWith("/settings/billing")) return "Facturation";
+    if (pathname.startsWith("/settings/billing")) return "Compte";
     if (pathname.startsWith("/settings")) return t("nav.settings");
     if (pathname.startsWith("/onboarding")) return t("nav.onboarding");
     return t("app.name");

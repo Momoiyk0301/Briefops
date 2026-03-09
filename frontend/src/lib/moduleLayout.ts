@@ -3,6 +3,7 @@ export type GridRect = {
   y: number;
   w: number;
   h: number;
+  page?: number;
 };
 
 export type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
@@ -31,6 +32,7 @@ export type MoveParams = {
 };
 
 function touchesOrIntersects(a: GridRect, b: GridRect) {
+  if ((a.page ?? 0) !== (b.page ?? 0)) return false;
   return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
 }
 
@@ -44,7 +46,8 @@ export function tryMoveModuleRect(params: MoveParams): GridRect | null {
     x: clamp(current.x + deltaX, 0, cols - current.w),
     y: clamp(current.y + deltaY, 0, rows - current.h),
     w: current.w,
-    h: current.h
+    h: current.h,
+    page: current.page ?? 0
   };
 
   if (next.x === current.x && next.y === current.y) return null;
@@ -122,7 +125,7 @@ export function tryResizeModuleRect(params: ResizeParams): GridRect | null {
 
   if (w < minW || h < minH) return null;
 
-  const next: GridRect = { x, y, w, h };
+  const next: GridRect = { x, y, w, h, page: current.page ?? 0 };
   if (next.x === current.x && next.y === current.y && next.w === current.w && next.h === current.h) return null;
   if (others.some((rect) => touchesOrIntersects(next, rect))) return null;
 

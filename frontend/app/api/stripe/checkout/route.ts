@@ -97,8 +97,8 @@ export async function POST(request: Request) {
       success_url:
         source === "onboarding"
           ? `${appUrl}/onboarding?step=demo&checkout=success&session_id={CHECKOUT_SESSION_ID}`
-          : `${appUrl}/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: source === "onboarding" ? `${appUrl}/onboarding?step=products&checkout=cancel` : `${appUrl}/settings/billing?checkout=cancel`,
+          : `${appUrl}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: source === "onboarding" ? `${appUrl}/onboarding?step=products&checkout=cancel` : `${appUrl}/account?checkout=cancel`,
       metadata: {
         user_id: userId,
         workspace_id: workspaceId ?? "",

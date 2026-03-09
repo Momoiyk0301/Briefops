@@ -6,11 +6,22 @@ import { vi } from "vitest";
 import BriefingsPage from "@/views/BriefingsPage";
 
 const apiMocks = vi.hoisted(() => ({
+  getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),
+  createBriefing: vi.fn(),
   listBriefingShareLinks: vi.fn().mockResolvedValue([])
 }));
 
+const routerMocks = vi.hoisted(() => ({
+  navigate: vi.fn()
+}));
+
+const toastMocks = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn()
+}));
+
 vi.mock("@/lib/api", () => ({
-  getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),
+  getMe: apiMocks.getMe,
   getBriefingsWithFallback: vi.fn().mockResolvedValue({
     demo: true,
     reason: "fetch failed",
@@ -27,7 +38,7 @@ vi.mock("@/lib/api", () => ({
       }
     ]
   }),
-  createBriefing: vi.fn(),
+  createBriefing: apiMocks.createBriefing,
   deleteBriefing: vi.fn(),
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: vi.fn(),
@@ -40,11 +51,24 @@ vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
   return {
     ...actual,
-    useNavigate: () => vi.fn()
+    useNavigate: () => routerMocks.navigate
   };
 });
 
+vi.mock("react-hot-toast", () => ({
+  default: toastMocks
+}));
+
 describe("BriefingsPage", () => {
+  beforeEach(() => {
+    apiMocks.getMe.mockResolvedValue({ org: { id: "org-1", name: "Org" } });
+    apiMocks.createBriefing.mockReset();
+    apiMocks.listBriefingShareLinks.mockClear();
+    routerMocks.navigate.mockReset();
+    toastMocks.error.mockReset();
+    toastMocks.success.mockReset();
+  });
+
   it("shows demo data badge when fallback is used", async () => {
     const client = new QueryClient();
     render(
@@ -80,5 +104,28 @@ describe("BriefingsPage", () => {
       expect(screen.getByText(/Share PDF/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
+  });
+
+  it("redirects to onboarding when workspace is missing", async () => {
+    apiMocks.getMe.mockResolvedValue({ org: null, workspace: null });
+
+    const client = new QueryClient();
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <BriefingsPage />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText(/Demo - One/)).toBeInTheDocument());
+    await user.click(screen.getAllByRole("button", { name: /Nouveau briefing/i })[0]);
+
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding");
+    expect(toastMocks.error).toHaveBeenCalledWith("Workspace missing. Complete onboarding first.");
+    expect(apiMocks.createBriefing).not.toHaveBeenCalled();
   });
 });

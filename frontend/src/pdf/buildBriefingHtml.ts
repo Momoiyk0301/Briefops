@@ -1,3 +1,4 @@
+import { getDesktopPage, getPageCountFromLayouts } from "@/lib/briefingPages";
 import { gridRectToInlineStyle } from "@/pdf/layoutToHtml";
 
 type CanonicalModulePayload = {
@@ -105,8 +106,9 @@ function renderObjectRows(value: Record<string, unknown>): string {
 }
 
 function parseModuleShape(module: ModuleInput): {
+  moduleKey: string;
   enabled: boolean;
-  layoutDesktop: { x?: number; y?: number; w?: number; h?: number } | undefined;
+  layoutDesktop: { x?: number; y?: number; w?: number; h?: number; page?: number } | undefined;
   data: Record<string, unknown>;
 } {
   const raw = module.data_json as CanonicalModulePayload | Record<string, unknown> | null;
@@ -115,6 +117,7 @@ function parseModuleShape(module: ModuleInput): {
     const enabledFromMetadata = canonical.metadata?.enabled !== false;
     const visible = canonical.audience?.visibility !== "hidden";
     return {
+      moduleKey: module.module_key,
       enabled: module.enabled && enabledFromMetadata && visible,
       layoutDesktop: canonical.layout?.desktop,
       data: moduleDataToObject(canonical.data)
@@ -122,6 +125,7 @@ function parseModuleShape(module: ModuleInput): {
   }
 
   return {
+    moduleKey: module.module_key,
     enabled: module.enabled,
     layoutDesktop: undefined,
     data: moduleDataToObject(module.data_json)
@@ -159,18 +163,41 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
   const titleWithTeam = targetTeam ? `${title} - team ${targetTeam}` : title;
   const eventDate = input.event_date || "Not set";
   const location = input.location_text || "Not set";
+  const pageCount = getPageCountFromLayouts(activeModules.map((module) => module.layoutDesktop));
+  const pages = Array.from({ length: pageCount }, (_, pageIndex) => {
+    const pageModules = activeModules.filter((module) => getDesktopPage(module.layoutDesktop) === pageIndex);
+    const moduleSections = pageModules.length
+      ? pageModules
+          .map((module, index) => {
+            return `
+              <section class="module" data-page="${pageIndex + 1}" data-module-index="${index + 1}" style="${gridRectToInlineStyle(module.layoutDesktop)}">
+                <div class="module-title">${escapeHtml(humanizeModuleKey(module.moduleKey))}</div>
+                ${renderObjectRows(module.data)}
+              </section>
+            `;
+          })
+          .join("\n")
+      : '<section class="module module-empty"><p class="muted">No active modules on this page.</p></section>';
 
-  const moduleSections = activeModules.length
-    ? activeModules
-        .map((module, index) => {
-          return `
-            <section class="module" data-module-index="${index + 1}" style="${gridRectToInlineStyle(module.layoutDesktop)}">
-              ${renderObjectRows(module.data)}
-            </section>
-          `;
-        })
-        .join("\n")
-    : '<section class="module module-empty"><p class="muted">No active modules.</p></section>';
+    return `
+      <section class="pdf-page">
+        ${pageIndex === 0 ? `
+          <header class="header">
+            <h1>${escapeHtml(titleWithTeam)}</h1>
+            <div class="muted">Briefing ID: ${escapeHtml(input.id)}</div>
+            <div class="meta">
+              <div><strong>Date:</strong> ${escapeHtml(eventDate)}</div>
+              <div><strong>Location:</strong> ${escapeHtml(location)}</div>
+            </div>
+          </header>
+        ` : `<div class="page-marker">Page ${pageIndex + 1}</div>`}
+        <main class="canvas">
+          ${moduleSections}
+        </main>
+        <footer class="footer">Page ${pageIndex + 1} / ${pageCount}</footer>
+      </section>
+    `;
+  }).join("\n");
 
   return `
 <!doctype html>
@@ -188,6 +215,15 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       font-size: 12px;
       line-height: 1.4;
       background: #fff;
+    }
+    .pdf-page {
+      min-height: 269mm;
+      page-break-after: always;
+      break-after: page;
+    }
+    .pdf-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
     }
     .header {
       margin-bottom: 14px;
@@ -221,6 +257,14 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       overflow: hidden;
       background: #fff;
     }
+    .module-title {
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
     .row {
       display: grid;
       grid-template-columns: 120px 1fr;
@@ -249,6 +293,14 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       position: static;
       margin-top: 8px;
     }
+    .page-marker {
+      margin-bottom: 8px;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
     .footer {
       margin-top: 10px;
       color: #6b7280;
@@ -258,19 +310,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
   </style>
 </head>
 <body>
-  <header class="header">
-    <h1>${escapeHtml(titleWithTeam)}</h1>
-    <div class="muted">Briefing ID: ${escapeHtml(input.id)}</div>
-    <div class="meta">
-      <div><strong>Date:</strong> ${escapeHtml(eventDate)}</div>
-      <div><strong>Location:</strong> ${escapeHtml(location)}</div>
-    </div>
-  </header>
-  <main class="canvas">
-    ${moduleSections}
-  </main>
-
-  <footer class="footer">Generated at ${escapeHtml(new Date().toISOString())}</footer>
+  ${pages}
 </body>
 </html>
   `.trim();

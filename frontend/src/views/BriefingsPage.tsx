@@ -49,6 +49,7 @@ export default function BriefingsPage() {
   const briefings = briefingsQuery.data?.data ?? [];
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const plan = meQuery.data?.plan ?? "free";
+  const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
   const briefingLimit = plan === "free" ? 1 : plan === "starter" ? 20 : plan === "plus" ? 100 : null;
   const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
@@ -115,6 +116,16 @@ export default function BriefingsPage() {
     }).length;
   }, [briefings, currentMonth, currentYear]);
 
+  const handleCreateBriefing = () => {
+    if (meQuery.isLoading) return;
+    if (!workspaceId) {
+      toast.error("Workspace missing. Complete onboarding first.");
+      navigate("/onboarding");
+      return;
+    }
+    createMutation.mutate();
+  };
+
   const calendarCells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => {
     if (index < firstWeekday) return null;
     return index - firstWeekday + 1;
@@ -177,7 +188,9 @@ export default function BriefingsPage() {
               Calendrier
             </Button>
           </div>
-          <Button onClick={() => createMutation.mutate()} withArrow>{t("briefings.new")}</Button>
+          <Button onClick={handleCreateBriefing} withArrow disabled={meQuery.isLoading || createMutation.isPending}>
+            {t("briefings.new")}
+          </Button>
         </div>
       </div>
 
@@ -228,7 +241,12 @@ export default function BriefingsPage() {
           <Card className="text-center">
             <p className="text-lg font-medium">{t("briefings.empty")}</p>
             <p className="mt-1 text-sm text-slate-500">Crée ton premier briefing en 2 minutes.</p>
-            <Button className="mt-4" withArrow onClick={() => createMutation.mutate()}>
+            <Button
+              className="mt-4"
+              withArrow
+              onClick={handleCreateBriefing}
+              disabled={meQuery.isLoading || createMutation.isPending}
+            >
               {t("briefings.new")}
             </Button>
           </Card>

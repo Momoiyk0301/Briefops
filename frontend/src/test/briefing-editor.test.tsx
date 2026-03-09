@@ -119,4 +119,15 @@ describe("BriefingEditor", () => {
       expect(screen.getByText(/Saved/i)).toBeInTheDocument();
     }, { timeout: 3000 });
   });
+
+  it("adds a page and lets the selected module move to page 2", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getAllByRole("button", { name: /Ajouter une page/i })[0]);
+    const selectors = screen.getAllByRole("combobox", { name: /page-selector/i });
+    await user.selectOptions(selectors[0], "1");
+
+    expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
+  });
 });

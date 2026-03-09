@@ -8,14 +8,16 @@ import { vi } from "vitest";
 import i18n from "@/i18n";
 import LoginPage from "@/views/LoginPage";
 
-const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
+const { signInWithPassword, signUpWithPassword, resetPasswordForEmail } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
-  signUpWithPassword: vi.fn()
+  signUpWithPassword: vi.fn(),
+  resetPasswordForEmail: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => ({
   signInWithPassword,
-  signUpWithPassword
+  signUpWithPassword,
+  resetPasswordForEmail
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -57,5 +59,15 @@ describe("LoginPage", () => {
     }
 
     expect(signInWithPassword).toHaveBeenCalled();
+  });
+
+  it("sends reset password email from forgot password button", async () => {
+    resetPasswordForEmail.mockResolvedValueOnce(undefined);
+    renderPage();
+
+    await userEvent.type(screen.getByPlaceholderText(/email/i), "reset@example.com");
+    await userEvent.click(screen.getByRole("button", { name: /Mot de passe oublié/i }));
+
+    expect(resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
   });
 });

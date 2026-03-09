@@ -7,7 +7,6 @@ import { useAuth } from "@/lib/auth";
 import { getMe } from "@/lib/api";
 import AccountPage from "@/views/AccountPage";
 import AuthConfirmedPage from "@/views/AuthConfirmedPage";
-import BillingPage from "@/views/BillingPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
@@ -17,10 +16,10 @@ import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
 import OnboardingPage from "@/views/OnboardingPage";
 import RouteErrorPage from "@/views/RouteErrorPage";
+import ResetPasswordPage from "@/views/ResetPasswordPage";
 import SettingsPage from "@/views/SettingsPage";
 import StaffPage from "@/views/StaffPage";
 import StatusPage from "@/views/StatusPage";
-import SubscriptionPage from "@/views/SubscriptionPage";
 
 function RequireAuth() {
   const { session, loading } = useAuth();
@@ -76,6 +75,11 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />
   },
   {
+    path: "/auth/reset-password",
+    element: <ResetPasswordPage />,
+    errorElement: <RouteErrorPage />
+  },
+  {
     path: "/login",
     element: <LoginGate />,
     errorElement: <RouteErrorPage />
@@ -94,11 +98,11 @@ export const router = createBrowserRouter([
           { path: "/documents", element: <DocumentsPage /> },
           { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },
-          { path: "/abonnement", element: <SubscriptionPage /> },
+          { path: "/abonnement", element: <Navigate to="/account" replace /> },
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/settings", element: <SettingsPage /> },
-          { path: "/settings/billing", element: <BillingPage /> },
+          { path: "/settings/billing", element: <Navigate to="/account" replace /> },
           {
             element: <RequireAdmin />,
             children: [{ path: "/status", element: <StatusPage /> }]

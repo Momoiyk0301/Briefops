@@ -1,4 +1,4 @@
-import { Bell, Boxes, CircleUser, CreditCard, FileText, LogOut, Settings, Users } from "lucide-react";
+import { Bell, Boxes, CircleUser, FileText, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -25,15 +25,17 @@ function SidebarItem({ to, title, icon, end = false }: ItemProps) {
       title={title}
       end={end}
       className={({ isActive }) =>
-        `flex h-11 w-full items-center justify-center gap-3 rounded-2xl px-3 text-sm outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white/40 group-hover/sidebar:justify-start ${
+        `relative flex h-11 w-full items-center rounded-2xl px-3 text-sm outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white/40 ${
           isActive
             ? "bg-white text-brand-500 shadow-panel"
             : "text-white/80 hover:bg-white/15 hover:text-white"
         }`
       }
     >
-      <span className="flex h-5 w-5 items-center justify-center">{icon}</span>
-      <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:ml-0.5 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+      <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
+        {icon}
+      </span>
+      <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
         {title}
       </span>
     </NavLink>
@@ -42,7 +44,7 @@ function SidebarItem({ to, title, icon, end = false }: ItemProps) {
 
 export function AppShell({ plan, demoData = false, children }: Props) {
   const iconButton =
-    "flex h-11 w-full items-center justify-center gap-3 rounded-2xl px-3 text-white/80 transition-all duration-300 hover:bg-white/15 hover:text-white group-hover/sidebar:justify-start";
+    "relative flex h-11 w-full items-center rounded-2xl px-3 text-white/80 transition-all duration-300 hover:bg-white/15 hover:text-white";
 
   return (
     <div className="min-h-screen bg-transparent text-[#111] dark:text-white">
@@ -67,15 +69,16 @@ export function AppShell({ plan, demoData = false, children }: Props) {
               <SidebarItem to="/modules" title="Modules" icon={<Boxes size={18} />} />
               <SidebarItem to="/staff" title="Staff" icon={<Users size={18} />} />
               <SidebarItem to="/account" title="Compte" icon={<CircleUser size={18} />} />
-              <SidebarItem to="/abonnement" title="Abonnement" icon={<CreditCard size={18} />} />
             </nav>
             <div className="space-y-2 pt-3">
               <div className="border-t border-white/20 pt-2">
                 <SidebarItem to="/settings" title="Settings" icon={<Settings size={18} />} end />
               </div>
               <button type="button" title="Logout" onClick={() => void signOut()} className={iconButton}>
-                <LogOut size={18} />
-                <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:ml-0.5 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+                <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
+                  <LogOut size={18} />
+                </span>
+                <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
                   Logout
                 </span>
               </button>
@@ -86,8 +89,10 @@ export function AppShell({ plan, demoData = false, children }: Props) {
                   `${iconButton} ${isActive ? "bg-white text-brand-500 shadow-panel" : ""}`
                 }
               >
-                <Bell size={18} />
-                <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:ml-0.5 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+                <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
+                  <Bell size={18} />
+                </span>
+                <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
                   Notifications
                 </span>
               </NavLink>
@@ -136,15 +141,6 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           >
             <Users size={16} />
             Staff
-          </NavLink>
-          <NavLink
-            to="/settings/billing"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <CreditCard size={16} />
-            Abonnement
           </NavLink>
           <NavLink
             to="/settings"
