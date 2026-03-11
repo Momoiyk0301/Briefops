@@ -1,4 +1,4 @@
-import { Bell, Boxes, CircleUser, FileText, LogOut, Settings, Users } from "lucide-react";
+import { Bell, Boxes, CircleUser, Files, FileText, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -65,23 +65,12 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           <div className="flex h-full flex-col justify-between">
             <nav className="space-y-3">
               <SidebarItem to="/briefings" title="Briefings" icon={<FileText size={18} />} />
-              <SidebarItem to="/documents" title="Documents" icon={<FileText size={18} />} />
+              <SidebarItem to="/documents" title="Documents" icon={<Files size={18} />} />
               <SidebarItem to="/modules" title="Modules" icon={<Boxes size={18} />} />
               <SidebarItem to="/staff" title="Staff" icon={<Users size={18} />} />
               <SidebarItem to="/account" title="Compte" icon={<CircleUser size={18} />} />
             </nav>
             <div className="space-y-2 pt-3">
-              <div className="border-t border-white/20 pt-2">
-                <SidebarItem to="/settings" title="Settings" icon={<Settings size={18} />} end />
-              </div>
-              <button type="button" title="Logout" onClick={() => void signOut()} className={iconButton}>
-                <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
-                  <LogOut size={18} />
-                </span>
-                <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
-                  Logout
-                </span>
-              </button>
               <NavLink
                 to="/notifications"
                 title="Notifications"
@@ -96,6 +85,17 @@ export function AppShell({ plan, demoData = false, children }: Props) {
                   Notifications
                 </span>
               </NavLink>
+              <div className="border-t border-white/20 pt-2">
+                <SidebarItem to="/settings" title="Settings" icon={<Settings size={18} />} end />
+              </div>
+              <button type="button" title="Logout" onClick={() => void signOut()} className={iconButton}>
+                <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
+                  <LogOut size={18} />
+                </span>
+                <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+                  Logout
+                </span>
+              </button>
             </div>
           </div>
         </aside>
@@ -130,7 +130,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
               `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
             }
           >
-            <FileText size={16} />
+            <Files size={16} />
             Documents
           </NavLink>
           <NavLink
@@ -143,15 +143,6 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             Staff
           </NavLink>
           <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <Settings size={16} />
-            Settings
-          </NavLink>
-          <NavLink
             to="/notifications"
             className={({ isActive }) =>
               `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
@@ -159,6 +150,15 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           >
             <Bell size={16} />
             Notifications
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <Settings size={16} />
+            Settings
           </NavLink>
           <NavLink
             to="/account"

@@ -196,6 +196,8 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
         id: "demo-briefing-1",
         org_id: "demo-org",
         title: "Demo - Festival Main Stage",
+        status: "ready",
+        shared: true,
         event_date: now.slice(0, 10),
         location_text: "Brussels Expo",
         created_by: "demo-user",
@@ -206,6 +208,8 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
         id: "demo-briefing-2",
         org_id: "demo-org",
         title: "Demo - Corporate Summit",
+        status: "draft",
+        shared: false,
         event_date: now.slice(0, 10),
         location_text: "Antwerp Convention Center",
         created_by: "demo-user",
@@ -233,7 +237,7 @@ export async function getBriefing(id: string) {
 
 export async function patchBriefing(
   id: string,
-  patch: { title?: string; event_date?: string | null; location_text?: string | null }
+  patch: { title?: string; status?: "draft" | "ready" | "archived"; event_date?: string | null; location_text?: string | null }
 ) {
   const response = await requestJson<{ data: Briefing }>(`/api/briefings/${id}`, {
     method: "PATCH",
@@ -330,12 +334,15 @@ export async function listBriefingShareLinks(briefingId: string): Promise<Public
 
 export async function createBriefingShareLink(
   briefingId: string,
-  duration: "24h" | "3d" | "1w" | "30d" | "never",
-  team?: string | null
+  input: {
+    duration: "24h" | "3d" | "1w" | "30d" | "never";
+    type: "staff" | "audience";
+    tag?: string | null;
+  }
 ): Promise<PublicLink> {
   const response = await requestJson<{ data: PublicLink }>(`/api/briefings/${briefingId}/share`, {
     method: "POST",
-    body: { duration, team: team ?? null }
+    body: { duration: input.duration, type: input.type, tag: input.tag ?? null }
   });
   return response.data;
 }

@@ -41,7 +41,7 @@ describe("frontend /api/pdf/:id", () => {
 
   it("returns json payload when format=json", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", status: "draft", shared: false, event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
     getUserPlan.mockResolvedValueOnce("pro");
     renderBriefingPdf.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
@@ -61,7 +61,7 @@ describe("frontend /api/pdf/:id", () => {
 
   it("returns 500 when storage upload fails", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", status: "draft", shared: false, event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
     getUserPlan.mockResolvedValueOnce("pro");
     renderBriefingPdf.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
@@ -77,7 +77,7 @@ describe("frontend /api/pdf/:id", () => {
 
   it("returns 403 when briefing belongs to another workspace", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-other", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-other", title: "T", status: "draft", shared: false, event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
 
     const mod = await import("../../app/api/pdf/[id]/route");

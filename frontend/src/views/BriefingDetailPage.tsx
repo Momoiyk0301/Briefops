@@ -1,14 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
+import { FileDown, PencilLine, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { getBriefing, getBriefingModules, getRegistryModules, toApiMessage } from "@/lib/api";
 import { A4Preview } from "@/components/briefing/A4Preview";
 import { BriefingEditor, buildInitialState } from "@/components/briefing/BriefingEditor";
+import { SharePanel } from "@/components/briefing/SharePanel";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getBriefing, getBriefingModules, getRegistryModules, toApiMessage } from "@/lib/api";
 import { BriefingModuleRow } from "@/lib/types";
+
+function getStatusTone(status: "draft" | "ready" | "archived") {
+  if (status === "ready") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200";
+  if (status === "archived") return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-900/20 dark:text-amber-200";
+  return "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-500/20 dark:bg-slate-800/60 dark:text-slate-200";
+}
 
 export default function BriefingDetailPage() {
   const params = useParams<{ id: string }>();
@@ -18,6 +27,7 @@ export default function BriefingDetailPage() {
   const locationState = location.state as { initializingNewBriefing?: boolean } | null;
   const isInitializingNewBriefing = Boolean(locationState?.initializingNewBriefing);
   const [editing, setEditing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const briefingQuery = useQuery({ queryKey: ["briefing", id], queryFn: () => getBriefing(id), enabled: Boolean(id) });
   const modulesQuery = useQuery({ queryKey: ["modules", id], queryFn: () => getBriefingModules(id), enabled: Boolean(id) });
@@ -63,7 +73,7 @@ export default function BriefingDetailPage() {
   if (briefingQuery.isLoading || registryQuery.isLoading || (modulesQuery.isLoading && !isInitializingNewBriefing)) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-20 w-full" />
         <div className="grid gap-4 lg:grid-cols-2">
           <Skeleton className="h-[560px] w-full" />
           <Skeleton className="h-[560px] w-full" />
@@ -82,15 +92,40 @@ export default function BriefingDetailPage() {
   const previewState = buildInitialState(briefingQuery.data, modules, registryQuery.data);
 
   return (
-    <div className="relative">
-      <div className="mb-4 flex items-center justify-between">
-        <Button variant="secondary" onClick={() => navigate(-1)}>Retour</Button>
-        {editing ? (
-          <Button variant="secondary" onClick={() => setEditing(false)}>OK</Button>
-        ) : (
-          <Button onClick={() => setEditing(true)}>Modifier</Button>
-        )}
-      </div>
+    <div className="relative stack-section">
+      <Card className="sticky top-[88px] z-10 border border-[#dde4f1] bg-white/88 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#121212]/92">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" onClick={() => navigate(-1)}>Retour</Button>
+              <Badge className={getStatusTone(briefingQuery.data.status)}>
+                {briefingQuery.data.status === "ready" ? "Ready" : briefingQuery.data.status === "archived" ? "Archived" : "Draft"}
+              </Badge>
+              {briefingQuery.data.shared ? (
+                <Badge className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-900/20 dark:text-sky-200">Shared</Badge>
+              ) : null}
+            </div>
+            <h1 className="mt-3 truncate text-2xl font-bold text-[#111827] dark:text-white">{briefingQuery.data.title}</h1>
+            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+              {briefingQuery.data.event_date ?? "Date non définie"} · {briefingQuery.data.location_text ?? "Lieu non défini"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant={editing ? "secondary" : "primary"} onClick={() => setEditing((value) => !value)}>
+              <PencilLine size={16} />
+              Modifier
+            </Button>
+            <Button variant="secondary" onClick={() => setShareOpen(true)}>
+              <Share2 size={16} />
+              Partager
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/briefings/${id}/export`)}>
+              <FileDown size={16} />
+              Générer PDF
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       {editing ? (
         <BriefingEditor
@@ -104,6 +139,15 @@ export default function BriefingDetailPage() {
           <A4Preview state={previewState} />
         </Card>
       )}
+
+      <SharePanel
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        briefingId={briefingQuery.data.id}
+        teams={Array.isArray((previewState.modules.metadata.data.teams ?? [])) ? previewState.modules.metadata.data.teams : []}
+        onExportPdf={() => navigate(`/briefings/${id}/export`)}
+      />
+
       {showInitOverlay ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-panel bg-white/65 backdrop-blur-sm dark:bg-[#090909]/60">
           <Card className="border-brand-500/30 px-5 py-3">

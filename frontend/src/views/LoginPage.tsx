@@ -30,12 +30,14 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [rememberMe, setRememberMe] = useState(true);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
   const watchedEmail = form.watch("email");
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       if (mode === "login") {
+        localStorage.setItem("briefops:remember_me", String(rememberMe));
         await signInWithPassword(values.email, values.password);
         const me = await getMe();
         const nextRoute = getPostAuthRedirect(me);
@@ -62,9 +64,9 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_45%,#f3efe8_100%)] lg:grid-cols-[minmax(0,1.15fr)_minmax(520px,0.85fr)] dark:bg-[#0b1120]">
+    <div className="grid min-h-screen grid-cols-1 bg-[linear-gradient(180deg,#f4f7fc_0%,#f8fbff_45%,#f4f1ea_100%)] lg:grid-cols-[minmax(0,1.15fr)_minmax(520px,0.85fr)] dark:bg-[#0b1120]">
       <section className="relative flex min-h-[50vh] items-end overflow-hidden px-6 py-10 lg:min-h-screen lg:px-12 lg:py-12">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(84,119,255,0.28),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(0,186,255,0.16),transparent_24%),linear-gradient(135deg,#0f2747_0%,#1954c9_45%,#56a9ff_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(84,119,255,0.16),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(0,186,255,0.08),transparent_24%),linear-gradient(135deg,#163252_0%,#28559d_45%,#6f95c9_100%)]" />
         <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:34px_34px]" />
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-80 w-80 translate-x-1/4 translate-y-1/4 rounded-full bg-[#ffb86c]/25 blur-3xl" />
@@ -118,7 +120,15 @@ export default function LoginPage() {
               <Input placeholder={t("auth.email")} type="email" {...form.register("email")} />
               <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
               {mode === "login" ? (
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+                    <input
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Se souvenir de moi
+                  </label>
                   <Link
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400"
                     to={watchedEmail ? `/auth/forgot-password?email=${encodeURIComponent(watchedEmail.trim())}` : "/auth/forgot-password"}

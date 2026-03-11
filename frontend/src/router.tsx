@@ -9,6 +9,7 @@ import { getPostAuthRedirect } from "@/lib/authRedirect";
 import AccountPage from "@/views/AccountPage";
 import AuthConfirmedPage from "@/views/AuthConfirmedPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
+import BriefingExportPage from "@/views/BriefingExportPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
 import DocumentsPage from "@/views/DocumentsPage";
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
           { path: "/onboarding", element: <OnboardingPage /> },
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
+          { path: "/briefings/:id/export", element: <BriefingExportPage /> },
           { path: "/documents", element: <DocumentsPage /> },
           { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },

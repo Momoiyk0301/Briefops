@@ -55,7 +55,7 @@ describe("frontend /api/briefings", () => {
     getUserOrgId.mockResolvedValue("11111111-1111-1111-1111-111111111111");
     getUserPlan.mockResolvedValue("free");
     countBriefingsByOrg.mockResolvedValue(0);
-    createBriefing.mockResolvedValue({ id: "b1", title: "Test briefing" });
+    createBriefing.mockResolvedValue({ id: "b1", title: "Test briefing", status: "draft", shared: false });
 
     const mod = await import("../../app/api/briefings/route");
     const response = await mod.POST(
