@@ -29,6 +29,8 @@ export async function GET(request: Request) {
           briefing_id: item.briefing_id,
           version: item.version,
           file_path: item.file_path,
+          status: item.status,
+          error_message: item.error_message ?? null,
           created_at: item.created_at,
           created_by: item.created_by,
           briefing_title: briefing?.title ?? "Untitled briefing",

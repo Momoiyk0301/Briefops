@@ -55,8 +55,6 @@ describe("frontend /api/briefings", () => {
     getUserWorkspaceId.mockResolvedValue("11111111-1111-1111-1111-111111111111");
     getUserPlan.mockResolvedValue("free");
     countBriefingsByWorkspace.mockResolvedValue(0);
-    createBriefing.mockResolvedValue({ id: "b1", title: "Test briefing" });
-    countBriefingsByOrg.mockResolvedValue(0);
     createBriefing.mockResolvedValue({ id: "b1", title: "Test briefing", status: "draft", shared: false });
 
     const mod = await import("../../app/api/briefings/route");

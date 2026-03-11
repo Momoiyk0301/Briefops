@@ -314,14 +314,35 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function generateBriefingPdf(
+export async function createBriefingExportJob(
+  id: string
+): Promise<{ export_id: string; version: number; status: "creating" }> {
+  return requestJson<{ export_id: string; version: number; status: "creating" }>(`/api/briefings/${id}/export`, {
+    method: "POST"
+  });
+}
+
+export async function startBriefingExportJob(
   id: string,
-  team?: string | null
-): Promise<{ export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string; team?: string | null }> {
-  const query = team ? `?format=json&team=${encodeURIComponent(team)}` : "?format=json";
-  return requestJson<{ ok: boolean; export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string }>(
-    `/api/pdf/${id}${query}`
+  exportId: string
+): Promise<{ export_id: string; version: number; status: "generating" | "ready" | "failed"; file_path: string | null }> {
+  return requestJson<{ export_id: string; version: number; status: "generating" | "ready" | "failed"; file_path: string | null }>(
+    `/api/briefings/${id}/export/${exportId}/generate`,
+    { method: "POST" }
   );
+}
+
+export async function getBriefingExportJob(
+  id: string,
+  exportId: string
+): Promise<{ export_id: string; version: number; status: "creating" | "generating" | "ready" | "failed"; file_path: string | null; error_message?: string | null }> {
+  return requestJson<{
+    export_id: string;
+    version: number;
+    status: "creating" | "generating" | "ready" | "failed";
+    file_path: string | null;
+    error_message?: string | null;
+  }>(`/api/briefings/${id}/export/${exportId}`);
 }
 
 export async function listBriefingExports(): Promise<BriefingExportWithBriefing[]> {
@@ -329,7 +350,7 @@ export async function listBriefingExports(): Promise<BriefingExportWithBriefing[
   return response.data;
 }
 
-export async function downloadBriefingExport(exportId: string): Promise<Blob> {
+export async function downloadBriefingExport(exportId: string): Promise<{ blob: Blob; filename: string | null }> {
   const path = `/api/briefing-exports/${exportId}/download`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
@@ -346,7 +367,12 @@ export async function downloadBriefingExport(exportId: string): Promise<Blob> {
   }
 
   logApiSuccess("GET", path, response.status, startedAt);
-  return response.blob();
+  const contentDisposition = response.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/i);
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? null
+  };
 }
 
 export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {

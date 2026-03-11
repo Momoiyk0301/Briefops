@@ -58,7 +58,7 @@ export function SharePanel({
 
   const handleCreate = async (type: "staff" | "audience") => {
     if (type === "audience" && audienceTag === "all") {
-      toast.error("Choisis une audience");
+      toast.error("Choisis une team");
       return;
     }
 
@@ -70,7 +70,7 @@ export function SharePanel({
         tag: type === "audience" ? audienceTag : null
       });
       setLinks((prev) => [created, ...prev]);
-      toast.success(type === "staff" ? "Lien staff créé" : "Lien audience créé");
+      toast.success(type === "staff" ? "Lien staff créé" : "Lien team créé");
     } catch (error) {
       toast.error(toApiMessage(error));
     } finally {
@@ -100,7 +100,7 @@ export function SharePanel({
   };
 
   const formatLinkType = (link: PublicLink) => {
-    if (link.link_type === "audience") return `Audience${link.audience_tag ? ` · ${link.audience_tag}` : ""}`;
+    if (link.link_type === "audience") return `Team${link.audience_tag ? ` · ${link.audience_tag}` : ""}`;
     return "Staff";
   };
 
@@ -145,13 +145,13 @@ export function SharePanel({
 
           {teams.length > 0 ? (
             <>
-              <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300">Audience</p>
+              <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300">Team</p>
               <select
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
                 value={audienceTag}
                 onChange={(event) => setAudienceTag(event.target.value)}
               >
-                <option value="all">Choisir une audience</option>
+                <option value="all">Choisir une team</option>
                 {teams.map((entry) => (
                   <option key={entry} value={entry}>
                     {entry}
@@ -173,7 +173,7 @@ export function SharePanel({
               disabled={creating || teams.length === 0}
             >
               <QrCode size={16} />
-              Générer un lien audience
+              Générer un lien team
             </Button>
             <Button variant="secondary" className="w-full justify-start" onClick={onExportPdf} disabled={!onExportPdf}>
               <Link2 size={16} />

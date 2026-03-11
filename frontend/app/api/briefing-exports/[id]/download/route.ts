@@ -10,6 +10,14 @@ export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
 
+function slugifyFilename(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "briefing";
+}
+
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Params) {
@@ -37,7 +45,8 @@ export async function GET(request: Request, { params }: Params) {
       throw new HttpError(500, `Storage download failed: ${error.message}`);
     }
 
-    const filename = `briefing-${exportRow.briefing_id}-v${exportRow.version}.pdf`;
+    const briefing = Array.isArray(exportRow.briefings) ? exportRow.briefings[0] : exportRow.briefings;
+    const filename = `${slugifyFilename(briefing?.title ?? "briefing")}-v${exportRow.version}.pdf`;
     return new NextResponse(data, {
       status: 200,
       headers: {

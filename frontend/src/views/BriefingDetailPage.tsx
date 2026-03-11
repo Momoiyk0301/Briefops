@@ -28,6 +28,7 @@ export default function BriefingDetailPage() {
   const isInitializingNewBriefing = Boolean(locationState?.initializingNewBriefing);
   const [editing, setEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [saveNonce, setSaveNonce] = useState(0);
 
   const briefingQuery = useQuery({ queryKey: ["briefing", id], queryFn: () => getBriefing(id), enabled: Boolean(id) });
   const modulesQuery = useQuery({ queryKey: ["modules", id], queryFn: () => getBriefingModules(id), enabled: Boolean(id) });
@@ -90,10 +91,11 @@ export default function BriefingDetailPage() {
   if (!modules || !registryQuery.data) return <Card>Not found</Card>;
   const showInitOverlay = isInitializingNewBriefing && (modulesQuery.isLoading || modulesQuery.isFetching);
   const previewState = buildInitialState(briefingQuery.data, modules, registryQuery.data);
+  const lastUpdatedLabel = new Date(briefingQuery.data.updated_at).toLocaleString();
 
   return (
     <div className="relative stack-section">
-      <Card className="sticky top-[88px] z-10 border border-[#dde4f1] bg-white/88 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#121212]/92">
+      <Card className={`sticky top-[88px] z-10 border border-[#dde4f1] backdrop-blur-xl dark:border-white/10 dark:bg-[#121212]/92 ${editing ? "bg-white/94 p-3" : "bg-white/88 p-4"}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -109,11 +111,21 @@ export default function BriefingDetailPage() {
             <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
               {briefingQuery.data.event_date ?? "Date non définie"} · {briefingQuery.data.location_text ?? "Lieu non défini"}
             </p>
+            <p className="mt-1 text-xs text-[#8b92a6] dark:text-[#a8afc6]">Dernière modification le {lastUpdatedLabel}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant={editing ? "secondary" : "primary"} onClick={() => setEditing((value) => !value)}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (!editing) {
+                  setEditing(true);
+                  return;
+                }
+                setSaveNonce((value) => value + 1);
+              }}
+            >
               <PencilLine size={16} />
-              Modifier
+              {editing ? "Enregistrer" : "Modifier"}
             </Button>
             <Button variant="secondary" onClick={() => setShareOpen(true)}>
               <Share2 size={16} />
@@ -133,6 +145,7 @@ export default function BriefingDetailPage() {
           briefing={briefingQuery.data}
           modules={modules}
           registryModules={registryQuery.data}
+          saveNonce={saveNonce}
         />
       ) : (
         <Card className="flex justify-center p-4">

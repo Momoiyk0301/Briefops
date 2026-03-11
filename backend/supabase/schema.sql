@@ -144,6 +144,8 @@ create table if not exists public.briefing_exports (
   briefing_id uuid not null references public.briefings(id) on delete cascade,
   version integer not null check (version > 0),
   file_path text not null,
+  status text not null default 'ready' check (status in ('creating', 'generating', 'ready', 'failed')),
+  error_message text,
   created_at timestamptz not null default timezone('utc', now()),
   created_by uuid not null references public.profiles(id) on delete restrict,
   unique (briefing_id, version),

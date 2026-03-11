@@ -1,7 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
 const SELECT_BRIEFING_EXPORT_FIELDS =
-  "id, workspace_id, briefing_id, version, file_path, created_at, created_by";
+  "id, workspace_id, briefing_id, version, file_path, status, error_message, created_at, created_by";
 
 export async function getNextBriefingExportVersion(client: SupabaseClient, briefingId: string) {
   const { data, error } = await client
@@ -23,12 +23,34 @@ export async function createBriefingExport(
     briefing_id: string;
     version: number;
     file_path: string;
+    status?: "creating" | "generating" | "ready" | "failed";
+    error_message?: string | null;
     created_by: string;
   }
 ) {
   const { data, error } = await client
     .from("briefing_exports")
     .insert(input)
+    .select(SELECT_BRIEFING_EXPORT_FIELDS)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateBriefingExport(
+  client: SupabaseClient,
+  exportId: string,
+  patch: {
+    file_path?: string;
+    status?: "creating" | "generating" | "ready" | "failed";
+    error_message?: string | null;
+  }
+) {
+  const { data, error } = await client
+    .from("briefing_exports")
+    .update(patch)
+    .eq("id", exportId)
     .select(SELECT_BRIEFING_EXPORT_FIELDS)
     .single();
 

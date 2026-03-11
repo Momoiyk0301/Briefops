@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Card } from "@/components/ui/Card";
-import { downloadPdf, toApiMessage } from "@/lib/api";
+import { createBriefingExportJob, downloadBriefingExport, getBriefingExportJob, startBriefingExportJob, toApiMessage } from "@/lib/api";
 
 export default function BriefingExportPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,12 +19,26 @@ export default function BriefingExportPage() {
       }
 
       try {
-        const blob = await downloadPdf(id);
+        const created = await createBriefingExportJob(id);
+        await startBriefingExportJob(id, created.export_id);
+
+        let status = await getBriefingExportJob(id, created.export_id);
+        while (!cancelled && status.status !== "ready") {
+          if (status.status === "failed") {
+            throw new Error(status.error_message ?? "La génération du PDF a échoué.");
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 2000));
+          status = await getBriefingExportJob(id, created.export_id);
+        }
+
+        if (cancelled) return;
+
+        const { blob, filename } = await downloadBriefingExport(created.export_id);
         if (cancelled) return;
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `briefing-${id}.pdf`;
+        anchor.download = filename ?? "briefing.pdf";
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
@@ -48,7 +62,7 @@ export default function BriefingExportPage() {
       <Card className="card-pad max-w-lg text-center">
         <h1 className="text-xl font-semibold">Export PDF</h1>
         <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          Génération du briefing en cours. Le téléchargement va démarrer automatiquement.
+          Création du snapshot, génération du PDF, puis téléchargement automatique dès qu'il est prêt.
         </p>
       </Card>
     </div>

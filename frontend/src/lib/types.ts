@@ -78,6 +78,8 @@ export type BriefingExport = {
   briefing_id: string;
   version: number;
   file_path: string;
+  status: "creating" | "generating" | "ready" | "failed";
+  error_message?: string | null;
   created_at: string;
   created_by: string;
 };

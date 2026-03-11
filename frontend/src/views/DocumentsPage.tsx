@@ -53,11 +53,11 @@ export default function DocumentsPage() {
 
   const handleDownload = async (exportId: string, briefingId: string, version: number) => {
     try {
-      const blob = await downloadBriefingExport(exportId);
+      const { blob, filename } = await downloadBriefingExport(exportId);
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `briefing-${briefingId}-v${version}.pdf`;
+      anchor.download = filename ?? `briefing-${briefingId}-v${version}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -174,7 +174,7 @@ export default function DocumentsPage() {
             <EmptyState
               icon={<Link2 size={22} />}
               title="Aucun lien actif"
-              description="Partage un briefing staff ou audience pour retrouver ici les liens publics envoyes aux equipes."
+              description="Partage un briefing staff ou team pour retrouver ici les liens publics envoyes aux equipes."
               ctaLabel="Ouvrir les briefings"
               onCta={() => (window.location.href = "/briefings")}
             />

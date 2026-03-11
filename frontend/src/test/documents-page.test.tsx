@@ -10,7 +10,7 @@ import DocumentsPage from "@/views/DocumentsPage";
 const apiMocks = vi.hoisted(() => ({
   listBriefingExports: vi.fn(),
   listPublicLinks: vi.fn(),
-  downloadBriefingExport: vi.fn(),
+  downloadBriefingExport: vi.fn().mockResolvedValue({ blob: new Blob(["pdf"]), filename: "main-stage-v3.pdf" }),
   toApiMessage: vi.fn((error: unknown) => (error instanceof Error ? error.message : String(error)))
 }));
 

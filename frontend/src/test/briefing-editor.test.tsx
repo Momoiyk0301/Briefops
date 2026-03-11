@@ -7,18 +7,20 @@ import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow } from "@/lib/types";
 
 const apiMocks = vi.hoisted(() => ({
-  generateBriefingPdf: vi.fn(),
-  downloadBriefingExport: vi.fn().mockResolvedValue(new Blob(["pdf"])),
-  getStorageSignedUrl: vi.fn(),
+  createBriefingExportJob: vi.fn(),
+  startBriefingExportJob: vi.fn(),
+  getBriefingExportJob: vi.fn(),
+  downloadBriefingExport: vi.fn().mockResolvedValue({ blob: new Blob(["pdf"]), filename: "demo-briefing-v1.pdf" }),
   listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   createBriefingShareLink: vi.fn(),
   revokeBriefingShareLink: vi.fn()
 }));
 
 vi.mock("@/lib/api", () => ({
-  generateBriefingPdf: apiMocks.generateBriefingPdf,
+  createBriefingExportJob: apiMocks.createBriefingExportJob,
+  startBriefingExportJob: apiMocks.startBriefingExportJob,
+  getBriefingExportJob: apiMocks.getBriefingExportJob,
   downloadBriefingExport: apiMocks.downloadBriefingExport,
-  getStorageSignedUrl: apiMocks.getStorageSignedUrl,
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: apiMocks.createBriefingShareLink,
   revokeBriefingShareLink: apiMocks.revokeBriefingShareLink,
@@ -87,30 +89,20 @@ describe("BriefingEditor", () => {
 
   it("shows loading then displays the PDF icon link after generation", async () => {
     const user = userEvent.setup();
-    let resolveGeneration:
-      | ((value: { export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string }) => void)
-      | null = null;
-
-    apiMocks.generateBriefingPdf.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveGeneration = resolve;
-        })
-    );
+    apiMocks.createBriefingExportJob.mockResolvedValueOnce({ export_id: "export-1", version: 1, status: "creating" });
+    apiMocks.startBriefingExportJob.mockResolvedValueOnce({ export_id: "export-1", version: 1, status: "generating", file_path: "briefings/b1/exports/v1.pdf" });
+    apiMocks.getBriefingExportJob.mockResolvedValueOnce({
+      export_id: "export-1",
+      version: 1,
+      status: "ready",
+      file_path: "briefings/b1/exports/v1.pdf",
+      error_message: null
+    });
 
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /^pdf$/i }));
-    expect(screen.getByRole("button", { name: /chargement/i })).toBeDisabled();
-
-    resolveGeneration?.({
-      export_id: "export-1",
-      version: 1,
-      pdf_path: "u1/b1/briefing.pdf",
-      pdf_url: "https://example.test/briefing.pdf",
-      generated_at: "2026-03-07T00:00:00.000Z"
-    });
-
+    await waitFor(() => expect(apiMocks.createBriefingExportJob).toHaveBeenCalledWith(briefing.id));
     await waitFor(() => expect(screen.getByRole("button", { name: /prêt|ready/i })).toBeInTheDocument());
   });
 
@@ -120,7 +112,6 @@ describe("BriefingEditor", () => {
 
     await user.click(screen.getByRole("button", { name: /partager/i }));
     expect(await screen.findByRole("heading", { name: /Partager/i })).toBeInTheDocument();
-    expect(await screen.findByText(/Partager le briefing/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 

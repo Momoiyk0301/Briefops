@@ -20,12 +20,11 @@ export type CreateBriefingInput = z.infer<typeof createBriefingSchema>;
 export type UpdateBriefingInput = z.infer<typeof updateBriefingSchema>;
 
 const SELECT_BRIEFING_FIELDS =
-  "id, org_id, title, status, shared, event_date, location_text, pdf_path, created_by, created_at, updated_at";
+  "id, workspace_id, title, status, shared, event_date, location_text, pdf_path, created_by, created_at, updated_at";
 
 export async function listBriefings(client: SupabaseClient) {
   const { data, error } = await client
     .from("briefings")
-    .select("id, workspace_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .select(SELECT_BRIEFING_FIELDS)
     .order("created_at", { ascending: false });
 
@@ -37,8 +36,6 @@ export async function createBriefing(client: SupabaseClient, userId: string, inp
   const payload = createBriefingSchema.parse(input);
   const { data, error } = await client
     .from("briefings")
-    .insert({ ...payload, created_by: userId })
-    .select("id, workspace_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .insert({ ...payload, status: payload.status ?? "draft", created_by: userId })
     .select(SELECT_BRIEFING_FIELDS)
     .single();
@@ -60,7 +57,6 @@ export async function countBriefingsByWorkspace(client: SupabaseClient, workspac
 export async function getBriefingById(client: SupabaseClient, id: string) {
   const { data, error } = await client
     .from("briefings")
-    .select("id, workspace_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .select(SELECT_BRIEFING_FIELDS)
     .eq("id", id)
     .single();
@@ -75,7 +71,6 @@ export async function updateBriefing(client: SupabaseClient, id: string, patch: 
     .from("briefings")
     .update(payload)
     .eq("id", id)
-    .select("id, workspace_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
     .select(SELECT_BRIEFING_FIELDS)
     .single();
 
