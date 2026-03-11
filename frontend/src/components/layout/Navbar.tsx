@@ -107,7 +107,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             </Button>
           ) : null}
           <div className="min-w-0">
-            <p className="section-kicker hidden md:block">Workspace</p>
+            <p className="section-kicker hidden md:block">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? "BriefOps"}</p>
             <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
           </div>
         </div>

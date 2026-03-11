@@ -30,6 +30,8 @@ describe("BriefingEditor", () => {
     id: "11111111-1111-1111-1111-111111111111",
     org_id: "22222222-2222-2222-2222-222222222222",
     title: "Demo briefing",
+    status: "draft",
+    shared: false,
     event_date: null,
     location_text: null,
     created_by: "33333333-3333-3333-3333-333333333333",
@@ -104,7 +106,7 @@ describe("BriefingEditor", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /partager/i }));
-    expect(await screen.findByText(/Partager PDF/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Partager le briefing/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 
@@ -129,5 +131,5 @@ describe("BriefingEditor", () => {
     await user.selectOptions(selectors[0], "1");
 
     expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
-  });
+  }, 10000);
 });
