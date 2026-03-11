@@ -14,6 +14,8 @@ vi.mock("@/lib/api", () => ({
         id: "b1",
         workspace_id: "org-1",
         title: "Concert Zenith",
+        status: "ready",
+        shared: false,
         event_date: null,
         location_text: null,
         created_by: "u1",

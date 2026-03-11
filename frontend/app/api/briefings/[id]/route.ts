@@ -10,6 +10,7 @@ const idSchema = z.string().uuid();
 
 const updateSchema = z.object({
   title: z.string().trim().min(1).optional(),
+  status: z.enum(["draft", "ready", "archived"]).optional(),
   event_date: z.string().date().nullable().optional(),
   location_text: z.string().trim().nullable().optional()
 });

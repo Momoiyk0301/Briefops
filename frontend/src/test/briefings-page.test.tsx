@@ -8,7 +8,9 @@ import BriefingsPage from "@/views/BriefingsPage";
 const apiMocks = vi.hoisted(() => ({
   getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),
   createBriefing: vi.fn(),
-  listBriefingShareLinks: vi.fn().mockResolvedValue([])
+  listBriefingShareLinks: vi.fn().mockResolvedValue([]),
+  getStaff: vi.fn().mockResolvedValue([]),
+  listPublicLinks: vi.fn().mockResolvedValue([])
 }));
 
 const routerMocks = vi.hoisted(() => ({
@@ -30,6 +32,8 @@ vi.mock("@/lib/api", () => ({
         id: "demo-1",
         workspace_id: "org-1",
         title: "Demo - One",
+        status: "draft",
+        shared: false,
         event_date: null,
         location_text: null,
         created_by: "u1",
@@ -40,6 +44,8 @@ vi.mock("@/lib/api", () => ({
   }),
   createBriefing: apiMocks.createBriefing,
   deleteBriefing: vi.fn(),
+  getStaff: apiMocks.getStaff,
+  listPublicLinks: apiMocks.listPublicLinks,
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: vi.fn(),
   revokeBriefingShareLink: vi.fn(),
@@ -81,7 +87,9 @@ describe("BriefingsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Demo data/i)).toBeInTheDocument();
-      expect(screen.getByText(/Demo - One/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Status/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Shared/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -97,11 +105,11 @@ describe("BriefingsPage", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByText(/Demo - One/)).toBeInTheDocument());
-    await user.click(screen.getByLabelText(/Partager le briefing/i));
+    await waitFor(() => expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0));
+    await user.click(screen.getAllByLabelText(/Partager le briefing/i)[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/Partager PDF/i)).toBeInTheDocument();
+      expect(screen.getByText(/Partager le briefing/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
   });
@@ -121,7 +129,7 @@ describe("BriefingsPage", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByText(/Demo - One/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0));
     await user.click(screen.getAllByRole("button", { name: /Nouveau briefing/i })[0]);
 
     expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding");

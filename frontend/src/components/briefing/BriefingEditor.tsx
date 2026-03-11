@@ -901,9 +901,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         briefingId={briefing.id}
-        hasPdf={selectedPdfTeam === "all" ? Boolean(pdfPath) : Boolean(teamPdfPaths[selectedPdfTeam])}
         teams={teamModeEnabled ? definedTeams : []}
         selectedTeam={teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null}
+        onExportPdf={() => {
+          window.location.assign(`/briefings/${briefing.id}/export`);
+        }}
       />
     </div>
   );

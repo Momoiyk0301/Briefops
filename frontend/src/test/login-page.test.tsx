@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router-dom";
@@ -135,7 +135,10 @@ describe("LoginPage", () => {
     await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
 
     expect(toast.error).toHaveBeenCalledWith("Compte introuvable. Passe en création de compte pour continuer.");
-    expect(screen.getByRole("button", { name: /Continuer/i })).toBeInTheDocument();
+    await waitFor(() => {
+      const submitButton = screen.getByRole("button", { name: /Continuer/i });
+      expect(submitButton).toHaveAttribute("type", "submit");
+    });
     expect(routerMocks.navigate).not.toHaveBeenCalled();
   });
 

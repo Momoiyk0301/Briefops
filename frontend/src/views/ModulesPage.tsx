@@ -8,6 +8,7 @@ import { getRegistryModules, toApiMessage, updateWorkspaceModuleEnabled } from "
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Toggle } from "@/components/ui/Toggle";
 
@@ -79,15 +80,13 @@ export default function ModulesPage() {
 
       <Card className="list-surface space-y-3">
         {filteredModules.length === 0 ? (
-          <div className="empty-state">
-            <div>
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
-                <Boxes size={22} />
-              </div>
-              <p className="text-lg font-semibold">{t("modulesPage.emptyTitle")}</p>
-              <p className="mt-2 text-sm text-slate-500">{t("modulesPage.emptyHint")}</p>
-            </div>
-          </div>
+          <EmptyState
+            icon={<Boxes size={22} />}
+            title={t("modulesPage.emptyTitle")}
+            description={t("modulesPage.emptyHint")}
+            ctaLabel={t("modulesPage.marketplace")}
+            onCta={() => toast(t("modulesPage.marketplaceSoon"))}
+          />
         ) : null}
         {filteredModules.map((module) => (
           <div

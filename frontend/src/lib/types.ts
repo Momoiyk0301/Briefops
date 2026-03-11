@@ -62,6 +62,8 @@ export type Briefing = {
   id: string;
   workspace_id: string;
   title: string;
+  status: "draft" | "ready" | "archived";
+  shared: boolean;
   event_date: string | null;
   location_text: string | null;
   pdf_path?: string | null;
@@ -87,11 +89,14 @@ export type BriefingExportWithBriefing = BriefingExport & {
 };
 
 export type PublicLinkStatus = "active" | "expired" | "revoked";
+export type PublicLinkType = "staff" | "audience";
 
 export type PublicLink = {
   id: string;
   briefing_id: string;
   resource_type: string;
+  link_type: PublicLinkType;
+  audience_tag?: string | null;
   team?: string | null;
   token: string;
   created_by: string;
