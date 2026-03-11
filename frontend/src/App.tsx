@@ -32,7 +32,32 @@ export default function App() {
     <QueryClientProvider client={client}>
       <AuthProvider>
         <RouterProvider router={router} />
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4200,
+            className:
+              "!rounded-[26px] !border !border-[#dbe4f3] !bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)] !px-4 !py-3 !text-[#162033] !shadow-[0_26px_70px_rgba(15,23,42,0.18)] dark:!border-white/10 dark:!bg-[#121826] dark:!text-white",
+            success: {
+              iconTheme: {
+                primary: "#1f9d68",
+                secondary: "#ffffff"
+              }
+            },
+            error: {
+              iconTheme: {
+                primary: "#dc3f5f",
+                secondary: "#ffffff"
+              }
+            },
+            loading: {
+              iconTheme: {
+                primary: "#2563eb",
+                secondary: "#ffffff"
+              }
+            }
+          }}
+        />
         {process.env.NODE_ENV === "development" ? <Agentation /> : null}
       </AuthProvider>
     </QueryClientProvider>

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { BellRing, Clock3, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { getBriefingsWithFallback, toApiMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 function toDateValue(value: string | null) {
   if (!value) return null;
@@ -22,8 +24,10 @@ function toLabel(date: Date) {
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const raw = localStorage.getItem("briefops:notifications:dismissed");
@@ -41,6 +45,7 @@ export default function NotificationsPage() {
   const notifications = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const normalizedSearch = search.trim().toLowerCase();
 
     return (briefingsQuery.data?.data ?? [])
       .map((briefing) => {
@@ -51,7 +56,7 @@ export default function NotificationsPage() {
         return {
           id: briefing.id,
           title: briefing.title,
-          location: briefing.location_text ?? "Lieu non défini",
+          location: briefing.location_text ?? t("notificationsPage.locationFallback"),
           when: toLabel(date),
           diffDays,
           level
@@ -59,8 +64,13 @@ export default function NotificationsPage() {
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .filter((item) => !dismissedIds.includes(item.id))
+      .filter((item) =>
+        !normalizedSearch
+          ? true
+          : [item.title, item.location, item.when].join(" ").toLowerCase().includes(normalizedSearch)
+      )
       .sort((a, b) => a.diffDays - b.diffDays);
-  }, [briefingsQuery.data, dismissedIds]);
+  }, [briefingsQuery.data, dismissedIds, search, t]);
 
   const dismissNotification = (id: string) => {
     setDismissedIds((current) => {
@@ -72,7 +82,7 @@ export default function NotificationsPage() {
   };
 
   if (briefingsQuery.isLoading) {
-    return <Card>Chargement des notifications...</Card>;
+    return <Card>{t("notificationsPage.loading")}</Card>;
   }
   if (briefingsQuery.error) {
     return <Card>{toApiMessage(briefingsQuery.error)}</Card>;
@@ -80,26 +90,51 @@ export default function NotificationsPage() {
 
   return (
     <section className="stack-page">
-      <div>
-        <h1 className="text-2xl font-bold">Notifications</h1>
-        <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          Récap détaillé des briefings à venir.
-        </p>
-      </div>
+      <Card className="page-hero card-pad">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="section-kicker">{t("notificationsPage.kicker")}</p>
+            <h1 className="section-title mt-3">{t("notificationsPage.title")}</h1>
+            <p className="section-copy mt-3">{t("notificationsPage.subtitle")}</p>
+          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t("notificationsPage.searchPlaceholder")}
+            className="w-full sm:w-[320px]"
+          />
+        </div>
+      </Card>
       <div className="stack-section">
         {notifications.length === 0 ? (
-          <Card>
-            <p className="font-medium">Aucune notification pour le moment.</p>
+          <Card className="empty-state">
+            <div>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
+                <BellRing size={22} />
+              </div>
+              <p className="font-semibold text-lg">{t("notificationsPage.empty")}</p>
+            </div>
           </Card>
         ) : null}
         {notifications.map((item) => (
           <Card key={item.id} className="card-pad">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="max-w-xl">
                 <p className="font-semibold">{item.title}</p>
                 <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
                   {item.when} · {item.location}
                 </p>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#e7ecf5] bg-white/80 px-3 py-1.5 text-xs font-medium text-[#6b7390] dark:border-white/10 dark:bg-[#1b1f2a] dark:text-[#a8afc6]">
+                  <Clock3 size={13} />
+                  {t("notificationsPage.priority", {
+                    level:
+                      item.level === "high"
+                        ? t("notificationsPage.priorityHigh")
+                        : item.level === "medium"
+                          ? t("notificationsPage.priorityMedium")
+                          : t("notificationsPage.priorityLow")
+                  })}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge
@@ -111,7 +146,7 @@ export default function NotificationsPage() {
                         : ""
                   }
                 >
-                  {item.diffDays <= 0 ? "Aujourd'hui / passé" : `Dans ${item.diffDays} jour(s)`}
+                  {item.diffDays <= 0 ? t("notificationsPage.todayOrPast") : t("notificationsPage.inDays", { count: item.diffDays })}
                 </Badge>
                 <button
                   type="button"

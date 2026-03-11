@@ -304,7 +304,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       }
     }
 
-    const toastId = toast.loading(targetTeam ? `PDF team "${targetTeam}" en cours...` : "PDF en cours de generation...");
+    const toastId = toast.loading(
+      targetTeam ? t("editor.pdfGeneratingTeam", { team: targetTeam }) : t("editor.pdfGenerating")
+    );
     let generated = false;
     try {
       setPdfButtonState("loading");
@@ -319,7 +321,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       }
       setPdfButtonState("ready");
       generated = true;
-      toast.success(targetTeam ? `PDF team "${targetTeam}" pret` : "PDF pret", { id: toastId });
+      toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
     } catch (error) {
       const msg = toApiMessage(error);
       toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
@@ -492,11 +494,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             <div key={pageIndex} className="space-y-1.5">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Page {pageIndex + 1}
+                  {t("editor.page", { count: pageIndex + 1 })}
                 </p>
                 {pageIndex === selectedModule.layout.desktop.page ? (
                   <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-900/20 dark:text-brand-300">
-                    Module en cours
+                    {t("briefings.pageCurrent")}
                   </span>
                 ) : null}
               </div>
@@ -576,7 +578,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           ))}
           <div className="flex justify-center pt-1">
             <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleAddPage}>
-              Ajouter une page
+              {t("editor.addPage")}
             </Button>
           </div>
         </div>
@@ -631,9 +633,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         </div>
 
         <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition module</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.moduleEdit")}</p>
           <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
             <div className="flex items-center gap-2">
               <select
                 aria-label="page-selector-mobile"
@@ -643,18 +645,18 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
               >
                 {Array.from({ length: pageCount }, (_, pageIndex) => (
                   <option key={pageIndex} value={pageIndex}>
-                    Page {pageIndex + 1}
+                    {t("editor.page", { count: pageIndex + 1 })}
                   </option>
                 ))}
               </select>
               <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
-                Ajouter une page
+                {t("editor.addPage")}
               </Button>
             </div>
           </div>
           {teamModeEnabled && definedTeams.length > 0 ? (
             <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
@@ -680,7 +682,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                     }))
                   }
                 >
-                  All teams
+                  {t("editor.allTeams")}
                 </button>
                 {definedTeams.map((team) => {
                   const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
@@ -722,9 +724,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
         <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
           <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edition</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.edit")}</p>
             <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
               <div className="flex items-center gap-2">
                 <select
                   aria-label="page-selector-desktop"
@@ -734,18 +736,18 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                 >
                   {Array.from({ length: pageCount }, (_, pageIndex) => (
                     <option key={pageIndex} value={pageIndex}>
-                      Page {pageIndex + 1}
+                      {t("editor.page", { count: pageIndex + 1 })}
                     </option>
                   ))}
                 </select>
                 <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
-                  Ajouter une page
+                  {t("editor.addPage")}
                 </Button>
               </div>
             </div>
             {teamModeEnabled && definedTeams.length > 0 ? (
               <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Audience tags</p>
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
@@ -771,7 +773,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                       }))
                     }
                   >
-                    All teams
+                    {t("editor.allTeams")}
                   </button>
                   {definedTeams.map((team) => {
                     const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
@@ -830,15 +832,17 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
           {teamModeEnabled && definedTeams.length > 0 ? (
             <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Edit teams</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.editTeams")}</p>
               <div className="space-y-2">
                 {definedTeams.map((team) => (
                   <div key={team} className="flex items-center justify-between rounded-lg border border-[#e8eaf3] px-2 py-1.5 text-xs dark:border-white/10">
                     <span className="font-medium">{team}</span>
                     <span className="text-slate-500">
-                      {Object.values(state.modules)
-                        .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
-                        .length} tagged modules
+                      {t("editor.taggedModules", {
+                        count: Object.values(state.modules)
+                          .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
+                          .length
+                      })}
                     </span>
                   </div>
                 ))}
@@ -878,7 +882,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
               value={selectedPdfTeam}
               onChange={(event) => setSelectedPdfTeam(event.target.value)}
             >
-              <option value="all">PDF: All modules</option>
+              <option value="all">{t("editor.pdfAllModules")}</option>
               {definedTeams.map((team) => (
                 <option key={team} value={team}>
                   PDF: {team}
@@ -890,14 +894,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           <Button variant="secondary" onClick={() => void handlePdf()} disabled={pdfButtonState === "loading"}>
             {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
             {pdfButtonState === "ready" ? <Check size={14} /> : null}
-            {pdfButtonState === "idle" ? "PDF" : pdfButtonState === "loading" ? "Loading..." : "Ready"}
+            {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.ready")}
           </Button>
           <Button variant="secondary" onClick={() => setShareOpen(true)}>
             <Share2 size={14} />
-            Share
+            {t("editor.share")}
           </Button>
           <span className="ml-auto text-xs text-slate-500">
-            {saveIndicator === "saving" ? "Saving..." : saveIndicator === "saved" ? "Saved" : ""}
+            {saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}
           </span>
         </div>
       </Card>

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/lib/auth";
 import { getMe } from "@/lib/api";
+import { getPostAuthRedirect } from "@/lib/authRedirect";
 import AccountPage from "@/views/AccountPage";
 import AuthConfirmedPage from "@/views/AuthConfirmedPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
@@ -58,8 +59,7 @@ function LoginGate() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe, enabled: Boolean(session) });
   if (loading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
   if (session && meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
-  if (session && meQuery.data?.role) return <Navigate to="/briefings" replace />;
-  if (session && !meQuery.data?.role) return <Navigate to="/onboarding" replace />;
+  if (session && meQuery.data) return <Navigate to={getPostAuthRedirect(meQuery.data)} replace />;
   return <LoginPage />;
 }
 

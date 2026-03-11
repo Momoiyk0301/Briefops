@@ -88,7 +88,7 @@ describe("BriefingEditor", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /^pdf$/i }));
-    expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /chargement/i })).toBeDisabled();
 
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
@@ -96,15 +96,15 @@ describe("BriefingEditor", () => {
       generated_at: "2026-03-07T00:00:00.000Z"
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /ready/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /prêt/i })).toBeInTheDocument());
   });
 
   it("opens share drawer and loads links for the current briefing", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /share/i }));
-    expect(await screen.findByText(/Share PDF/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /partager/i }));
+    expect(await screen.findByText(/Partager PDF/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 
@@ -116,7 +116,7 @@ describe("BriefingEditor", () => {
     await user.type(titleInput, " updated");
 
     await waitFor(() => {
-      expect(screen.getByText(/Saved/i)).toBeInTheDocument();
+      expect(screen.getByText(/Enregistré/i)).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 

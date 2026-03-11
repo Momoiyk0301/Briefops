@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import { createStripeCheckoutSession, createStripePortalSession, getMe, toApiMessage } from "@/lib/api";
@@ -10,22 +11,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 
 export default function AccountPage() {
+  const { t } = useTranslation();
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const [searchParams] = useSearchParams();
   const [phone, setPhone] = useState("");
   const [submittingPlan, setSubmittingPlan] = useState<"starter" | "plus" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
 
-  useEffect(() => {
-    setPhone(localStorage.getItem("briefops:account:phone") ?? "");
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("briefops:account:phone", phone);
-  }, [phone]);
-
   if (meQuery.isLoading) {
-    return <Card>Chargement du compte...</Card>;
+    return <Card>{t("app.loading")}</Card>;
   }
   if (meQuery.error) {
     return <Card>{toApiMessage(meQuery.error)}</Card>;
@@ -42,10 +36,10 @@ export default function AccountPage() {
   const usageLabel = useMemo(() => {
     if (!usage) return "—";
     if (usage.pdf_exports_limit === null) {
-      return `${usage.pdf_exports_used} export(s) PDF ce mois (illimité)`;
+      return t("account.usageUnlimited", { used: usage.pdf_exports_used });
     }
-    return `${usage.pdf_exports_used}/${usage.pdf_exports_limit} export(s) PDF ce mois`;
-  }, [usage]);
+    return t("account.usageLimited", { used: usage.pdf_exports_used, limit: usage.pdf_exports_limit });
+  }, [t, usage]);
 
   const openCheckout = async (targetPlan: "starter" | "plus" | "pro") => {
     try {
@@ -72,59 +66,55 @@ export default function AccountPage() {
   return (
     <section className="stack-page">
       <div>
-        <h1 className="text-2xl font-bold">Compte</h1>
-        <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          Informations de profil, workspace et facturation.
-        </p>
+        <h1 className="text-2xl font-bold">{t("account.title")}</h1>
+        <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">{t("account.subtitle")}</p>
         {searchParams.get("fromSignup") === "1" ? (
-          <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
-            Choisis ton offre ici pour finaliser l’activation du compte.
-          </p>
+          <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">{t("account.fromSignup")}</p>
         ) : null}
       </div>
 
       <Card className="card-pad">
         <div className="cards-grid-2">
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Email</p>
-            <p className="mt-1 font-semibold">{user?.email ?? "Non disponible"}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.emailLabel")}</p>
+            <p className="mt-1 font-semibold">{user?.email ?? t("account.unavailable")}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">ID utilisateur</p>
-            <p className="mt-1 font-semibold">{user?.id ?? "Non disponible"}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.identityLabel")}</p>
+            <p className="mt-1 font-semibold">{user?.email ? t("account.identityValue") : t("account.unavailable")}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Workspace</p>
-            <p className="mt-1 font-semibold">{workspace?.name ?? "Aucun"}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.workspaceLabel")}</p>
+            <p className="mt-1 font-semibold">{workspace?.name ?? t("account.workspaceNone")}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Rôle</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.roleLabel")}</p>
             <div className="mt-1"><Badge>{role}</Badge></div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Plan</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.planLabel")}</p>
             <div className="mt-1"><Badge>{plan}</Badge></div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Statut abonnement</p>
-            <p className="mt-1 font-semibold">{subscriptionStatus ?? "Non actif"}</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.subscriptionStatusLabel")}</p>
+            <p className="mt-1 font-semibold">{subscriptionStatus ?? t("account.subscriptionInactive")}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Restant PDF</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.pdfRemainingLabel")}</p>
             <p className="mt-1 font-semibold">
               {usage?.pdf_exports_remaining === null
-                ? "Illimité"
-                : `${usage?.pdf_exports_remaining ?? 0} restant(s)`}
+                ? t("account.unlimited")
+                : t("account.remainingCount", { count: usage?.pdf_exports_remaining ?? 0 })}
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Téléphone</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.phoneLabel")}</p>
             <div className="mt-1">
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+33 ..." />
             </div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Période en cours</p>
+            <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("account.periodLabel")}</p>
             <p className="mt-1 font-semibold">{currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString("fr-BE") : "—"}</p>
           </div>
         </div>
@@ -133,12 +123,10 @@ export default function AccountPage() {
       <Card className="card-pad">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Facturation</h2>
-            <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
-              Gère ton plan et l’utilisation PDF depuis le compte.
-            </p>
+            <h2 className="text-xl font-semibold">{t("account.billingTitle")}</h2>
+            <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">{t("account.billingSubtitle")}</p>
           </div>
-          <Badge className="w-fit">Utilisation: {usageLabel}</Badge>
+          <Badge className="w-fit">{t("account.usageLabel", { value: usageLabel })}</Badge>
         </div>
 
         <div className="mt-6 cards-grid-3">
@@ -151,10 +139,10 @@ export default function AccountPage() {
               onClick={() => void openCheckout("starter")}
             >
               {submittingPlan === "starter"
-                ? "Redirection..."
+                ? t("account.redirecting")
                 : plan === "starter" || plan === "plus" || plan === "pro"
-                  ? "Plan actuel ou supérieur"
-                  : "Passer Starter"}
+                  ? t("account.currentOrHigher")
+                  : t("account.starterCta")}
             </Button>
           </div>
 
@@ -167,10 +155,10 @@ export default function AccountPage() {
               onClick={() => void openCheckout("plus")}
             >
               {submittingPlan === "plus"
-                ? "Redirection..."
+                ? t("account.redirecting")
                 : plan === "plus" || plan === "pro"
-                  ? "Plan actuel ou supérieur"
-                  : "Passer Plus"}
+                  ? t("account.currentOrHigher")
+                  : t("account.plusCta")}
             </Button>
           </div>
 
@@ -182,14 +170,14 @@ export default function AccountPage() {
               disabled={submittingPlan !== null || plan === "pro"}
               onClick={() => void openCheckout("pro")}
             >
-              {submittingPlan === "pro" ? "Redirection..." : plan === "pro" ? "Plan actuel" : "Passer Pro"}
+              {submittingPlan === "pro" ? t("account.redirecting") : plan === "pro" ? t("account.currentPlan") : t("account.proCta")}
             </Button>
           </div>
         </div>
 
         <div className="mt-5">
           <Button variant="secondary" disabled={openingPortal} onClick={() => void openPortal()}>
-            {openingPortal ? "Ouverture..." : "Gérer la facturation"}
+            {openingPortal ? t("account.opening") : t("account.manageBilling")}
           </Button>
         </div>
       </Card>

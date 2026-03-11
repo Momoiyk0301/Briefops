@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { deleteBriefing, getBriefingById, updateBriefing } from "@/supabase/queries/briefings";
+import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
 import { requireUser } from "@/supabase/server";
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
 
@@ -15,13 +16,25 @@ const updateSchema = z.object({
 
 type Params = { params: Promise<{ id: string }> };
 
+async function assertBriefingAccess(client: Awaited<ReturnType<typeof requireUser>>["client"], userId: string, briefingId: string) {
+  const [briefing, orgId] = await Promise.all([
+    getBriefingById(client, briefingId),
+    getUserOrgId(client, userId)
+  ]);
+  if (!orgId || briefing.org_id !== orgId) {
+    throw new HttpError(403, "Forbidden");
+  }
+  return briefing;
+}
+
 export async function GET(request: Request, { params }: Params) {
   const ctx = createRequestContext("GET /api/briefings/:id");
 
   try {
     const { client, userId } = await requireUser(request);
     const { id } = await params;
-    const briefing = await getBriefingById(client, idSchema.parse(id));
+    const briefingId = idSchema.parse(id);
+    const briefing = await assertBriefingAccess(client, userId, briefingId);
     ctx.info("fetched briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
@@ -36,8 +49,10 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { client, userId } = await requireUser(request);
     const { id } = await params;
+    const briefingId = idSchema.parse(id);
+    await assertBriefingAccess(client, userId, briefingId);
     const patch = updateSchema.parse(await request.json());
-    const briefing = await updateBriefing(client, idSchema.parse(id), patch);
+    const briefing = await updateBriefing(client, briefingId, patch);
     ctx.info("updated briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
@@ -52,7 +67,9 @@ export async function DELETE(request: Request, { params }: Params) {
   try {
     const { client, userId } = await requireUser(request);
     const { id } = await params;
-    await deleteBriefing(client, idSchema.parse(id));
+    const briefingId = idSchema.parse(id);
+    await assertBriefingAccess(client, userId, briefingId);
+    await deleteBriefing(client, briefingId);
     ctx.info("deleted briefing", { userId, briefingId: id });
     return NextResponse.json({ ok: true });
   } catch (error) {

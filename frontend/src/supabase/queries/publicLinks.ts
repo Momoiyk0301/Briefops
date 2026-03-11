@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomBytes } from "crypto";
 
 import { SupabaseClient } from "@supabase/supabase-js";
 
@@ -31,8 +31,9 @@ function extractTeamFromToken(token: string) {
 
 function createToken(team?: string | null) {
   const normalizedTeam = normalizeTeamKey(team);
-  if (!normalizedTeam) return randomUUID();
-  return `${TEAM_TOKEN_PREFIX}${normalizedTeam}_${randomUUID()}`;
+  const secureToken = randomBytes(24).toString("base64url");
+  if (!normalizedTeam) return secureToken;
+  return `${TEAM_TOKEN_PREFIX}${normalizedTeam}_${secureToken}`;
 }
 
 export async function listPublicLinks(client: SupabaseClient, briefingId: string) {

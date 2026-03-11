@@ -101,7 +101,7 @@ describe("BriefingsPage", () => {
     await user.click(screen.getByLabelText(/Partager le briefing/i));
 
     await waitFor(() => {
-      expect(screen.getByText(/Share PDF/i)).toBeInTheDocument();
+      expect(screen.getByText(/Partager PDF/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
   });

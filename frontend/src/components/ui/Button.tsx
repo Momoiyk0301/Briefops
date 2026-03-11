@@ -8,12 +8,14 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function Button({ className = "", variant = "primary", withArrow = false, children, ...props }: Props) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50";
+    "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold tracking-[0.01em] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40";
   const styles = {
-    primary: "bg-brand-500 text-white shadow-panel hover:-translate-y-0.5 hover:bg-brand-600",
+    primary:
+      "bg-[linear-gradient(135deg,#1954c9_0%,#2870ff_55%,#55a4ff_100%)] text-white shadow-[0_18px_40px_rgba(32,78,185,0.28)] hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(32,78,185,0.34)]",
     secondary:
-      "border border-[#e7e8ef] bg-white text-[#111111] hover:bg-[#f3f4fa] dark:border-white/10 dark:bg-[#171717] dark:text-white dark:hover:bg-[#1f1f1f]",
-    ghost: "bg-transparent text-[#666] hover:bg-white/80 hover:text-[#111] dark:text-[#cfcfcf] dark:hover:bg-white/10"
+      "border border-[#dde3f2] bg-white text-[#172033] shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:bg-[#f6f8fd] dark:border-white/10 dark:bg-[#171717] dark:text-white dark:hover:bg-[#1f1f1f]",
+    ghost:
+      "bg-transparent text-[#66708a] hover:bg-white/80 hover:text-[#111827] dark:text-[#cfcfcf] dark:hover:bg-white/10"
   };
 
   return (

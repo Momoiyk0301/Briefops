@@ -92,14 +92,13 @@ async function ensureMembershipForProfile(
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
-    .select("id")
+    .select("id,org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (membershipError) throw membershipError;
-  if (membership) return;
 
-  let orgId: string | null = null;
+  let orgId: string | null = membership?.org_id ?? null;
   if (workspaceId) {
     const { data: existingWorkspace, error: existingWorkspaceError } = await admin
       .from("workspaces")
@@ -158,6 +157,47 @@ async function ensureMembershipForProfile(
     );
     if (fallbackMembershipError) throw fallbackMembershipError;
   }
+}
+
+async function upsertProfileByUserId(
+  userId: string,
+  patch: ProfilePatch,
+  email?: string | null
+): Promise<{ id?: string; email?: string } | null> {
+  const admin = createServiceRoleClient();
+  const normalizedEmail = email?.toLowerCase().trim() || undefined;
+
+  const { data, error } = await admin
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        email: normalizedEmail,
+        ...patch
+      },
+      { onConflict: "id" }
+    )
+    .select("id,email")
+    .maybeSingle();
+
+  if (!error) return data;
+  if (!shouldFallbackToLegacyColumns(error)) throw error;
+
+  const { data: fallbackData, error: fallbackError } = await admin
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        email: normalizedEmail,
+        ...toPatchWithFallback(patch)
+      },
+      { onConflict: "id" }
+    )
+    .select("id,email")
+    .maybeSingle();
+
+  if (fallbackError) throw fallbackError;
+  return fallbackData;
 }
 
 async function updatePlanByEmail(
@@ -239,36 +279,13 @@ async function updatePlanByCustomerId(
 async function updatePlanByUserId(
   userId: string,
   patch: ProfilePatch,
+  email?: string | null,
   orgName?: string | null,
   membershipPatch?: MembershipPatch,
   workspaceId?: string | null
 ) {
-  const admin = createServiceRoleClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .update(patch)
-    .eq("id", userId)
-    .select("id,email")
-    .maybeSingle();
-
-  if (error) {
-    if (!shouldFallbackToLegacyColumns(error)) {
-      throw error;
-    }
-
-    const fallback = toPatchWithFallback(patch);
-    const { data: fallbackData, error: fallbackError } = await admin
-      .from("profiles")
-      .update(fallback)
-      .eq("id", userId)
-      .select("id,email")
-      .maybeSingle();
-    if (fallbackError) throw fallbackError;
-    await ensureMembershipForProfile(userId, fallbackData?.email ?? null, orgName, membershipPatch, workspaceId);
-    return;
-  }
-
-  await ensureMembershipForProfile(userId, data?.email ?? null, orgName, membershipPatch, workspaceId);
+  const profile = await upsertProfileByUserId(userId, patch, email);
+  await ensureMembershipForProfile(userId, profile?.email ?? email ?? null, orgName, membershipPatch, workspaceId);
 }
 
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
@@ -286,7 +303,7 @@ async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
   if (event.id && processedEventIds.has(event.id)) {
-    if (isDev) console.info("[stripe] duplicate event ignored", event.id);
+    if (isDev) console.info("[stripe] duplicate event ignored");
     return;
   }
 
@@ -329,11 +346,14 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
-      if (email) {
+      if (userIdFromMetadata) {
+        await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        if (email) {
+          await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+        }
+      } else if (email) {
         await updatePlanByEmail(email, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
         await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
-      } else if (userIdFromMetadata) {
-        await updatePlanByUserId(userIdFromMetadata, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
       } else if (customerId) {
         await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
       } else {
@@ -380,7 +400,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
 
     default: {
       if (isDev) {
-        console.log(`[stripe] ignored event type=${event.type}`);
+        console.info(`[stripe] ignored event type=${event.type}`);
       }
       break;
     }

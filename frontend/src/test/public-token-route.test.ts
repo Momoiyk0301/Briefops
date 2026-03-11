@@ -29,7 +29,7 @@ describe("frontend /api/public/:token", () => {
     createSignedUrl.mockResolvedValue({ data: { signedUrl: "https://example.test/pdf" }, error: null });
 
     const mod = await import("../../app/api/public/[token]/route");
-    const res = await mod.GET(new Request("http://localhost/api/public/t"), { params: Promise.resolve({ token: "valid-token-123" }) });
+    const res = await mod.GET(new Request("http://localhost/api/public/t"), { params: Promise.resolve({ token: "valid-token-123-valid-token-123" }) });
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -40,9 +40,8 @@ describe("frontend /api/public/:token", () => {
     getActivePublicLinkWithPdfPath.mockResolvedValue(null);
 
     const mod = await import("../../app/api/public/[token]/route");
-    const res = await mod.GET(new Request("http://localhost/api/public/t"), { params: Promise.resolve({ token: "expired-token-123" }) });
+    const res = await mod.GET(new Request("http://localhost/api/public/t"), { params: Promise.resolve({ token: "expired-token-123-expired-token-123" }) });
 
     expect(res.status).toBe(410);
   });
 });
-

@@ -4,10 +4,12 @@ import { z } from "zod";
 import { renderBriefingPdf } from "@/pdf/renderBriefingPdf";
 import { getBriefingById } from "@/supabase/queries/briefings";
 import { listModules } from "@/supabase/queries/modules";
+import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);
@@ -58,13 +60,23 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const { client, userId } = await requireUser(request);
+    const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "pdf", userId), 12, 60_000);
+    if (!rateLimit.allowed) {
+      throw new HttpError(429, "Too many PDF generations. Please wait a minute.");
+    }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     const requestUrl = new URL(request.url);
     const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
     const selectedTeam = normalizeTeamKey(teamSchema.parse(requestUrl.searchParams.get("team") ?? undefined));
 
-    const briefing = await getBriefingById(client, briefingId);
+    const [briefing, orgId] = await Promise.all([
+      getBriefingById(client, briefingId),
+      getUserOrgId(client, userId)
+    ]);
+    if (!orgId || briefing.org_id !== orgId) {
+      throw new HttpError(403, "Forbidden");
+    }
     const modules = await listModules(client, briefingId);
 
     const plan = await getUserPlan(client, userId);

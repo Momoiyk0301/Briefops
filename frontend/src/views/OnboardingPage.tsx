@@ -13,6 +13,7 @@ import {
   toApiMessage,
   updateOnboardingStep
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import type { Product } from "@/lib/types";
 
 function normalizeStep(raw?: string | null): OnboardingStepKey {
@@ -25,23 +26,34 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
+  const { session, loading: authLoading } = useAuth();
   const requestedStep = params.get("step");
   const [submittingProductId, setSubmittingProductId] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
+  const meQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
+    enabled: !authLoading && Boolean(session)
+  });
+  const workspace = meQuery.data?.workspace ?? meQuery.data?.org ?? null;
 
-  const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const productsQuery = useQuery({
     queryKey: ["products"],
     queryFn: getProducts,
-    enabled: !meQuery.isLoading
+    enabled: !authLoading && Boolean(session) && !meQuery.isLoading && !meQuery.data?.degraded && Boolean(workspace?.id)
   });
 
   const onboardingStep = normalizeStep(
     requestedStep === "demo" ? "demo" : meQuery.data?.onboarding_step
   );
 
-  const workspace = meQuery.data?.workspace ?? meQuery.data?.org ?? null;
   const products = useMemo(() => (productsQuery.data ?? []).slice(0, 3), [productsQuery.data]);
+
+  useEffect(() => {
+    if (!authLoading && !session) {
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, navigate, session]);
 
   useEffect(() => {
     if (meQuery.data?.role && meQuery.data?.onboarding_step === "done" && requestedStep !== "demo") {

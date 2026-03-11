@@ -5,15 +5,21 @@
     "node": ">=20"
   },
   "scripts": {
+    "predev:backend": "npm run test:backend",
     "dev:backend": "./scripts/start-backend.sh",
+    "predev:frontend": "npm run test:frontend",
     "dev:frontend": "./scripts/start-frontend.sh",
+    "predev:all": "npm run test:backend && npm run test:frontend",
     "dev:all": "concurrently -k \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev": "npm run dev:frontend",
     "test:env": "./scripts/check-env.sh",
     "test:backend": "npm --prefix backend run test",
     "test:frontend": "npm --prefix frontend run test",
+    "prebuild:backend": "npm run test:backend",
     "build:backend": "npm --prefix backend run build",
+    "prebuild:frontend": "npm run test:frontend",
     "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:backend && npm run build:frontend",
     "test:e2e": "playwright test",
     "test": "./scripts/test-all.sh",
     "vercel:check": "npm run test:frontend && npm run build:frontend"

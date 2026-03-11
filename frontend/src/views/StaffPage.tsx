@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +9,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { Textarea } from "@/components/ui/Textarea";
 
 export default function StaffPage() {
@@ -19,9 +21,21 @@ export default function StaffPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [search, setSearch] = useState("");
 
   const staffQuery = useQuery({ queryKey: queryKeys.staff, queryFn: getStaff });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
+  const filteredStaff = useMemo(() => {
+    const members = staffQuery.data ?? [];
+    const normalizedSearch = search.trim().toLowerCase();
+    if (!normalizedSearch) return members;
+    return members.filter((member) =>
+      [member.full_name, member.role, member.phone ?? "", member.email ?? "", member.notes ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [search, staffQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: createStaffMember,
@@ -54,18 +68,27 @@ export default function StaffPage() {
 
   return (
     <section className="stack-page">
-      <div>
-        <h1 className="text-2xl font-bold">{t("staff.title")}</h1>
-        <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          {t("staff.subtitle")}
-        </p>
-      </div>
+      <Card className="page-hero card-pad">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="section-kicker">Crew Coordination</p>
+            <h1 className="section-title mt-3">{t("staff.title")}</h1>
+            <p className="section-copy mt-3">{t("staff.subtitle")}</p>
+          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Rechercher un membre du staff"
+            className="w-full sm:w-[320px]"
+          />
+        </div>
+      </Card>
 
       <Card className="card-pad">
         <h2 className="text-lg font-semibold">{t("staff.addTitle")}</h2>
         <div className="cards-grid-2 mt-4">
           <select
-            className="w-full rounded-2xl border border-[#e6e8f2] bg-white px-4 py-2.5 text-sm text-[#111] outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-[#151515] dark:text-white"
+            className="w-full rounded-[22px] border border-[#dce3f1] bg-white/96 px-4 py-3 text-sm text-[#172033] shadow-[0_10px_28px_rgba(15,23,42,0.05)] outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/12 dark:border-white/10 dark:bg-[#151515] dark:text-white"
             value={briefingId}
             onChange={(event) => setBriefingId(event.target.value)}
           >
@@ -89,13 +112,13 @@ export default function StaffPage() {
         </div>
       </Card>
 
-      <Card className="card-pad">
+      <Card className="list-surface card-pad">
         <h2 className="text-lg font-semibold">{t("staff.listTitle")}</h2>
         {staffQuery.isLoading ? <p className="mt-3 text-sm">{t("app.loading")}</p> : null}
         {staffQuery.error ? <p className="mt-3 text-sm text-red-600">{toApiMessage(staffQuery.error)}</p> : null}
         <div className="mt-4 space-y-3">
-          {(staffQuery.data ?? []).map((member) => (
-            <div key={member.id} className="rounded-xl border border-[#e8eaf3] p-3 dark:border-white/10">
+          {filteredStaff.map((member) => (
+            <div key={member.id} className="rounded-[24px] border border-[#e8eaf3] bg-white/88 p-4 dark:border-white/10">
               <p className="font-semibold">{member.full_name}</p>
               <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
                 {member.role} · {member.phone || t("staff.noPhone")} · {member.email || t("staff.noEmail")}
@@ -103,8 +126,15 @@ export default function StaffPage() {
               {member.notes ? <p className="mt-1 text-sm">{member.notes}</p> : null}
             </div>
           ))}
-          {!staffQuery.isLoading && (staffQuery.data?.length ?? 0) === 0 ? (
-            <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">{t("staff.empty")}</p>
+          {!staffQuery.isLoading && filteredStaff.length === 0 ? (
+            <div className="empty-state">
+              <div>
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
+                  <Users size={22} />
+                </div>
+                <p className="text-lg font-semibold">{t("staff.empty")}</p>
+              </div>
+            </div>
           ) : null}
         </div>
       </Card>

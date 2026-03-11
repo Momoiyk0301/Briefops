@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { getMe, toApiMessage } from "@/lib/api";
+import { getPostAuthRedirect } from "@/lib/authRedirect";
 import { resetPasswordForEmail, signInWithPassword, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +21,11 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+function isMissingAccountLoginError(error: unknown) {
+  const message = toApiMessage(error);
+  return /invalid login credentials|user not found|email not confirmed/i.test(message);
+}
+
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -31,11 +37,11 @@ export default function LoginPage() {
       if (mode === "login") {
         await signInWithPassword(values.email, values.password);
         const me = await getMe();
-        if (!me.role) {
-          navigate("/onboarding");
-          return;
+        const nextRoute = getPostAuthRedirect(me);
+        if (nextRoute === "/onboarding?step=products") {
+          toast(t("auth.offersRedirect"));
         }
-        navigate("/briefings");
+        navigate(nextRoute);
       } else {
         const signUpResult = await signUpWithPassword(values.email, values.password);
         if (!signUpResult.session) {
@@ -45,8 +51,12 @@ export default function LoginPage() {
         navigate("/onboarding");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Auth error";
-      toast.error(message);
+      if (mode === "login" && isMissingAccountLoginError(error)) {
+        toast.error(t("auth.accountMissing"));
+        setMode("register");
+        return;
+      }
+      toast.error(toApiMessage(error));
     }
   });
 
@@ -134,12 +144,12 @@ export default function LoginPage() {
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400"
                     onClick={() => void handleForgotPassword()}
                   >
-                    Mot de passe oublié ?
+                    {t("auth.forgotPassword")}
                   </button>
                 </div>
               ) : null}
               <Button type="submit" className="w-full" withArrow>
-                {mode === "login" ? t("auth.submitLogin") : "Continuer"}
+                {mode === "login" ? t("auth.submitLogin") : t("auth.continueRegister")}
               </Button>
             </form>
           </Tabs>

@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 
 const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
+const isDev = process.env.NODE_ENV === "development";
 
 type ApiError = {
   status: number;
@@ -27,17 +28,20 @@ type RequestOptions = {
 };
 
 function logApiStart(method: string, path: string) {
+  if (!isDev) return Date.now();
   const startedAt = Date.now();
   console.info(`[API] -> ${method} ${path}`);
   return startedAt;
 }
 
 function logApiSuccess(method: string, path: string, status: number, startedAt: number) {
+  if (!isDev) return;
   const durationMs = Date.now() - startedAt;
   console.info(`[API] <- ${method} ${path} ${status} (${durationMs}ms)`);
 }
 
 function logApiError(method: string, path: string, status: number | string, message: string, startedAt: number) {
+  if (!isDev) return;
   const durationMs = Date.now() - startedAt;
   console.error(`[API] xx ${method} ${path} ${status} (${durationMs}ms) ${message}`);
 }
@@ -131,7 +135,9 @@ export async function getMe(): Promise<MeResponse> {
     );
     return { ...response, degraded: false };
   } catch (error) {
-    console.warn(`[MOCK DATA] me fallback used because ${toApiMessage(error)}`);
+    if (isDev) {
+      console.warn(`[MOCK DATA] me fallback used because ${toApiMessage(error)}`);
+    }
     const session = await getSession();
     return {
       user: session?.user ? { id: session.user.id, email: session.user.email ?? "" } : null,
@@ -181,7 +187,9 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
   } catch (error) {
     const reason = toApiMessage(error);
     const now = new Date().toISOString();
-    console.warn(`[MOCK DATA] briefings list fallback used because ${reason}`);
+    if (isDev) {
+      console.warn(`[MOCK DATA] briefings list fallback used because ${reason}`);
+    }
 
     const demoData: Briefing[] = [
       {
