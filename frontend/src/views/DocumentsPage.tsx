@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, ExternalLink, FileArchive2, Link2 } from "lucide-react";
+import { Copy, ExternalLink, FileArchive, Link2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -93,7 +93,7 @@ export default function DocumentsPage() {
             <div className="empty-state">
               <div>
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
-                  <FileArchive2 size={22} />
+                  <FileArchive size={22} />
                 </div>
                 <p className="text-lg font-semibold">{t("documents.emptyPdfTitle")}</p>
                 <p className="mt-2 text-sm text-slate-500">{t("documents.emptyPdfHint")}</p>

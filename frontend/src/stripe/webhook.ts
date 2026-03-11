@@ -23,7 +23,7 @@ type MembershipPatch = {
   stripe_product_id?: string | null;
 };
 
-function toPatchWithFallback(patch: ProfilePatch) {
+function toPatchWithFallback(patch: ProfilePatch): ProfilePatch {
   return {
     plan: patch.plan,
     stripe_customer_id: patch.stripe_customer_id ?? null

@@ -11,7 +11,8 @@ export function getPageCountFromLayouts(layouts: Array<Partial<DesktopLayout> | 
 }
 
 export function getEnabledPageCount<K extends ModuleKey>(modules: Record<K, { enabled: boolean; layout: ModuleLayout }>): number {
-  const enabledLayouts = Object.values(modules)
+  const enabledLayouts = (Object.keys(modules) as K[])
+    .map((key) => modules[key])
     .filter((module) => module.enabled)
     .map((module) => module.layout.desktop);
   return getPageCountFromLayouts(enabledLayouts);
