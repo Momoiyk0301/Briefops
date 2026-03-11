@@ -128,6 +128,11 @@ export async function completeAuthRedirectSession(): Promise<Session | null> {
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
+    url.searchParams.delete("code");
+    url.searchParams.delete("type");
+    url.searchParams.delete("error");
+    url.searchParams.delete("error_description");
+    replaceCurrentUrl(url);
     return data.session;
   }
 
@@ -135,6 +140,7 @@ export async function completeAuthRedirectSession(): Promise<Session | null> {
   if (hashSession) {
     const { data, error } = await supabase.auth.setSession(hashSession);
     if (error) throw error;
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
     return data.session;
   }
 
@@ -160,7 +166,7 @@ export async function signUpWithPassword(email: string, password: string) {
     localStorage.setItem("briefops:e2e-auth", "1");
     return { user: { email }, session: null };
   }
-  const emailRedirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/confirmed` : undefined;
+  const emailRedirectTo = buildBrowserRedirectUrl("/auth/confirmed");
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -178,7 +184,7 @@ export async function signUpWithPassword(email: string, password: string) {
 
 export async function resendSignupConfirmation(email: string) {
   if (isE2eMockAuth) return;
-  const emailRedirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/confirmed` : undefined;
+  const emailRedirectTo = buildBrowserRedirectUrl("/auth/confirmed");
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,
@@ -189,9 +195,19 @@ export async function resendSignupConfirmation(email: string) {
   if (error) throw error;
 }
 
+function buildBrowserRedirectUrl(path: string) {
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}${path}`;
+}
+
+function replaceCurrentUrl(url: URL) {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+}
+
 export async function resetPasswordForEmail(email: string) {
   if (isE2eMockAuth) return;
-  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth/reset-password` : undefined;
+  const redirectTo = buildBrowserRedirectUrl("/auth/reset-password");
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) throw error;
 }
@@ -200,6 +216,34 @@ export async function updatePassword(password: string) {
   if (isE2eMockAuth) return;
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
+}
+
+export function hasAuthCallbackParams() {
+  if (typeof window === "undefined") return false;
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.has("code")) return true;
+  if (url.searchParams.get("type") === "recovery") return true;
+
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) return false;
+
+  const hashParams = new URLSearchParams(hash);
+  return Boolean(hashParams.get("access_token") || hashParams.get("refresh_token") || hashParams.get("type") === "recovery");
+}
+
+export function getAuthRedirectErrorMessage() {
+  if (typeof window === "undefined") return null;
+
+  const url = new URL(window.location.href);
+  const searchError = url.searchParams.get("error_description") ?? url.searchParams.get("error");
+  if (searchError) return searchError;
+
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) return null;
+
+  const hashParams = new URLSearchParams(hash);
+  return hashParams.get("error_description") ?? hashParams.get("error");
 }
 
 export async function signOut() {

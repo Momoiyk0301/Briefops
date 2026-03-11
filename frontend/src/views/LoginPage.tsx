@@ -4,11 +4,11 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getMe, toApiMessage } from "@/lib/api";
 import { getPostAuthRedirect } from "@/lib/authRedirect";
-import { resetPasswordForEmail, signInWithPassword, signUpWithPassword } from "@/lib/auth";
+import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -31,6 +31,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
+  const watchedEmail = form.watch("email");
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -59,27 +60,6 @@ export default function LoginPage() {
       toast.error(toApiMessage(error));
     }
   });
-
-  const handleForgotPassword = async () => {
-    const email = form.getValues("email").trim();
-    if (!email) {
-      toast.error("Renseigne d'abord ton email");
-      return;
-    }
-
-    const parsed = z.string().email().safeParse(email);
-    if (!parsed.success) {
-      toast.error("Email invalide");
-      return;
-    }
-
-    try {
-      await resetPasswordForEmail(parsed.data);
-      toast.success("Email de réinitialisation envoyé");
-    } catch (error) {
-      toast.error(toApiMessage(error));
-    }
-  };
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_45%,#f3efe8_100%)] lg:grid-cols-[minmax(0,1.15fr)_minmax(520px,0.85fr)] dark:bg-[#0b1120]">
@@ -139,13 +119,12 @@ export default function LoginPage() {
               <Input placeholder={t("auth.password")} type="password" {...form.register("password")} />
               {mode === "login" ? (
                 <div className="flex justify-end">
-                  <button
-                    type="button"
+                  <Link
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400"
-                    onClick={() => void handleForgotPassword()}
+                    to={watchedEmail ? `/auth/forgot-password?email=${encodeURIComponent(watchedEmail.trim())}` : "/auth/forgot-password"}
                   >
                     {t("auth.forgotPassword")}
-                  </button>
+                  </Link>
                 </div>
               ) : null}
               <Button type="submit" className="w-full" withArrow>

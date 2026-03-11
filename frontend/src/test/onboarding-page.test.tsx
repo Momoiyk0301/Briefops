@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
@@ -10,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   getProducts: vi.fn(),
   postOnboarding: vi.fn(),
   updateOnboardingStep: vi.fn(),
+  activateOnboardingPlan: vi.fn(),
   createOnboardingCheckoutSession: vi.fn(),
   toApiMessage: vi.fn((error: unknown) => String(error))
 }));
@@ -82,5 +84,56 @@ describe("OnboardingPage", () => {
     });
 
     expect(apiMocks.getProducts).not.toHaveBeenCalled();
+  });
+
+  it("activates starter directly without Stripe during onboarding", async () => {
+    authMocks.useAuth.mockReturnValue({
+      session: { access_token: "token" },
+      loading: false
+    });
+    apiMocks.getMe.mockResolvedValue({
+      user: { id: "u1", email: "u1@test.com" },
+      plan: null,
+      org: { id: "ws-1", name: "Team OPS" },
+      workspace: { id: "ws-1", name: "Team OPS" },
+      has_membership: true,
+      onboarding_step: "products",
+      role: "owner",
+      is_admin: false,
+      degraded: false
+    });
+    apiMocks.getProducts.mockResolvedValue([
+      {
+        id: "p1",
+        name: "Starter",
+        slug: "starter",
+        description: "Starter plan",
+        stripe_price_id: null,
+        price_amount: 1900,
+        price_currency: "eur",
+        billing_interval: "month",
+        features: ["Feature 1"],
+        is_highlighted: true,
+        sort_order: 1
+      }
+    ]);
+    apiMocks.updateOnboardingStep.mockResolvedValue({ ok: true, onboarding_step: "products" });
+    apiMocks.activateOnboardingPlan.mockResolvedValue({ ok: true, plan: "starter", onboarding_step: "demo" });
+
+    renderPage();
+
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(apiMocks.getProducts).toHaveBeenCalled();
+    });
+
+    await user.click(await screen.findByRole("button", { name: "Subscribe" }));
+
+    await waitFor(() => {
+      expect(apiMocks.activateOnboardingPlan).toHaveBeenCalledWith("starter");
+    });
+
+    expect(apiMocks.createOnboardingCheckoutSession).not.toHaveBeenCalled();
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding?step=demo");
   });
 });

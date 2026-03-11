@@ -4,8 +4,11 @@ const sendCheckoutConfirmationEmails = vi.fn();
 const listLineItems = vi.fn();
 const retrieveSubscription = vi.fn();
 const mockAdminFrom = vi.fn();
+const webhookEventInsert = vi.fn();
+const webhookEventDeleteEq = vi.fn();
 
 const profileUpsert = vi.fn();
+const profileUpdate = vi.fn();
 const membershipUpsert = vi.fn();
 const membershipMaybeSingle = vi.fn();
 const workspaceMaybeSingle = vi.fn();
@@ -59,7 +62,13 @@ describe("stripe webhook integration", () => {
       data: { id: "user-1", email: "client@example.com" },
       error: null
     });
+    profileUpdate.mockResolvedValue({
+      data: { id: "user-1", email: "client@example.com" },
+      error: null
+    });
     membershipUpsert.mockResolvedValue({ error: null });
+    webhookEventInsert.mockResolvedValue({ error: null });
+    webhookEventDeleteEq.mockResolvedValue({ error: null });
     membershipMaybeSingle.mockResolvedValue({
       data: { id: "membership-1", org_id: "11111111-1111-1111-1111-111111111111" },
       error: null
@@ -91,16 +100,19 @@ describe("stripe webhook integration", () => {
               })
             };
           },
-          update: () => ({
-            eq: () => ({
-              select: () => ({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: "user-1", email: "client@example.com" },
-                  error: null
+          update: (...args: unknown[]) => {
+            profileUpdate(...args);
+            return {
+              eq: () => ({
+                select: () => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: { id: "user-1", email: "client@example.com" },
+                    error: null
+                  })
                 })
               })
-            })
-          }),
+            };
+          },
           select: () => ({
             eq: () => ({
               maybeSingle: vi.fn().mockResolvedValue({
@@ -134,6 +146,15 @@ describe("stripe webhook integration", () => {
             select: () => ({
               single: workspaceInsertSingle
             })
+          })
+        };
+      }
+
+      if (table === "stripe_webhook_events") {
+        return {
+          insert: webhookEventInsert,
+          delete: () => ({
+            eq: webhookEventDeleteEq
           })
         };
       }
@@ -213,5 +234,87 @@ describe("stripe webhook integration", () => {
       }),
       { onConflict: "user_id" }
     );
+  });
+
+  it("syncs invoice.paid through the subscription payload", async () => {
+    const { handleStripeWebhookEvent } = await import("@/stripe/webhook");
+
+    await handleStripeWebhookEvent({
+      id: "evt_paid",
+      type: "invoice.paid",
+      data: {
+        object: {
+          id: "in_123",
+          customer: "cus_123",
+          subscription: "sub_123"
+        }
+      }
+    } as never);
+
+    expect(retrieveSubscription).toHaveBeenCalledWith("sub_123");
+    expect(profileUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: "starter",
+        stripe_subscription_id: "sub_123",
+        stripe_price_id: "price_starter",
+        subscription_status: "active"
+      })
+    );
+  });
+
+  it("marks payment issue on invoice.payment_failed", async () => {
+    retrieveSubscription.mockResolvedValueOnce({
+      id: "sub_123",
+      status: "past_due",
+      customer: "cus_123",
+      items: {
+        data: [{ price: { id: "price_starter", product: "prod_123" } }]
+      },
+      current_period_end: 1_800_000_000
+    });
+
+    const { handleStripeWebhookEvent } = await import("@/stripe/webhook");
+
+    await handleStripeWebhookEvent({
+      id: "evt_failed",
+      type: "invoice.payment_failed",
+      data: {
+        object: {
+          id: "in_failed",
+          customer: "cus_123",
+          subscription: "sub_123"
+        }
+      }
+    } as never);
+
+    expect(profileUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscription_status: "past_due"
+      })
+    );
+  });
+
+  it("ignores duplicate webhook events already stored in database", async () => {
+    webhookEventInsert.mockResolvedValueOnce({
+      error: { code: "23505", message: "duplicate key value violates unique constraint" }
+    });
+
+    const { handleStripeWebhookEvent } = await import("@/stripe/webhook");
+
+    await handleStripeWebhookEvent({
+      id: "evt_duplicate",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_123",
+          status: "active",
+          customer: "cus_123",
+          items: { data: [{ price: { id: "price_starter", product: "prod_123" } }] },
+          current_period_end: 1_800_000_000
+        }
+      }
+    } as never);
+
+    expect(profileUpdate).not.toHaveBeenCalled();
   });
 });

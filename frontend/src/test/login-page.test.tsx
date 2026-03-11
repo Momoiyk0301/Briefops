@@ -9,10 +9,9 @@ import toast from "react-hot-toast";
 import i18n from "@/i18n";
 import LoginPage from "@/views/LoginPage";
 
-const { signInWithPassword, signUpWithPassword, resetPasswordForEmail } = vi.hoisted(() => ({
+const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
-  signUpWithPassword: vi.fn(),
-  resetPasswordForEmail: vi.fn()
+  signUpWithPassword: vi.fn()
 }));
 
 const apiMocks = vi.hoisted(() => ({
@@ -25,8 +24,7 @@ const routerMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   signInWithPassword,
-  signUpWithPassword,
-  resetPasswordForEmail
+  signUpWithPassword
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -141,14 +139,13 @@ describe("LoginPage", () => {
     expect(routerMocks.navigate).not.toHaveBeenCalled();
   });
 
-  it("sends reset password email from forgot password button", async () => {
-    resetPasswordForEmail.mockResolvedValueOnce(undefined);
+  it("links to dedicated forgot password page", async () => {
     renderPage();
 
     await userEvent.type(screen.getByPlaceholderText(/email/i), "reset@example.com");
-    await userEvent.click(screen.getByRole("button", { name: /Mot de passe oublié/i }));
+    const link = screen.getByRole("link", { name: /Mot de passe oublié/i });
 
-    expect(resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
+    expect(link).toHaveAttribute("href", "/auth/forgot-password?email=reset%40example.com");
   });
 
   it("redirects signup to email check when Supabase returns no session", async () => {

@@ -28,12 +28,12 @@ export async function POST(request: Request) {
     if (profileError) throw profileError;
 
     if (!profile?.stripe_customer_id) {
-      throw new HttpError(400, "Missing stripe customer. Start checkout first.");
+      throw new HttpError(409, "Aucune facturation Stripe active pour ce compte. Choisis une offre pour commencer.");
     }
 
     const session = await getStripe().billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${appUrl}/account`
+      return_url: `${appUrl}/account?billing=returned`
     });
 
     ctx.info("created billing portal session", { userId });
