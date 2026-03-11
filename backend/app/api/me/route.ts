@@ -20,18 +20,18 @@ export async function GET(request: Request) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id,role")
+      .select("workspace_id,role")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
 
     let workspace: { id: string; name: string } | null = null;
-    if (membership?.org_id) {
+    if (membership?.workspace_id) {
       const { data: organization, error: organizationError } = await client
         .from("workspaces")
         .select("id,name")
-        .eq("id", membership.org_id)
+        .eq("id", membership.workspace_id)
         .maybeSingle();
 
       if (organizationError) throw organizationError;
@@ -44,13 +44,13 @@ export async function GET(request: Request) {
     const used = Number(usage?.pdf_exports ?? 0);
     const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
-    const hasMembership = Boolean(membership?.org_id);
+    const hasMembership = Boolean(membership?.workspace_id);
 
     ctx.info("resolved me", {
       userId,
       hasMembership,
       membershipRole: membership?.role ?? null,
-      membershipOrgId: membership?.org_id ?? null,
+      membershipOrgId: membership?.workspace_id ?? null,
       hasWorkspace: Boolean(workspace),
       hasPlan: Boolean(profile?.plan),
       onboardingStep: profile?.onboarding_step ?? null

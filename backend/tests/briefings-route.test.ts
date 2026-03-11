@@ -43,7 +43,7 @@ describe("/api/briefings route", () => {
     const response = await mod.POST(
       new Request("http://localhost/api/briefings", {
         method: "POST",
-        body: JSON.stringify({ org_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
+        body: JSON.stringify({ workspace_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
         headers: { "content-type": "application/json", authorization: "Bearer token" }
       })
     );
@@ -61,7 +61,7 @@ describe("/api/briefings route", () => {
     const response = await mod.POST(
       new Request("http://localhost/api/briefings", {
         method: "POST",
-        body: JSON.stringify({ org_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
+        body: JSON.stringify({ workspace_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
         headers: { "content-type": "application/json", authorization: "Bearer token" }
       })
     );

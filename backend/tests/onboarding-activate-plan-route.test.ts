@@ -17,7 +17,7 @@ describe("/api/onboarding/activate-plan", () => {
 
   it("activates the starter plan directly in database", async () => {
     const membershipMaybeSingle = vi.fn().mockResolvedValue({
-      data: { org_id: "ws-1", role: "owner" },
+      data: { workspace_id: "ws-1", role: "owner" },
       error: null
     });
     const client = {

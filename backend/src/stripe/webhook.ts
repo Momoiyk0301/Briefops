@@ -215,7 +215,7 @@ async function ensureMembershipForProfile(
   }
 
   const payload = {
-    org_id: orgId,
+    workspace_id: orgId,
     user_id: userId,
     role: membershipPatch?.role ?? "owner",
     plan_name: membershipPatch?.plan_name ?? null,
@@ -227,7 +227,7 @@ async function ensureMembershipForProfile(
     if (!shouldFallbackToLegacyColumns(insertMembershipError)) throw insertMembershipError;
     const { error: fallbackMembershipError } = await admin.from("memberships").upsert(
       {
-        org_id: orgId,
+        workspace_id: orgId,
         user_id: userId,
         role: membershipPatch?.role ?? "owner"
       },

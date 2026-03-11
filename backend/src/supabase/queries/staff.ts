@@ -21,13 +21,13 @@ const updateStaffSchema = z.object({
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
 
-const SELECT_STAFF_FIELDS = "id, org_id, briefing_id, full_name, role, phone, email, notes, created_at, updated_at";
+const SELECT_STAFF_FIELDS = "id, workspace_id, briefing_id, full_name, role, phone, email, notes, created_at, updated_at";
 
 export async function listStaffByOrg(client: SupabaseClient, orgId: string) {
   const { data, error } = await client
     .from("staff")
     .select(SELECT_STAFF_FIELDS)
-    .eq("org_id", orgId)
+    .eq("workspace_id", orgId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -50,7 +50,7 @@ export async function createStaff(client: SupabaseClient, orgId: string, input: 
   const { data, error } = await client
     .from("staff")
     .insert({
-      org_id: orgId,
+      workspace_id: orgId,
       briefing_id: payload.briefing_id,
       full_name: payload.full_name,
       role: payload.role,

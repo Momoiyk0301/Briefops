@@ -101,24 +101,24 @@ const DEFAULT_MODULES: Array<{
 ];
 
 const SELECT_REGISTRY_FIELDS =
-  "id, org_id, name, type, version, icon, category, enabled, default_layout, default_data, created_at, updated_at";
+  "id, workspace_id, name, type, version, icon, category, enabled, default_layout, default_data, created_at, updated_at";
 
 export async function getUserOrgId(client: SupabaseClient, userId: string) {
   const { data, error } = await client
     .from("memberships")
-    .select("org_id")
+    .select("workspace_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  return data?.org_id ?? null;
+  return data?.workspace_id ?? null;
 }
 
 export async function listRegistryModules(client: SupabaseClient, orgId: string) {
   const { data, error } = await client
     .from("modules")
     .select(SELECT_REGISTRY_FIELDS)
-    .eq("org_id", orgId)
+    .eq("workspace_id", orgId)
     .order("type", { ascending: true });
 
   if (error) throw error;
@@ -130,13 +130,13 @@ export async function ensureRegistryModules(client: SupabaseClient, orgId: strin
   if (existing.length > 0) return existing;
 
   const payload = DEFAULT_MODULES.map((item) => ({
-    org_id: orgId,
+    workspace_id: orgId,
     ...item
   }));
 
   const { data, error } = await client
     .from("modules")
-    .upsert(payload, { onConflict: "org_id,type" })
+    .upsert(payload, { onConflict: "workspace_id,type" })
     .select(SELECT_REGISTRY_FIELDS)
     .order("type", { ascending: true });
 
@@ -154,7 +154,7 @@ export async function updateRegistryModuleEnabled(
     .from("modules")
     .update({ enabled })
     .eq("id", moduleId)
-    .eq("org_id", orgId)
+    .eq("workspace_id", orgId)
     .select(SELECT_REGISTRY_FIELDS)
     .single();
 

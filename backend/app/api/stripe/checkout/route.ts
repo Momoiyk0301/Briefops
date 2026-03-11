@@ -65,12 +65,12 @@ export async function POST(request: Request) {
 
     const { data: membership, error: membershipError } = await admin
       .from("memberships")
-      .select("org_id")
+      .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
     if (membershipError) throw membershipError;
 
-    const workspaceId = body.workspace_id ?? membership?.org_id ?? null;
+    const workspaceId = body.workspace_id ?? membership?.workspace_id ?? null;
 
     const stripe = getStripe();
     let customerId = profile?.stripe_customer_id ?? null;

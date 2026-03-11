@@ -39,7 +39,7 @@ test.describe("BriefOPS e2e", () => {
       if (url.pathname === "/api/briefings" && method === "POST") {
         const created = {
           id: "b-1",
-          org_id: "org-1",
+          workspace_id: "org-1",
           title: "Untitled briefing",
           event_date: null,
           location_text: null,
@@ -59,7 +59,7 @@ test.describe("BriefOPS e2e", () => {
           body: JSON.stringify({
             data: {
               id: "b-1",
-              org_id: "org-1",
+              workspace_id: "org-1",
               title: "Untitled briefing",
               event_date: null,
               location_text: null,
