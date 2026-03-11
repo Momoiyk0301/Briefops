@@ -5,7 +5,7 @@ import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { PUBLIC_LINK_INVALID_MESSAGE, getActivePublicLinkWithPdfPath } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient } from "@/supabase/server";
 
-const tokenSchema = z.string().min(10);
+const tokenSchema = z.string().min(24).max(128);
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -36,4 +36,3 @@ export async function GET(_: Request, { params }: Params) {
     return toErrorResponse(error, ctx.requestId);
   }
 }
-

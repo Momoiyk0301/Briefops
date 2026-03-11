@@ -24,6 +24,7 @@ export type MeResponse = {
   };
   org: { id: string; name: string } | null;
   workspace?: { id: string; name: string } | null;
+  has_membership?: boolean;
   onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
   is_admin: boolean;
@@ -244,7 +245,7 @@ export type ModuleAudience = {
 };
 
 export type ModuleLayout = {
-  desktop: { x: number; y: number; w: number; h: number };
+  desktop: { x: number; y: number; w: number; h: number; page: number };
   mobile: { x: number; y: number; w: number; h: number };
   constraints: { minW: number; minH: number; maxW: number; maxH: number };
   behavior: { draggable: boolean; resizable: boolean };

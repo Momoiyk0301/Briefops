@@ -1,20 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Link2, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 import { createBriefingShareLink, listBriefingShareLinks, revokeBriefingShareLink, toApiMessage } from "@/lib/api";
 import { PublicLink } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 
 type ShareDuration = "24h" | "3d" | "1w" | "30d" | "never";
-
-const SHARE_DURATION_OPTIONS: Array<{ value: ShareDuration; label: string }> = [
-  { value: "24h", label: "24 hours" },
-  { value: "3d", label: "3 days" },
-  { value: "1w", label: "1 week" },
-  { value: "30d", label: "30 days" },
-  { value: "never", label: "Never" }
-];
 
 type Props = {
   open: boolean;
@@ -26,13 +19,8 @@ type Props = {
   onClose: () => void;
 };
 
-function formatLinkStatus(link: PublicLink) {
-  if (link.status === "revoked") return "Revoked";
-  if (link.status === "expired") return "Expired";
-  return "Active";
-}
-
 export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam = null, desktopWidthRatio = 0.32, onClose }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [duration, setDuration] = useState<ShareDuration>("24h");
@@ -41,10 +29,23 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
 
   const activeLinks = useMemo(() => links.filter((link) => link.status === "active"), [links]);
   const resolvedRatio = Math.min(0.5, Math.max(0.26, desktopWidthRatio));
+  const durationOptions: Array<{ value: ShareDuration; label: string }> = [
+    { value: "24h", label: t("share.duration24h") },
+    { value: "3d", label: t("share.duration3d") },
+    { value: "1w", label: t("share.duration1w") },
+    { value: "30d", label: t("share.duration30d") },
+    { value: "never", label: t("share.durationNever") }
+  ];
 
   useEffect(() => {
     setTeam(selectedTeam ?? "all");
   }, [selectedTeam, open]);
+
+  const formatLinkStatus = (link: PublicLink) => {
+    if (link.status === "revoked") return t("share.statusRevoked");
+    if (link.status === "expired") return t("share.statusExpired");
+    return t("share.statusActive");
+  };
 
   const refreshLinks = async () => {
     setLoading(true);
@@ -64,7 +65,7 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
 
   const handleCreate = async () => {
     if (!hasPdf) {
-      toast.error("Generate a PDF first");
+      toast.error(t("share.generateFirst"));
       return;
     }
 
@@ -72,7 +73,7 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
     try {
       const created = await createBriefingShareLink(briefingId, duration, team === "all" ? null : team);
       setLinks((prev) => [created, ...prev]);
-      toast.success("Link created");
+      toast.success(t("share.created"));
     } catch (error) {
       toast.error(toApiMessage(error));
     } finally {
@@ -83,9 +84,9 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
   const handleCopy = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
+      toast.success(t("share.copySuccess"));
     } catch {
-      toast.error("Unable to copy link");
+      toast.error(t("share.copyError"));
     }
   };
 
@@ -95,7 +96,7 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
       setLinks((prev) =>
         prev.map((item) => (item.id === linkId ? { ...item, revoked_at: new Date().toISOString(), status: "revoked" } : item))
       );
-      toast.success("Link revoked");
+      toast.success(t("share.revoked"));
     } catch (error) {
       toast.error(toApiMessage(error));
     }
@@ -111,20 +112,20 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Share PDF</h3>
-          <button type="button" aria-label="Close share panel" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">{t("share.title")}</h3>
+          <button type="button" aria-label={t("share.close")} onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
             <X size={16} />
           </button>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#171717]">
-          <p className="text-xs font-medium text-slate-600">Duration</p>
+          <p className="text-xs font-medium text-slate-600">{t("share.duration")}</p>
           <select
             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
             value={duration}
             onChange={(event) => setDuration(event.target.value as ShareDuration)}
           >
-            {SHARE_DURATION_OPTIONS.map((option) => (
+            {durationOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -132,13 +133,13 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
           </select>
           {teams.length > 0 ? (
             <>
-              <p className="mt-3 text-xs font-medium text-slate-600">Team filter</p>
+              <p className="mt-3 text-xs font-medium text-slate-600">{t("share.teamFilter")}</p>
               <select
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
                 value={team}
                 onChange={(event) => setTeam(event.target.value)}
               >
-                <option value="all">All modules</option>
+                <option value="all">{t("share.allModules")}</option>
                 {teams.map((entry) => (
                   <option key={entry} value={entry}>
                     {entry}
@@ -148,24 +149,24 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
             </>
           ) : null}
           <Button className="mt-3 w-full" onClick={() => void handleCreate()} disabled={creating || !hasPdf}>
-            {creating ? "Creating..." : "Create public link"}
+            {creating ? t("share.creating") : t("share.create")}
           </Button>
-          {!hasPdf ? <p className="mt-2 text-xs text-slate-500">Generate this PDF variant before sharing.</p> : null}
+          {!hasPdf ? <p className="mt-2 text-xs text-slate-500">{t("share.variantHint")}</p> : null}
         </div>
 
         <div className="mt-4 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Existing links ({activeLinks.length} active)</p>
-          {loading ? <p className="text-sm text-slate-500">Loading...</p> : null}
-          {!loading && links.length === 0 ? <p className="text-sm text-slate-500">No links yet.</p> : null}
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("share.existingLinks", { count: activeLinks.length })}</p>
+          {loading ? <p className="text-sm text-slate-500">{t("share.loading")}</p> : null}
+          {!loading && links.length === 0 ? <p className="text-sm text-slate-500">{t("share.empty")}</p> : null}
           {links.map((link) => (
             <div key={link.id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#171717]">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">{formatLinkStatus(link)}</span>
                 <span className="text-xs text-slate-500">
-                  {link.expires_at ? new Date(link.expires_at).toLocaleString() : "No expiry"}
+                  {link.expires_at ? new Date(link.expires_at).toLocaleString() : t("share.noExpiry")}
                 </span>
               </div>
-              {link.team ? <p className="mt-1 text-xs text-slate-500">Team: {link.team}</p> : null}
+              {link.team ? <p className="mt-1 text-xs text-slate-500">{t("share.team", { team: link.team })}</p> : null}
               <div className="mt-2 flex items-center gap-2">
                 <Button variant="secondary" className="h-9 px-3" onClick={() => void handleCopy(link.url)}>
                   <Copy size={14} />
@@ -180,7 +181,7 @@ export function SharePanel({ open, briefingId, hasPdf, teams = [], selectedTeam 
                 </a>
                 {link.status === "active" ? (
                   <Button variant="secondary" className="h-9 px-3 text-red-600" onClick={() => void handleRevoke(link.id)}>
-                    Revoke
+                    {t("share.revoke")}
                   </Button>
                 ) : null}
               </div>

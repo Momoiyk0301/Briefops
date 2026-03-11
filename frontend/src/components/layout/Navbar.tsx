@@ -32,9 +32,8 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
     if (pathname.startsWith("/modules")) return "Modules";
     if (pathname.startsWith("/staff")) return "Staff";
     if (pathname.startsWith("/account")) return "Compte";
-    if (pathname.startsWith("/abonnement")) return "Abonnement";
     if (pathname.startsWith("/notifications")) return "Notifications";
-    if (pathname.startsWith("/settings/billing")) return "Facturation";
+    if (pathname.startsWith("/settings/billing")) return "Compte";
     if (pathname.startsWith("/settings")) return t("nav.settings");
     if (pathname.startsWith("/onboarding")) return t("nav.onboarding");
     return t("app.name");
@@ -99,15 +98,18 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   }, [notificationsOpen]);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[#ececf2] bg-white/80 backdrop-blur dark:border-white/10 dark:bg-[#101010]/90">
-      <div className="flex h-16 items-center justify-between pl-3 pr-4 lg:pl-5 lg:pr-6">
+    <header className="sticky top-0 z-20 border-b border-[#e7edf7] bg-white/72 backdrop-blur-xl dark:border-white/10 dark:bg-[#101010]/90">
+      <div className="flex h-[74px] items-center justify-between pl-3 pr-4 lg:pl-5 lg:pr-6">
         <div className="min-w-0 flex items-center gap-2">
           {showBackButton ? (
             <Button variant="ghost" aria-label="Retour" onClick={() => navigate(-1)}>
               <ArrowLeft size={16} />
             </Button>
           ) : null}
-          <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
+          <div className="min-w-0">
+            <p className="section-kicker hidden md:block">Workspace</p>
+            <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative" ref={notificationsRef}>
@@ -119,7 +121,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               <Bell size={16} />
             </Button>
             {notificationsOpen ? (
-              <div className="absolute right-0 top-[calc(100%+10px)] w-[min(340px,calc(100vw-1.5rem))] rounded-2xl border border-[#ececf2] bg-white p-4 shadow-panel dark:border-white/10 dark:bg-[#151515]">
+              <div className="absolute right-0 top-[calc(100%+10px)] w-[min(360px,calc(100vw-1.5rem))] rounded-[28px] border border-[#e4e9f4] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)] p-4 shadow-[0_26px_70px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#151515]">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Aperçu</p>
                   <button
@@ -138,7 +140,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
                     <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Aucune alerte.</p>
                   ) : (
                     previewNotifications.map((item) => (
-                      <div key={item.id} className="rounded-xl border border-[#ededf4] p-3 dark:border-white/10">
+                      <div key={item.id} className="rounded-[22px] border border-[#e7ecf5] bg-white/85 p-3 dark:border-white/10">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-medium">{item.title}</p>
@@ -162,7 +164,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               </div>
             ) : null}
           </div>
-          <div className="hidden rounded-full bg-[#f0f1f8] p-1 md:inline-flex dark:bg-[#1f1f1f]">
+          <div className="hidden rounded-full border border-[#e4e9f4] bg-white/78 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] md:inline-flex dark:border-white/10 dark:bg-[#1f1f1f]">
             <button
               type="button"
               onClick={() => navigate("/briefings")}
@@ -181,7 +183,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
           <button
             type="button"
             onClick={() => navigate("/account")}
-            className="hidden max-w-[280px] items-center gap-2 rounded-full border border-[#e6e8f1] bg-white px-3 py-1.5 text-left transition hover:border-brand-500/40 md:flex dark:border-white/10 dark:bg-[#171717]"
+            className="hidden max-w-[280px] items-center gap-2 rounded-full border border-[#e4e9f3] bg-white/88 px-3 py-2 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-brand-500/40 md:flex dark:border-white/10 dark:bg-[#171717]"
           >
             <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-semibold text-brand-600 dark:text-brand-400">
               {(meQuery.data?.user?.email?.slice(0, 1) ?? "U").toUpperCase()}

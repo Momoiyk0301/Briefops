@@ -14,11 +14,30 @@ export class HttpError extends Error {
 export function createRequestContext(route: string) {
   const requestId = randomUUID();
 
+  const sanitize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sanitize);
+    if (!value || typeof value !== "object") return value;
+
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
+        if (/token|authorization|signature|secret|password|email|stripe|api[-_]?key/i.test(key)) {
+          return [key, "[redacted]"];
+        }
+        return [key, sanitize(entry)];
+      })
+    );
+  };
+
+  const sanitizeObject = (value?: Record<string, unknown>): Record<string, unknown> => {
+    if (!value) return {};
+    return sanitize(value) as Record<string, unknown>;
+  };
+
   const log = (level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) => {
     const payload = {
       requestId,
       route,
-      ...extra
+      ...sanitizeObject(extra)
     };
 
     if (level === "info") {

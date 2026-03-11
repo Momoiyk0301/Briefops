@@ -5,6 +5,7 @@ import { env } from "@/env";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { createPublicLink, listPublicLinksForCreator } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
+import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,10 @@ export async function POST(request: Request) {
 
   try {
     const { client, userId } = await requireUser(request);
+    const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "public-links:create", userId), 20, 60_000);
+    if (!rateLimit.allowed) {
+      throw new HttpError(429, "Too many public link requests. Please wait a minute.");
+    }
     const body = bodySchema.parse(await request.json());
 
     const { data: briefing, error: briefingError } = await client

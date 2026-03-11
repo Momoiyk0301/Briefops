@@ -88,7 +88,7 @@ describe("BriefingEditor", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /^pdf$/i }));
-    expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /chargement/i })).toBeDisabled();
 
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
@@ -96,15 +96,15 @@ describe("BriefingEditor", () => {
       generated_at: "2026-03-07T00:00:00.000Z"
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /ready/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /prêt/i })).toBeInTheDocument());
   });
 
   it("opens share drawer and loads links for the current briefing", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /share/i }));
-    expect(await screen.findByText(/Share PDF/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /partager/i }));
+    expect(await screen.findByText(/Partager PDF/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 
@@ -116,7 +116,18 @@ describe("BriefingEditor", () => {
     await user.type(titleInput, " updated");
 
     await waitFor(() => {
-      expect(screen.getByText(/Saved/i)).toBeInTheDocument();
+      expect(screen.getByText(/Enregistré/i)).toBeInTheDocument();
     }, { timeout: 3000 });
+  });
+
+  it("adds a page and lets the selected module move to page 2", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getAllByRole("button", { name: /Ajouter une page/i })[0]);
+    const selectors = screen.getAllByRole("combobox", { name: /page-selector/i });
+    await user.selectOptions(selectors[0], "1");
+
+    expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
   });
 });

@@ -1,15 +1,10 @@
 import Stripe from "stripe";
 
-import { env } from "@/env";
+import { sendCheckoutConfirmationEmails } from "@/lib/mail";
 import { createServiceRoleClient } from "@/supabase/server";
 import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
 const processedEventIds = new Set<string>();
-
-type ResendConfig = {
-  apiKey: string;
-  from: string;
-};
 
 type ProfilePatch = {
   plan: "free" | "starter" | "plus" | "pro";
@@ -28,7 +23,7 @@ type MembershipPatch = {
   stripe_product_id?: string | null;
 };
 
-function toPatchWithFallback(patch: ProfilePatch) {
+function toPatchWithFallback(patch: ProfilePatch): ProfilePatch {
   return {
     plan: patch.plan,
     stripe_customer_id: patch.stripe_customer_id ?? null
@@ -57,78 +52,6 @@ function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro") {
   if (plan === "plus") return "Plus";
   if (plan === "starter") return "Starter";
   return "Free";
-}
-
-function getResendConfig(): ResendConfig | null {
-  const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
-  const from = String(process.env.MAIL_FROM ?? "").trim();
-  if (!apiKey || !from) return null;
-  return { apiKey, from };
-}
-
-async function sendResendEmail(config: ResendConfig, to: string, subject: string, html: string) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: config.from,
-      to: [to],
-      subject,
-      html
-    })
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`Resend error: ${message}`);
-  }
-}
-
-async function sendPostCheckoutEmails(email: string, plan: "free" | "starter" | "plus" | "pro", session: Stripe.Checkout.Session) {
-  const config = getResendConfig();
-  if (!config) {
-    if (isDev) {
-      console.info("[mail] skipped: RESEND_API_KEY or MAIL_FROM missing");
-    }
-    return;
-  }
-
-  const appUrl = env.APP_URL.replace(/\/$/, "");
-  if (plan === "free") return;
-  const sessionId = session.id ?? "n/a";
-  const amount = typeof session.amount_total === "number" ? (session.amount_total / 100).toFixed(2) : null;
-  const currency = (session.currency ?? "eur").toUpperCase();
-
-  await sendResendEmail(
-    config,
-    email,
-    `Commande BriefOPS confirmée (${plan.toUpperCase()})`,
-    `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;">
-        <h2>Merci pour ta commande BriefOPS</h2>
-        <p>Ton abonnement <strong>${plan.toUpperCase()}</strong> est actif.</p>
-        <p>Session Stripe: <code>${sessionId}</code></p>
-        ${amount ? `<p>Montant: <strong>${amount} ${currency}</strong></p>` : ""}
-        <p>Accéder à ton espace: <a href="${appUrl}/briefings">${appUrl}/briefings</a></p>
-      </div>
-    `
-  );
-
-  await sendResendEmail(
-    config,
-    email,
-    "Confirmation de compte BriefOPS",
-    `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;">
-        <h2>Compte BriefOPS confirmé</h2>
-        <p>Ton paiement a été validé, ton compte est bien activé.</p>
-        <p>Tu peux continuer ici: <a href="${appUrl}/auth/confirmed">${appUrl}/auth/confirmed</a></p>
-      </div>
-    `
-  );
 }
 
 function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
@@ -169,14 +92,13 @@ async function ensureMembershipForProfile(
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
-    .select("id")
+    .select("id,org_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (membershipError) throw membershipError;
-  if (membership) return;
 
-  let orgId: string | null = null;
+  let orgId: string | null = membership?.org_id ?? null;
   if (workspaceId) {
     const { data: existingWorkspace, error: existingWorkspaceError } = await admin
       .from("workspaces")
@@ -235,6 +157,47 @@ async function ensureMembershipForProfile(
     );
     if (fallbackMembershipError) throw fallbackMembershipError;
   }
+}
+
+async function upsertProfileByUserId(
+  userId: string,
+  patch: ProfilePatch,
+  email?: string | null
+): Promise<{ id?: string; email?: string } | null> {
+  const admin = createServiceRoleClient();
+  const normalizedEmail = email?.toLowerCase().trim() || undefined;
+
+  const { data, error } = await admin
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        email: normalizedEmail,
+        ...patch
+      },
+      { onConflict: "id" }
+    )
+    .select("id,email")
+    .maybeSingle();
+
+  if (!error) return data;
+  if (!shouldFallbackToLegacyColumns(error)) throw error;
+
+  const { data: fallbackData, error: fallbackError } = await admin
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        email: normalizedEmail,
+        ...toPatchWithFallback(patch)
+      },
+      { onConflict: "id" }
+    )
+    .select("id,email")
+    .maybeSingle();
+
+  if (fallbackError) throw fallbackError;
+  return fallbackData;
 }
 
 async function updatePlanByEmail(
@@ -316,36 +279,13 @@ async function updatePlanByCustomerId(
 async function updatePlanByUserId(
   userId: string,
   patch: ProfilePatch,
+  email?: string | null,
   orgName?: string | null,
   membershipPatch?: MembershipPatch,
   workspaceId?: string | null
 ) {
-  const admin = createServiceRoleClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .update(patch)
-    .eq("id", userId)
-    .select("id,email")
-    .maybeSingle();
-
-  if (error) {
-    if (!shouldFallbackToLegacyColumns(error)) {
-      throw error;
-    }
-
-    const fallback = toPatchWithFallback(patch);
-    const { data: fallbackData, error: fallbackError } = await admin
-      .from("profiles")
-      .update(fallback)
-      .eq("id", userId)
-      .select("id,email")
-      .maybeSingle();
-    if (fallbackError) throw fallbackError;
-    await ensureMembershipForProfile(userId, fallbackData?.email ?? null, orgName, membershipPatch, workspaceId);
-    return;
-  }
-
-  await ensureMembershipForProfile(userId, data?.email ?? null, orgName, membershipPatch, workspaceId);
+  const profile = await upsertProfileByUserId(userId, patch, email);
+  await ensureMembershipForProfile(userId, profile?.email ?? email ?? null, orgName, membershipPatch, workspaceId);
 }
 
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
@@ -363,7 +303,7 @@ async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
   if (event.id && processedEventIds.has(event.id)) {
-    if (isDev) console.info("[stripe] duplicate event ignored", event.id);
+    if (isDev) console.info("[stripe] duplicate event ignored");
     return;
   }
 
@@ -372,7 +312,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const session = event.data.object as Stripe.Checkout.Session;
       const email = session.customer_details?.email ?? session.customer_email;
       const customerId = typeof session.customer === "string" ? session.customer : null;
-      const orgNameFromMetadata = typeof session.metadata?.org_name === "string" ? session.metadata.org_name : null;
+      const workspaceNameFromMetadata = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
       const workspaceIdFromMetadata = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
         ? session.metadata.workspace_id
         : null;
@@ -406,13 +346,16 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         patch.subscription_name = toSubscriptionName(checkoutPlan);
       }
 
-      if (email) {
-        await updatePlanByEmail(email, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
-        await sendPostCheckoutEmails(email, checkoutPlan, session);
-      } else if (userIdFromMetadata) {
-        await updatePlanByUserId(userIdFromMetadata, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+      if (userIdFromMetadata) {
+        await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        if (email) {
+          await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+        }
+      } else if (email) {
+        await updatePlanByEmail(email, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
       } else if (customerId) {
-        await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        await updatePlanByCustomerId(customerId, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
       } else {
         throw new Error("Missing identifiers in checkout.session.completed webhook");
       }
@@ -457,7 +400,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
 
     default: {
       if (isDev) {
-        console.log(`[stripe] ignored event type=${event.type}`);
+        console.info(`[stripe] ignored event type=${event.type}`);
       }
       break;
     }

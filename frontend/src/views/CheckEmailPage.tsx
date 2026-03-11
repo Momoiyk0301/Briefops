@@ -25,7 +25,7 @@ export default function CheckEmailPage() {
             Retour connexion
           </Link>
           <Link
-            to="/settings/billing?fromSignup=1"
+            to="/account?fromSignup=1"
             className="inline-flex items-center justify-center rounded-full border border-[#e6e8ef] bg-white px-4 py-2 text-sm font-semibold text-[#111] transition dark:border-white/10 dark:bg-[#171717] dark:text-white"
           >
             Voir les offres

@@ -10,13 +10,12 @@ const updateStepSchema = z.object({
 
 const createWorkspaceSchema = z
   .object({
-    workspace_name: z.string().trim().min(2).max(120).optional(),
-    org_name: z.string().trim().min(2).max(120).optional(),
-    country: z.string().trim().min(2).max(120).optional(),
+    workspace_name: z.string().min(2).max(120).optional(),
+    country: z.string().min(2).max(120).optional(),
     team_size: z.number().int().positive().max(100000).nullable().optional(),
-    vat_number: z.string().trim().max(64).nullable().optional()
+    vat_number: z.string().max(64).nullable().optional()
   })
-  .refine((value) => Boolean(value.workspace_name ?? value.org_name), {
+  .refine((value) => Boolean(value.workspace_name), {
     message: "workspace_name is required"
   });
 
@@ -24,10 +23,45 @@ type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 
 function resolveWorkspacePayload(input: CreateWorkspaceInput) {
   return {
-    name: input.workspace_name ?? input.org_name ?? "",
+    name: input.workspace_name ?? "",
     country: input.country ?? "Belgium",
     team_size: input.team_size ?? null,
     vat_number: input.vat_number ?? null
+  };
+}
+
+function normalizeOptionalString(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+}
+
+function normalizeNullableString(value: unknown) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function normalizeNullablePositiveInt(value: unknown) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function normalizeCreateWorkspaceBody(rawBody: unknown) {
+  if (!rawBody || typeof rawBody !== "object") return rawBody;
+
+  const body = rawBody as Record<string, unknown>;
+  return {
+    workspace_name: normalizeOptionalString(body.workspace_name),
+    country: normalizeOptionalString(body.country),
+    team_size: normalizeNullablePositiveInt(body.team_size),
+    vat_number: normalizeNullableString(body.vat_number)
   };
 }
 
@@ -51,7 +85,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, onboarding_step: payload.onboarding_step });
     }
 
-    const payload = createWorkspaceSchema.parse(rawBody);
+    const payload = createWorkspaceSchema.parse(normalizeCreateWorkspaceBody(rawBody));
 
     const { data: existingMembership, error: existingMembershipError } = await client
       .from("memberships")

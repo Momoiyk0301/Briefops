@@ -15,10 +15,13 @@ body,
 body {
   margin: 0;
   font-family: "Poppins", "Segoe UI", sans-serif;
-  background-color: #f8f8fc;
+  background-color: #f3f6fb;
   color: #111111;
-  background-image: radial-gradient(circle, rgba(26, 26, 26, 0.08) 1px, transparent 1px);
-  background-size: 18px 18px;
+  background-image:
+    radial-gradient(circle at top left, rgba(84, 119, 255, 0.1), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 184, 108, 0.12), transparent 24%),
+    linear-gradient(180deg, #f7faff 0%, #eef3fb 100%);
+  background-attachment: fixed;
 }
 
 :root {
@@ -28,6 +31,8 @@ body {
   --space-stack-2: clamp(1rem, 0.9vw + 0.7rem, 1.25rem);
   --space-stack-3: clamp(1.25rem, 1.2vw + 0.85rem, 1.5rem);
   --space-card-pad: clamp(1rem, 0.9vw + 0.7rem, 1.5rem);
+  --surface-border: #e1e7f2;
+  --surface-muted: #6f7892;
 }
 
 h1,
@@ -42,7 +47,9 @@ h6 {
 .dark body {
   background-color: #0d0d0d;
   color: #f5f5f5;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-image:
+    radial-gradient(circle at top left, rgba(84, 119, 255, 0.14), transparent 24%),
+    linear-gradient(180deg, #0d1320 0%, #0b1120 100%);
 }
 
 .a4-frame {
@@ -88,6 +95,86 @@ h6 {
 
   .surface-pad {
     padding: clamp(0.875rem, 0.8vw + 0.65rem, 1.25rem);
+  }
+
+  .page-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(219, 228, 243, 0.95);
+    border-radius: 34px;
+    background:
+      radial-gradient(circle at top left, rgba(84, 119, 255, 0.16), transparent 28%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 247, 253, 0.96) 100%);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.09);
+  }
+
+  .page-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -8% -30% auto;
+    width: 220px;
+    height: 220px;
+    border-radius: 9999px;
+    background: rgba(86, 169, 255, 0.18);
+    filter: blur(30px);
+    pointer-events: none;
+  }
+
+  .section-kicker {
+    color: #66708a;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .section-title {
+    color: #13203a;
+    font-size: clamp(1.7rem, 2vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .section-copy {
+    color: #69738c;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .list-surface {
+    border: 1px solid var(--surface-border);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+  }
+
+  .empty-state {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    text-align: center;
+    padding: clamp(1.25rem, 1vw + 1rem, 2rem);
+  }
+
+  .dark .page-hero {
+    border-color: rgba(255, 255, 255, 0.08);
+    background:
+      radial-gradient(circle at top left, rgba(84, 119, 255, 0.18), transparent 25%),
+      linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(12, 18, 30, 0.96) 100%);
+  }
+
+  .dark .section-title {
+    color: #f3f6ff;
+  }
+
+  .dark .section-copy,
+  .dark .section-kicker {
+    color: #a8b1c8;
+  }
+
+  .dark .list-surface {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(18, 18, 18, 0.88);
   }
 
   @media (min-width: 640px) {

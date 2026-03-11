@@ -6,6 +6,7 @@ import { env } from "@/env";
 import { createPublicLink, listPublicLinks, revokePublicLink } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 const idSchema = z.string().uuid();
 const durationSchema = z.enum(["24h", "3d", "1w", "30d", "never"]);
@@ -69,6 +70,10 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const { client, userId } = await requireUser(request);
+    const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "share:create", userId), 20, 60_000);
+    if (!rateLimit.allowed) {
+      throw new HttpError(429, "Too many share link requests. Please wait a minute.");
+    }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     await assertCanManagePublicLinks(briefingId, userId, client);

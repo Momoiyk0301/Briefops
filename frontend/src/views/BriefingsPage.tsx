@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Share2, X } from "lucide-react";
+import { CalendarDays, FileText, Share2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DraggableConfirmModal } from "@/components/ui/DraggableConfirmModal";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SharePanel } from "@/components/briefing/SharePanel";
 
@@ -19,6 +20,7 @@ export default function BriefingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [search, setSearch] = useState("");
   const [briefingToDelete, setBriefingToDelete] = useState<{ id: string; title: string } | null>(null);
   const [shareBriefing, setShareBriefing] = useState<{ id: string; hasPdf: boolean } | null>(null);
 
@@ -47,8 +49,16 @@ export default function BriefingsPage() {
   });
 
   const briefings = briefingsQuery.data?.data ?? [];
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredBriefings = useMemo(() => {
+    if (!normalizedSearch) return briefings;
+    return briefings.filter((briefing) =>
+      [briefing.title, briefing.location_text ?? "", briefing.event_date ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
+    );
+  }, [briefings, normalizedSearch]);
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const plan = meQuery.data?.plan ?? "free";
+  const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
   const briefingLimit = plan === "free" ? 1 : plan === "starter" ? 20 : plan === "plus" ? 100 : null;
   const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
@@ -61,15 +71,11 @@ export default function BriefingsPage() {
   const daysInMonth = monthEnd.getDate();
 
   const briefingsByDay = useMemo(() => {
-    const map = new Map<number, typeof briefings>();
-    briefings.forEach((briefing) => {
+    const map = new Map<number, typeof filteredBriefings>();
+    filteredBriefings.forEach((briefing) => {
       if (!briefing.event_date) return;
       const date = new Date(`${briefing.event_date}T00:00:00`);
-      if (
-        Number.isNaN(date.getTime()) ||
-        date.getMonth() !== currentMonth ||
-        date.getFullYear() !== currentYear
-      ) {
+      if (Number.isNaN(date.getTime()) || date.getMonth() !== currentMonth || date.getFullYear() !== currentYear) {
         return;
       }
       const day = date.getDate();
@@ -78,7 +84,7 @@ export default function BriefingsPage() {
       map.set(day, existing);
     });
     return map;
-  }, [briefings, currentMonth, currentYear]);
+  }, [filteredBriefings, currentMonth, currentYear]);
 
   const statusCounts = useMemo(() => {
     let todayCount = 0;
@@ -86,7 +92,7 @@ export default function BriefingsPage() {
     let pastCount = 0;
     let undatedCount = 0;
 
-    briefings.forEach((briefing) => {
+    filteredBriefings.forEach((briefing) => {
       if (!briefing.event_date) {
         undatedCount += 1;
         return;
@@ -106,14 +112,24 @@ export default function BriefingsPage() {
     });
 
     return { todayCount, upcomingCount, pastCount, undatedCount };
-  }, [briefings, today]);
+  }, [filteredBriefings, today]);
 
   const createdThisMonth = useMemo(() => {
-    return briefings.filter((briefing) => {
+    return filteredBriefings.filter((briefing) => {
       const createdAt = new Date(briefing.created_at);
       return createdAt.getFullYear() === currentYear && createdAt.getMonth() === currentMonth;
     }).length;
-  }, [briefings, currentMonth, currentYear]);
+  }, [filteredBriefings, currentMonth, currentYear]);
+
+  const handleCreateBriefing = () => {
+    if (meQuery.isLoading) return;
+    if (!workspaceId) {
+      toast.error("Workspace missing. Complete onboarding first.");
+      navigate("/onboarding");
+      return;
+    }
+    createMutation.mutate();
+  };
 
   const calendarCells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => {
     if (index < firstWeekday) return null;
@@ -133,9 +149,42 @@ export default function BriefingsPage() {
 
   return (
     <div className="stack-page">
+      <Card className="page-hero card-pad">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="section-kicker">Terrain Command Center</p>
+            <h1 className="section-title mt-3">{t("briefings.title")}</h1>
+            <p className="section-copy mt-3">
+              Centralise tes briefings, garde une vue claire sur les événements du mois et ouvre rapidement le bon document pour le terrain.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="inline-flex rounded-full border border-[#e4e9f4] bg-white/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#1f1f1f]">
+              <Button
+                variant={viewMode === "list" ? "primary" : "ghost"}
+                className="px-3 py-1.5 text-xs"
+                onClick={() => setViewMode("list")}
+              >
+                Liste
+              </Button>
+              <Button
+                variant={viewMode === "calendar" ? "primary" : "ghost"}
+                className="px-3 py-1.5 text-xs"
+                onClick={() => setViewMode("calendar")}
+              >
+                Calendrier
+              </Button>
+            </div>
+            <Button onClick={handleCreateBriefing} withArrow disabled={meQuery.isLoading || createMutation.isPending}>
+              {t("briefings.new")}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <div className="cards-grid-3">
         <Card>
-          <p className="text-xs text-[#888]">Briefings par statut</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings par statut</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge className="w-fit border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/20 dark:bg-blue-900/20 dark:text-blue-200">Aujourd'hui: {statusCounts.todayCount}</Badge>
             <Badge className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200">A venir: {statusCounts.upcomingCount}</Badge>
@@ -144,40 +193,30 @@ export default function BriefingsPage() {
           </div>
         </Card>
         <Card>
-          <p className="text-xs text-[#888]">Briefings crees</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings crees</p>
           <p className="mt-2 text-3xl font-bold">{briefings.length}</p>
           <Badge className="mt-3 w-fit">Ce mois: {createdThisMonth}</Badge>
         </Card>
         <Card>
-          <p className="text-xs text-[#888]">Briefings restants</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings restants</p>
           <p className="mt-2 text-3xl font-bold">{remainingBriefings === null ? "Illimite" : remainingBriefings}</p>
           <Badge className="mt-3 w-fit">Plan: {plan}</Badge>
         </Card>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">{t("briefings.title")}</h1>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Rechercher un briefing, une date ou un lieu"
+            className="w-full sm:w-[360px]"
+          />
           {isDemo && <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200">Demo data</Badge>}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-full bg-[#eff0f8] p-1 dark:bg-[#1f1f1f]">
-            <Button
-              variant={viewMode === "list" ? "primary" : "ghost"}
-              className="px-3 py-1.5 text-xs"
-              onClick={() => setViewMode("list")}
-            >
-              Liste
-            </Button>
-            <Button
-              variant={viewMode === "calendar" ? "primary" : "ghost"}
-              className="px-3 py-1.5 text-xs"
-              onClick={() => setViewMode("calendar")}
-            >
-              Calendrier
-            </Button>
-          </div>
-          <Button onClick={() => createMutation.mutate()} withArrow>{t("briefings.new")}</Button>
+        <div className="flex items-center gap-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+          <FileText size={16} />
+          {filteredBriefings.length} résultat(s)
         </div>
       </div>
 
@@ -224,16 +263,30 @@ export default function BriefingsPage() {
       ) : null}
 
       <div className={`stack-section ${viewMode === "calendar" ? "hidden" : ""}`}>
-        {briefings.length === 0 && (
-          <Card className="text-center">
-            <p className="text-lg font-medium">{t("briefings.empty")}</p>
-            <p className="mt-1 text-sm text-slate-500">Crée ton premier briefing en 2 minutes.</p>
-            <Button className="mt-4" withArrow onClick={() => createMutation.mutate()}>
-              {t("briefings.new")}
-            </Button>
+        {filteredBriefings.length === 0 ? (
+          <Card className="empty-state">
+            <div>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
+                {search ? <CalendarDays size={22} /> : <FileText size={22} />}
+              </div>
+              <p className="text-lg font-semibold">{search ? "Aucun briefing trouvé" : t("briefings.empty")}</p>
+              <p className="mt-2 text-sm text-slate-500">
+                {search ? "Essaie un autre mot-clé ou enlève un filtre." : "Crée ton premier briefing en 2 minutes."}
+              </p>
+            </div>
+            {!search ? (
+              <Button
+                className="mt-4"
+                withArrow
+                onClick={handleCreateBriefing}
+                disabled={meQuery.isLoading || createMutation.isPending}
+              >
+                {t("briefings.new")}
+              </Button>
+            ) : null}
           </Card>
-        )}
-        {briefings.map((briefing, index) => (
+        ) : null}
+        {filteredBriefings.map((briefing, index) => (
           <Card
             key={briefing.id}
             className="cursor-pointer border-l-4 border-l-brand-500 transition hover:-translate-y-0.5"
