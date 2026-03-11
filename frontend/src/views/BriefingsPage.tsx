@@ -30,7 +30,7 @@ export default function BriefingsPage() {
     mutationFn: async () => {
       const orgId = meQuery.data?.org?.id;
       if (!orgId) throw new Error("Organization missing");
-      return createBriefing({ org_id: orgId, title: "Untitled briefing" });
+      return createBriefing({ workspace_id: orgId, title: "Untitled briefing" });
     },
     onSuccess: (briefing) => {
       navigate(`/briefings/${briefing.id}`, { state: { initializingNewBriefing: true } });

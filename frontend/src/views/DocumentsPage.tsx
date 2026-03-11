@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, ExternalLink, FileArchive, Link2 } from "lucide-react";
+import { Copy, Download, ExternalLink, FileArchive, Link2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { getBriefings, getStorageSignedUrl, listPublicLinks, toApiMessage } from "@/lib/api";
+import { downloadBriefingExport, listBriefingExports, listPublicLinks, toApiMessage } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -13,20 +13,21 @@ export default function DocumentsPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"pdfs" | "links">("pdfs");
   const [search, setSearch] = useState("");
-  const briefingsQuery = useQuery({ queryKey: ["documents", "briefings"], queryFn: getBriefings });
+  const exportsQuery = useQuery({ queryKey: ["documents", "exports"], queryFn: listBriefingExports });
   const linksQuery = useQuery({ queryKey: ["documents", "links"], queryFn: listPublicLinks });
   const normalizedSearch = search.trim().toLowerCase();
 
-  const pdfBriefings = useMemo(
+  const pdfExports = useMemo(
     () =>
-      (briefingsQuery.data ?? [])
-        .filter((briefing) => Boolean(briefing.pdf_path))
-        .filter((briefing) =>
+      (exportsQuery.data ?? []).filter((exportRow) =>
           !normalizedSearch
             ? true
-            : [briefing.title, briefing.event_date ?? "", briefing.location_text ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
+            : [exportRow.briefing_title, `v${exportRow.version}`, exportRow.briefing_event_date ?? "", exportRow.briefing_location_text ?? ""]
+                .join(" ")
+                .toLowerCase()
+                .includes(normalizedSearch)
         ),
-    [briefingsQuery.data, normalizedSearch]
+    [exportsQuery.data, normalizedSearch]
   );
 
   const filteredLinks = useMemo(
@@ -39,10 +40,17 @@ export default function DocumentsPage() {
     [linksQuery.data, normalizedSearch]
   );
 
-  const openPdf = async (path: string) => {
+  const handleDownload = async (exportId: string, briefingId: string, version: number) => {
     try {
-      const url = await getStorageSignedUrl("exports", path, 3600);
-      window.open(url, "_blank", "noopener,noreferrer");
+      const blob = await downloadBriefingExport(exportId);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `briefing-${briefingId}-v${version}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error(toApiMessage(error));
     }
@@ -81,15 +89,15 @@ export default function DocumentsPage() {
           className="w-full sm:w-[360px]"
         />
         <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          {tab === "pdfs" ? t("documents.pdfCount", { count: pdfBriefings.length }) : t("documents.linkCount", { count: filteredLinks.length })}
+          {tab === "pdfs" ? t("documents.pdfCount", { count: pdfExports.length }) : t("documents.linkCount", { count: filteredLinks.length })}
         </p>
       </div>
 
       {tab === "pdfs" ? (
         <Card className="list-surface space-y-3 p-4">
-          {briefingsQuery.isLoading ? <p className="text-sm text-slate-500">{t("documents.loadingPdfs")}</p> : null}
-          {briefingsQuery.error ? <p className="text-sm text-red-600">{toApiMessage(briefingsQuery.error)}</p> : null}
-          {!briefingsQuery.isLoading && pdfBriefings.length === 0 ? (
+          {exportsQuery.isLoading ? <p className="text-sm text-slate-500">{t("documents.loadingPdfs")}</p> : null}
+          {exportsQuery.error ? <p className="text-sm text-red-600">{toApiMessage(exportsQuery.error)}</p> : null}
+          {!exportsQuery.isLoading && pdfExports.length === 0 ? (
             <div className="empty-state">
               <div>
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
@@ -100,18 +108,21 @@ export default function DocumentsPage() {
               </div>
             </div>
           ) : null}
-          {pdfBriefings.map((briefing) => (
-            <div key={briefing.id} className="flex flex-col gap-3 rounded-[24px] border border-slate-200/80 bg-white/90 p-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
+          {pdfExports.map((exportRow) => (
+            <div key={exportRow.id} className="flex flex-col gap-3 rounded-[24px] border border-slate-200/80 bg-white/90 p-4 md:flex-row md:items-center md:justify-between dark:border-white/10">
               <div>
-                <p className="font-medium">{briefing.title}</p>
-                <p className="text-xs text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>
+                <p className="font-medium">{exportRow.briefing_title}</p>
+                <p className="text-xs text-slate-500">
+                  {`v${exportRow.version}`} — {new Date(exportRow.created_at).toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-500">{exportRow.briefing_event_date ?? "—"} · {exportRow.briefing_location_text ?? "—"}</p>
               </div>
               <Button
                 variant="secondary"
-                onClick={() => void openPdf(String(briefing.pdf_path))}
+                onClick={() => void handleDownload(exportRow.id, exportRow.briefing_id, exportRow.version)}
               >
-                <ExternalLink size={14} />
-                {t("documents.open")}
+                <Download size={14} />
+                Download PDF
               </Button>
             </div>
           ))}

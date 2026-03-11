@@ -8,6 +8,7 @@ import { Briefing, BriefingModuleRow } from "@/lib/types";
 
 const apiMocks = vi.hoisted(() => ({
   generateBriefingPdf: vi.fn(),
+  downloadBriefingExport: vi.fn().mockResolvedValue(new Blob(["pdf"])),
   getStorageSignedUrl: vi.fn(),
   listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   createBriefingShareLink: vi.fn(),
@@ -16,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api", () => ({
   generateBriefingPdf: apiMocks.generateBriefingPdf,
+  downloadBriefingExport: apiMocks.downloadBriefingExport,
   getStorageSignedUrl: apiMocks.getStorageSignedUrl,
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: apiMocks.createBriefingShareLink,
@@ -26,9 +28,16 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("BriefingEditor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.URL.createObjectURL = vi.fn(() => "blob:test");
+    window.URL.revokeObjectURL = vi.fn();
+    HTMLAnchorElement.prototype.click = vi.fn();
+  });
+
   const briefing: Briefing = {
     id: "11111111-1111-1111-1111-111111111111",
-    org_id: "22222222-2222-2222-2222-222222222222",
+    workspace_id: "22222222-2222-2222-2222-222222222222",
     title: "Demo briefing",
     event_date: null,
     location_text: null,
@@ -76,7 +85,9 @@ describe("BriefingEditor", () => {
 
   it("shows loading then displays the PDF icon link after generation", async () => {
     const user = userEvent.setup();
-    let resolveGeneration: ((value: { pdf_path: string; pdf_url: string; generated_at: string }) => void) | null = null;
+    let resolveGeneration:
+      | ((value: { export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string }) => void)
+      | null = null;
 
     apiMocks.generateBriefingPdf.mockImplementationOnce(
       () =>
@@ -91,12 +102,14 @@ describe("BriefingEditor", () => {
     expect(screen.getByRole("button", { name: /chargement/i })).toBeDisabled();
 
     resolveGeneration?.({
+      export_id: "export-1",
+      version: 1,
       pdf_path: "u1/b1/briefing.pdf",
       pdf_url: "https://example.test/briefing.pdf",
       generated_at: "2026-03-07T00:00:00.000Z"
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /prêt/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /prêt|ready/i })).toBeInTheDocument());
   });
 
   it("opens share drawer and loads links for the current briefing", async () => {
@@ -104,7 +117,7 @@ describe("BriefingEditor", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /partager/i }));
-    expect(await screen.findByText(/Partager PDF/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Partager/i })).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 

@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import {
   Briefing,
+  BriefingExportWithBriefing,
   BriefingModuleRow,
   MeResponse,
   ModuleDataMap,
@@ -194,7 +195,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
     const demoData: Briefing[] = [
       {
         id: "demo-briefing-1",
-        org_id: "demo-org",
+        workspace_id: "demo-workspace",
         title: "Demo - Festival Main Stage",
         event_date: now.slice(0, 10),
         location_text: "Brussels Expo",
@@ -204,7 +205,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
       },
       {
         id: "demo-briefing-2",
-        org_id: "demo-org",
+        workspace_id: "demo-workspace",
         title: "Demo - Corporate Summit",
         event_date: now.slice(0, 10),
         location_text: "Antwerp Convention Center",
@@ -218,7 +219,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
   }
 }
 
-export async function createBriefing(input: { org_id: string; title: string; event_date?: string; location_text?: string }) {
+export async function createBriefing(input: { workspace_id: string; title: string; event_date?: string; location_text?: string }) {
   const response = await requestJson<{ data: Briefing }>("/api/briefings", {
     method: "POST",
     body: input
@@ -273,7 +274,7 @@ export async function getRegistryModules() {
   return response.data;
 }
 
-export async function updateRegistryModuleEnabled(id: string, enabled: boolean) {
+export async function updateWorkspaceModuleEnabled(id: string, enabled: boolean) {
   const response = await requestJson<{ data: RegistryModule }>(`/api/modules`, {
     method: "PUT",
     body: { id, enabled }
@@ -309,11 +310,39 @@ export async function downloadPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 
-export async function generateBriefingPdf(id: string, team?: string | null): Promise<{ pdf_path: string; pdf_url: string; generated_at: string; team?: string | null }> {
+export async function generateBriefingPdf(
+  id: string,
+  team?: string | null
+): Promise<{ export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string; team?: string | null }> {
   const query = team ? `?format=json&team=${encodeURIComponent(team)}` : "?format=json";
-  return requestJson<{ ok: boolean; pdf_path: string; pdf_url: string; generated_at: string }>(
+  return requestJson<{ ok: boolean; export_id: string; version: number; pdf_path: string; pdf_url: string; generated_at: string }>(
     `/api/pdf/${id}${query}`
   );
+}
+
+export async function listBriefingExports(): Promise<BriefingExportWithBriefing[]> {
+  const response = await requestJson<{ data: BriefingExportWithBriefing[] }>("/api/briefing-exports");
+  return response.data;
+}
+
+export async function downloadBriefingExport(exportId: string): Promise<Blob> {
+  const path = `/api/briefing-exports/${exportId}/download`;
+  const startedAt = logApiStart("GET", path);
+  const headers = await getAuthHeader();
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "GET",
+    headers
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    const message = text || `HTTP ${response.status}`;
+    logApiError("GET", path, response.status, message, startedAt);
+    throw { status: response.status, message } as ApiError;
+  }
+
+  logApiSuccess("GET", path, response.status, startedAt);
+  return response.blob();
 }
 
 export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {

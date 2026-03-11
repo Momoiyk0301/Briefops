@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireUser = vi.fn();
 const getBriefingById = vi.fn();
-const getUserOrgId = vi.fn();
+const getNextBriefingExportVersion = vi.fn();
+const createBriefingExport = vi.fn();
+const getUserWorkspaceId = vi.fn();
 const listModules = vi.fn();
 const consumePdfExport = vi.fn();
 const getCurrentMonthUsage = vi.fn();
@@ -16,13 +18,17 @@ const update = vi.fn(() => ({ eq: updateEq }));
 vi.mock("@/supabase/server", () => ({
   requireUser,
   createServiceRoleClient: () => ({
+    from: () => ({
+      update
+    }),
     storage: {
       from: () => ({ upload, createSignedUrl })
     }
   })
 }));
 vi.mock("@/supabase/queries/briefings", () => ({ getBriefingById }));
-vi.mock("@/supabase/queries/modulesRegistry", () => ({ getUserOrgId }));
+vi.mock("@/supabase/queries/briefingExports", () => ({ getNextBriefingExportVersion, createBriefingExport }));
+vi.mock("@/supabase/queries/modulesRegistry", () => ({ getUserWorkspaceId }));
 vi.mock("@/supabase/queries/modules", () => ({ listModules }));
 vi.mock("@/supabase/queries/usage", () => ({ consumePdfExport, getCurrentMonthUsage }));
 vi.mock("@/supabase/queries/profiles", () => ({ getUserPlan }));
@@ -36,12 +42,14 @@ describe("frontend /api/pdf/:id", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     updateEq.mockResolvedValue({ error: null });
-    getUserOrgId.mockResolvedValue("org-1");
+    getUserWorkspaceId.mockResolvedValue("org-1");
+    getNextBriefingExportVersion.mockResolvedValue(1);
+    createBriefingExport.mockResolvedValue({ id: "export-1", version: 1, file_path: "briefings/b1/exports/v1.pdf" });
   });
 
   it("returns json payload when format=json", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", workspace_id: "org-1", title: "T", event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
     getUserPlan.mockResolvedValueOnce("pro");
     renderBriefingPdf.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
@@ -56,12 +64,22 @@ describe("frontend /api/pdf/:id", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.pdf_url).toContain("example.test/file.pdf");
+    expect(body.version).toBe(1);
+    expect(body.export_id).toBe("export-1");
     expect(upload).toHaveBeenCalledTimes(1);
+    expect(upload.mock.calls[0][0]).toBe("briefings/b1/exports/v1.pdf");
+    expect(createBriefingExport).toHaveBeenCalledWith(expect.anything(), {
+      workspace_id: "org-1",
+      briefing_id: "b1",
+      version: 1,
+      file_path: "briefings/b1/exports/v1.pdf",
+      created_by: "u1"
+    });
   });
 
   it("returns 500 when storage upload fails", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-1", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", workspace_id: "org-1", title: "T", event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
     getUserPlan.mockResolvedValueOnce("pro");
     renderBriefingPdf.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
@@ -77,7 +95,7 @@ describe("frontend /api/pdf/:id", () => {
 
   it("returns 403 when briefing belongs to another workspace", async () => {
     requireUser.mockResolvedValueOnce({ client: { from: () => ({ update }) }, userId: "u1" });
-    getBriefingById.mockResolvedValueOnce({ id: "b1", org_id: "org-other", title: "T", event_date: null, location_text: null });
+    getBriefingById.mockResolvedValueOnce({ id: "b1", workspace_id: "org-other", title: "T", event_date: null, location_text: null });
     listModules.mockResolvedValueOnce([]);
 
     const mod = await import("../../app/api/pdf/[id]/route");

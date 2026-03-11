@@ -28,7 +28,7 @@ vi.mock("@/lib/api", () => ({
     data: [
       {
         id: "demo-1",
-        org_id: "org-1",
+        workspace_id: "org-1",
         title: "Demo - One",
         event_date: null,
         location_text: null,

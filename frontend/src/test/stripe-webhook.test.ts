@@ -70,7 +70,7 @@ describe("stripe webhook integration", () => {
     webhookEventInsert.mockResolvedValue({ error: null });
     webhookEventDeleteEq.mockResolvedValue({ error: null });
     membershipMaybeSingle.mockResolvedValue({
-      data: { id: "membership-1", org_id: "11111111-1111-1111-1111-111111111111" },
+      data: { id: "membership-1", workspace_id: "11111111-1111-1111-1111-111111111111" },
       error: null
     });
     workspaceMaybeSingle.mockResolvedValue({
@@ -187,7 +187,7 @@ describe("stripe webhook integration", () => {
     expect(profileUpsert).toHaveBeenCalled();
     expect(membershipUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        org_id: "11111111-1111-1111-1111-111111111111",
+        workspace_id: "11111111-1111-1111-1111-111111111111",
         user_id: "user-1",
         role: "owner",
         plan_name: "Starter",
@@ -229,7 +229,7 @@ describe("stripe webhook integration", () => {
     expect(workspaceInsertSingle).toHaveBeenCalled();
     expect(membershipUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        org_id: "22222222-2222-2222-2222-222222222222",
+        workspace_id: "22222222-2222-2222-2222-222222222222",
         user_id: "user-1"
       }),
       { onConflict: "user_id" }

@@ -38,7 +38,7 @@ describe("frontend /api/stripe/checkout", () => {
       error: null
     });
     const membershipMaybeSingle = vi.fn().mockResolvedValue({
-      data: { org_id: "ws-1" },
+      data: { workspace_id: "ws-1" },
       error: null
     });
     const profilesUpsert = vi.fn().mockResolvedValue({ error: null });

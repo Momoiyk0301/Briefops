@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     if (workspaceError) throw workspaceError;
 
     const { error: membershipError } = await admin.from("memberships").insert({
-      org_id: workspace.id,
+      workspace_id: workspace.id,
       user_id: userId,
       role: "owner"
     });

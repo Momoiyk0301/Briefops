@@ -3,8 +3,9 @@ import { z } from "zod";
 
 import { renderBriefingPdf } from "@/pdf/renderBriefingPdf";
 import { getBriefingById } from "@/supabase/queries/briefings";
+import { createBriefingExport, getNextBriefingExportVersion } from "@/supabase/queries/briefingExports";
 import { listModules } from "@/supabase/queries/modules";
-import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
+import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
@@ -70,11 +71,11 @@ export async function GET(request: Request, { params }: Params) {
     const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
     const selectedTeam = normalizeTeamKey(teamSchema.parse(requestUrl.searchParams.get("team") ?? undefined));
 
-    const [briefing, orgId] = await Promise.all([
+    const [briefing, workspaceId] = await Promise.all([
       getBriefingById(client, briefingId),
-      getUserOrgId(client, userId)
+      getUserWorkspaceId(client, userId)
     ]);
-    if (!orgId || briefing.org_id !== orgId) {
+    if (!workspaceId || briefing.workspace_id !== workspaceId) {
       throw new HttpError(403, "Forbidden");
     }
     const modules = await listModules(client, briefingId);
@@ -112,20 +113,27 @@ export async function GET(request: Request, { params }: Params) {
     });
 
     const service = createServiceRoleClient();
-    const storagePath = selectedTeam
-      ? `${userId}/${briefing.id}/team-${selectedTeam}.pdf`
-      : `${userId}/${briefing.id}/briefing-${briefing.id}-${Date.now()}.pdf`;
+    const version = await getNextBriefingExportVersion(service, briefing.id);
+    const storagePath = `briefings/${briefing.id}/exports/v${version}.pdf`;
 
     const { error: uploadError } = await service.storage
       .from("exports")
       .upload(storagePath, bytes, {
         contentType: "application/pdf",
-        upsert: true
+        upsert: false
       });
 
     if (uploadError) {
       throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
     }
+
+    const exportRow = await createBriefingExport(service, {
+      workspace_id: briefing.workspace_id,
+      briefing_id: briefing.id,
+      version,
+      file_path: storagePath,
+      created_by: userId
+    });
 
     if (!selectedTeam) {
       const { error: persistError } = await client
@@ -151,6 +159,8 @@ export async function GET(request: Request, { params }: Params) {
     if (format === "json") {
       return NextResponse.json({
         ok: true,
+        export_id: exportRow.id,
+        version,
         pdf_path: storagePath,
         pdf_url: signed.signedUrl,
         generated_at: new Date().toISOString(),

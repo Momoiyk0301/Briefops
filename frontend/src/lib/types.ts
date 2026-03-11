@@ -47,7 +47,7 @@ export type Product = {
 
 export type StaffMember = {
   id: string;
-  org_id: string;
+  workspace_id: string;
   briefing_id: string;
   full_name: string;
   role: string;
@@ -60,7 +60,7 @@ export type StaffMember = {
 
 export type Briefing = {
   id: string;
-  org_id: string;
+  workspace_id: string;
   title: string;
   event_date: string | null;
   location_text: string | null;
@@ -68,6 +68,22 @@ export type Briefing = {
   created_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type BriefingExport = {
+  id: string;
+  workspace_id: string;
+  briefing_id: string;
+  version: number;
+  file_path: string;
+  created_at: string;
+  created_by: string;
+};
+
+export type BriefingExportWithBriefing = BriefingExport & {
+  briefing_title: string;
+  briefing_event_date: string | null;
+  briefing_location_text: string | null;
 };
 
 export type PublicLinkStatus = "active" | "expired" | "revoked";
@@ -104,13 +120,15 @@ export type BriefingModuleRow = {
 
 export type RegistryModule = {
   id: string;
-  org_id: string;
   name: string;
   type: ModuleKey;
   version: number;
   icon: string;
   category: string;
   enabled: boolean;
+  global_enabled: boolean;
+  workspace_enabled: boolean;
+  workspace_module_id: string | null;
   default_layout: unknown;
   default_data: unknown;
   created_at: string;

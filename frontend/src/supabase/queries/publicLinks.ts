@@ -133,7 +133,7 @@ export async function getBriefingByPublicToken(client: SupabaseClient, token: st
 
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("id, org_id, title, event_date, location_text, created_at, updated_at")
+    .select("id, workspace_id, title, event_date, location_text, created_at, updated_at")
     .eq("id", link.briefing_id)
     .single();
 

@@ -1,0 +1,3 @@
+-- Migration restored locally to match remote migration history.
+-- This file is intentionally left empty because the migration was
+-- already applied on the remote database.

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { countBriefingsByOrg, createBriefing, listBriefings } from "@/supabase/queries/briefings";
-import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
+import { countBriefingsByWorkspace, createBriefing, listBriefings } from "@/supabase/queries/briefings";
+import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const createSchema = z.object({
-  org_id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
   title: z.string().trim().min(1),
   event_date: z.string().date().optional(),
   location_text: z.string().trim().optional()
@@ -40,14 +40,14 @@ export async function POST(request: Request) {
   try {
     const { client, userId } = await requireUser(request);
     const body = createSchema.parse(await request.json());
-    const orgId = await getUserOrgId(client, userId);
-    if (!orgId || orgId !== body.org_id) {
+    const workspaceId = await getUserWorkspaceId(client, userId);
+    if (!workspaceId || workspaceId !== body.workspace_id) {
       throw new HttpError(403, "Forbidden");
     }
     const plan = await getUserPlan(client, userId);
     const limit = BRIEFING_LIMITS[plan];
     if (Number.isFinite(limit)) {
-      const count = await countBriefingsByOrg(client, orgId);
+      const count = await countBriefingsByWorkspace(client, workspaceId);
       if (count >= limit) {
         throw new HttpError(402, `Briefing limit reached for ${plan} plan (${limit})`);
       }

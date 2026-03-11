@@ -97,13 +97,13 @@ async function ensureMembershipForProfile(
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
-    .select("id,org_id")
+    .select("id,workspace_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (membershipError) throw membershipError;
 
-  let orgId: string | null = membership?.org_id ?? null;
+  let workspaceMembershipId: string | null = membership?.workspace_id ?? null;
   if (workspaceId) {
     const { data: existingWorkspace, error: existingWorkspaceError } = await admin
       .from("workspaces")
@@ -111,10 +111,10 @@ async function ensureMembershipForProfile(
       .eq("id", workspaceId)
       .maybeSingle();
     if (existingWorkspaceError) throw existingWorkspaceError;
-    orgId = existingWorkspace?.id ?? null;
+    workspaceMembershipId = existingWorkspace?.id ?? null;
   }
 
-  if (!orgId) {
+  if (!workspaceMembershipId) {
     const { data: org, error: orgError } = await admin
       .from("workspaces")
       .select("id")
@@ -123,11 +123,11 @@ async function ensureMembershipForProfile(
 
     if (orgError) throw orgError;
     if (org?.id) {
-      orgId = org.id;
+      workspaceMembershipId = org.id;
     }
   }
 
-  if (!orgId) {
+  if (!workspaceMembershipId) {
     const normalizedOrgName = typeof orgName === "string" ? orgName.trim() : "";
     const { data: createdOrg, error: createOrgError } = await admin
       .from("workspaces")
@@ -138,23 +138,23 @@ async function ensureMembershipForProfile(
       .select("id")
       .single();
     if (createOrgError) throw createOrgError;
-    orgId = createdOrg.id;
+    workspaceMembershipId = createdOrg.id;
   }
 
   const payload = {
-    org_id: orgId,
+    workspace_id: workspaceMembershipId,
     user_id: userId,
     role: membershipPatch?.role ?? "owner",
     plan_name: membershipPatch?.plan_name ?? null,
     stripe_price_id: membershipPatch?.stripe_price_id ?? null,
-    stripe_product_id: membershipPatch?.stripe_product_id ?? null
-  };
+        stripe_product_id: membershipPatch?.stripe_product_id ?? null
+      };
   const { error: insertMembershipError } = await admin.from("memberships").upsert(payload, { onConflict: "user_id" });
   if (insertMembershipError) {
     if (!shouldFallbackToLegacyColumns(insertMembershipError)) throw insertMembershipError;
     const { error: fallbackMembershipError } = await admin.from("memberships").upsert(
       {
-        org_id: orgId,
+        workspace_id: workspaceMembershipId,
         user_id: userId,
         role: membershipPatch?.role ?? "owner"
       },

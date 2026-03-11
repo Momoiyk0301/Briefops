@@ -4,7 +4,7 @@ import { Boxes, Store } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { getRegistryModules, toApiMessage, updateRegistryModuleEnabled } from "@/lib/api";
+import { getRegistryModules, toApiMessage, updateWorkspaceModuleEnabled } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -18,7 +18,7 @@ export default function ModulesPage() {
   const modulesQuery = useQuery({ queryKey: queryKeys.modulesRegistry, queryFn: getRegistryModules });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateRegistryModuleEnabled(id, enabled),
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateWorkspaceModuleEnabled(id, enabled),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.modulesRegistry });
     },

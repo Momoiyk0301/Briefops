@@ -56,7 +56,7 @@ describe("frontend /api/briefings/:id/share", () => {
           select: () => chain,
           eq: () => chain,
           in: () => chain,
-          single: () => Promise.resolve({ data: { org_id: "org-1" }, error: null }),
+          single: () => Promise.resolve({ data: { workspace_id: "org-1" }, error: null }),
           maybeSingle: () => Promise.resolve({ data: { role: "owner" }, error: null })
         };
         return chain;
@@ -108,7 +108,7 @@ describe("frontend /api/briefings/:id/share", () => {
           select: () => chain,
           eq: () => chain,
           in: () => chain,
-          single: () => Promise.resolve({ data: { org_id: "org-1" }, error: null }),
+          single: () => Promise.resolve({ data: { workspace_id: "org-1" }, error: null }),
           maybeSingle: () => Promise.resolve({ data: { role: "owner" }, error: null })
         };
         return chain;

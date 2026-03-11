@@ -3,7 +3,7 @@ import { Check, Loader2, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { downloadBriefingExport, generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
 import { getEnabledPageCount } from "@/lib/briefingPages";
 import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
@@ -287,23 +287,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const handlePdf = async () => {
     const targetTeam = teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null;
 
-    if (pdfButtonState === "ready" && !targetTeam) {
-      try {
-        if (pdfPath) {
-          const signedUrl = await getStorageSignedUrl("exports", pdfPath, 3600);
-          setPdfUrl(signedUrl);
-          window.open(signedUrl, "_blank", "noopener,noreferrer");
-          return;
-        }
-        if (pdfUrl) {
-          window.open(pdfUrl, "_blank", "noopener,noreferrer");
-          return;
-        }
-      } catch (error) {
-        toast.error(toApiMessage(error));
-      }
-    }
-
     const toastId = toast.loading(
       targetTeam ? t("editor.pdfGeneratingTeam", { team: targetTeam }) : t("editor.pdfGenerating")
     );
@@ -319,6 +302,15 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           [targetTeam]: result.pdf_path
         }));
       }
+      const blob = await downloadBriefingExport(result.export_id);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `briefing-${briefing.id}-v${result.version}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
       setPdfButtonState("ready");
       generated = true;
       toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
