@@ -32,9 +32,10 @@ function RequireAuth() {
 function ProtectedLayout() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const location = useLocation();
+  const hasMembership = Boolean(meQuery.data?.has_membership ?? meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? meQuery.data?.role);
 
   if (meQuery.isLoading) return <div className="flex h-full items-center justify-center"><Spinner /></div>;
-  if (!meQuery.data?.role && location.pathname !== "/onboarding") return <Navigate to="/onboarding" replace />;
+  if (!hasMembership && location.pathname !== "/onboarding") return <Navigate to="/onboarding" replace />;
   if (location.pathname === "/onboarding") return <Outlet />;
 
   return (

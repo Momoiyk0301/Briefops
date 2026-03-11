@@ -44,8 +44,17 @@ export async function GET(request: Request) {
     const used = Number(usage?.pdf_exports ?? 0);
     const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
+    const hasMembership = Boolean(membership?.org_id);
 
-    ctx.info("resolved me", { userId, hasWorkspace: Boolean(workspace), hasPlan: Boolean(profile?.plan) });
+    ctx.info("resolved me", {
+      userId,
+      hasMembership,
+      membershipRole: membership?.role ?? null,
+      membershipOrgId: membership?.org_id ?? null,
+      hasWorkspace: Boolean(workspace),
+      hasPlan: Boolean(profile?.plan),
+      onboardingStep: profile?.onboarding_step ?? null
+    });
 
     return NextResponse.json({
       user: { id: userId, email: email ?? "" },
@@ -61,6 +70,7 @@ export async function GET(request: Request) {
       },
       org: workspace,
       workspace,
+      has_membership: hasMembership,
       onboarding_step: profile?.onboarding_step ?? null,
       role: membership?.role ?? null,
       is_admin: membership?.role === "owner" || membership?.role === "admin"

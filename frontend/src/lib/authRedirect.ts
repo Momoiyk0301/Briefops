@@ -6,8 +6,9 @@ function hasPaidPlan(plan: UserPlan | null) {
 
 export function getPostAuthRedirect(me: MeResponse): string {
   const workspace = me.workspace ?? me.org ?? null;
+  const hasMembership = Boolean(me.has_membership ?? workspace?.id ?? me.role);
 
-  if (!me.role) {
+  if (!hasMembership) {
     return "/onboarding";
   }
 

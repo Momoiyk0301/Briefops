@@ -127,6 +127,7 @@ export async function getMe(): Promise<MeResponse> {
       };
       org: { id: string; name: string } | null;
       workspace?: { id: string; name: string } | null;
+      has_membership?: boolean;
       onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
       role: "owner" | "admin" | "member" | null;
       is_admin: boolean;
@@ -152,7 +153,6 @@ export async function getMe(): Promise<MeResponse> {
 
 export async function postOnboarding(input: {
   workspace_name?: string;
-  org_name?: string;
   country?: string;
   team_size?: number | null;
   vat_number?: string | null;
@@ -354,11 +354,11 @@ export async function listPublicLinks(): Promise<PublicLinkWithBriefing[]> {
 
 export async function createStripeCheckoutSession(
   plan: "starter" | "plus" | "pro",
-  org_name?: string
+  workspace_name?: string
 ): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
-    body: { plan, org_name }
+    body: { plan, workspace_name }
   });
 }
 
@@ -372,7 +372,7 @@ export async function createOnboardingCheckoutSession(input: {
     body: {
       stripe_price_id: input.stripe_price_id,
       workspace_id: input.workspace_id,
-      org_name: input.workspace_name ?? "",
+      workspace_name: input.workspace_name ?? "",
       source: "onboarding"
     }
   });

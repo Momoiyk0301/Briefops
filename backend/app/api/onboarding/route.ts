@@ -5,7 +5,10 @@ import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { createServiceRoleClient, requireAuthContext } from "@/supabase/server";
 
 const bodySchema = z.object({
-  org_name: z.string().trim().min(2).max(120)
+  workspace_name: z.string().trim().min(2).max(120),
+  country: z.string().trim().min(2).max(120).optional(),
+  team_size: z.number().int().positive().max(100000).nullable().optional(),
+  vat_number: z.string().trim().max(64).nullable().optional()
 });
 
 export async function POST(request: Request) {
@@ -44,9 +47,12 @@ export async function POST(request: Request) {
       .from("workspaces")
       .insert({
         owner_id: userId,
-        name: payload.org_name
+        name: payload.workspace_name,
+        country: payload.country ?? "Belgium",
+        team_size: payload.team_size ?? null,
+        vat_number: payload.vat_number ?? null
       })
-      .select("id,name")
+      .select("id,name,country,team_size,vat_number")
       .single();
 
     if (organizationError) throw organizationError;
@@ -59,9 +65,16 @@ export async function POST(request: Request) {
 
     if (membershipError) throw membershipError;
 
-    ctx.info("onboarding completed", { userId, orgId: organization.id });
+    const { error: profileUpdateError } = await admin
+      .from("profiles")
+      .update({ onboarding_step: "products" })
+      .eq("id", userId);
 
-    return NextResponse.json({ ok: true, org: organization }, { status: 201 });
+    if (profileUpdateError) throw profileUpdateError;
+
+    ctx.info("workspace created from onboarding", { userId, workspaceId: organization.id });
+
+    return NextResponse.json({ ok: true, workspace: organization, onboarding_step: "products" }, { status: 201 });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
     return toErrorResponse(error, ctx.requestId);

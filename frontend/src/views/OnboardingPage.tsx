@@ -36,6 +36,7 @@ export default function OnboardingPage() {
     enabled: !authLoading && Boolean(session)
   });
   const workspace = meQuery.data?.workspace ?? meQuery.data?.org ?? null;
+  const hasMembership = Boolean(meQuery.data?.has_membership ?? workspace?.id ?? meQuery.data?.role);
 
   const productsQuery = useQuery({
     queryKey: ["products"],
@@ -56,10 +57,10 @@ export default function OnboardingPage() {
   }, [authLoading, navigate, session]);
 
   useEffect(() => {
-    if (meQuery.data?.role && meQuery.data?.onboarding_step === "done" && requestedStep !== "demo") {
+    if (hasMembership && meQuery.data?.onboarding_step === "done" && requestedStep !== "demo") {
       navigate("/briefings", { replace: true });
     }
-  }, [meQuery.data?.onboarding_step, meQuery.data?.role, navigate, requestedStep]);
+  }, [hasMembership, meQuery.data?.onboarding_step, navigate, requestedStep]);
 
   const createWorkspaceMutation = useMutation({
     mutationFn: postOnboarding,
@@ -76,7 +77,13 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (requestedStep === "demo" && meQuery.data?.onboarding_step !== "done" && meQuery.data?.onboarding_step !== "demo") {
-      void saveStepMutation.mutateAsync("demo");
+      void (async () => {
+        try {
+          await saveStepMutation.mutateAsync("demo");
+        } catch (error) {
+          toast.error(toApiMessage(error));
+        }
+      })();
     }
   }, [meQuery.data?.onboarding_step, requestedStep, saveStepMutation]);
 

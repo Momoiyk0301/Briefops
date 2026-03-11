@@ -7,7 +7,7 @@ import { listModules } from "@/supabase/queries/modules";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);

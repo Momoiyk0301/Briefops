@@ -24,6 +24,7 @@ export type MeResponse = {
   };
   org: { id: string; name: string } | null;
   workspace?: { id: string; name: string } | null;
+  has_membership?: boolean;
   onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
   is_admin: boolean;

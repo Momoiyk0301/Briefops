@@ -11,7 +11,7 @@ const bodySchema = z.object({
   plan: z.enum(["starter", "plus", "pro"]).optional(),
   stripe_price_id: z.string().trim().min(1).optional(),
   workspace_id: z.string().uuid().optional(),
-  org_name: z.string().trim().min(2).max(120).optional()
+  workspace_name: z.string().trim().min(2).max(120).optional()
     .or(z.literal("")),
   source: z.enum(["billing", "onboarding"]).optional()
 });
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         user_id: userId,
         workspace_id: workspaceId ?? "",
         plan: requestedPlan ?? "",
-        org_name: body.org_name ?? "",
+        workspace_name: body.workspace_name ?? "",
         onboarding_source: source
       }
     });

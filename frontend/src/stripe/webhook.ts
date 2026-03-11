@@ -312,7 +312,7 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       const session = event.data.object as Stripe.Checkout.Session;
       const email = session.customer_details?.email ?? session.customer_email;
       const customerId = typeof session.customer === "string" ? session.customer : null;
-      const orgNameFromMetadata = typeof session.metadata?.org_name === "string" ? session.metadata.org_name : null;
+      const workspaceNameFromMetadata = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
       const workspaceIdFromMetadata = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
         ? session.metadata.workspace_id
         : null;
@@ -347,15 +347,15 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       }
 
       if (userIdFromMetadata) {
-        await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
         if (email) {
           await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
         }
       } else if (email) {
-        await updatePlanByEmail(email, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        await updatePlanByEmail(email, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
         await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
       } else if (customerId) {
-        await updatePlanByCustomerId(customerId, patch, orgNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+        await updatePlanByCustomerId(customerId, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
       } else {
         throw new Error("Missing identifiers in checkout.session.completed webhook");
       }

@@ -156,7 +156,7 @@ describe("stripe webhook integration", () => {
           subscription: "sub_123",
           metadata: {
             user_id: "user-1",
-            org_name: "Events Ops",
+            workspace_name: "Events Ops",
             workspace_id: "11111111-1111-1111-1111-111111111111"
           }
         }
@@ -199,7 +199,7 @@ describe("stripe webhook integration", () => {
           subscription: "sub_123",
           metadata: {
             user_id: "user-1",
-            org_name: "Events Ops"
+            workspace_name: "Events Ops"
           }
         }
       }
