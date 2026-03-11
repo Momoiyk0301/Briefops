@@ -12,6 +12,7 @@ import BriefingDetailPage from "@/views/BriefingDetailPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
 import DocumentsPage from "@/views/DocumentsPage";
+import ForgotPasswordPage from "@/views/ForgotPasswordPage";
 import LoginPage from "@/views/LoginPage";
 import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
@@ -73,6 +74,11 @@ export const router = createBrowserRouter([
   {
     path: "/auth/check-email",
     element: <CheckEmailPage />,
+    errorElement: <RouteErrorPage />
+  },
+  {
+    path: "/auth/forgot-password",
+    element: <ForgotPasswordPage />,
     errorElement: <RouteErrorPage />
   },
   {

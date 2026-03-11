@@ -4,8 +4,6 @@ import { sendCheckoutConfirmationEmails } from "@/lib/mail";
 import { createServiceRoleClient } from "@/supabase/server";
 import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
-const processedEventIds = new Set<string>();
-
 type ProfilePatch = {
   plan: "free" | "starter" | "plus" | "pro";
   stripe_customer_id?: string | null;
@@ -22,6 +20,13 @@ type MembershipPatch = {
   stripe_price_id?: string | null;
   stripe_product_id?: string | null;
 };
+
+function isKnownMissingTableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
+  const message = "message" in error ? String((error as { message?: string }).message ?? "") : "";
+  return code === "42P01" || /relation .* does not exist/i.test(message);
+}
 
 function toPatchWithFallback(patch: ProfilePatch): ProfilePatch {
   return {
@@ -245,7 +250,7 @@ async function updatePlanByCustomerId(
   orgName?: string | null,
   membershipPatch?: MembershipPatch,
   workspaceId?: string | null
-) {
+): Promise<boolean> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
     .from("profiles")
@@ -271,9 +276,10 @@ async function updatePlanByCustomerId(
   }
 
   const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
-  if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName, membershipPatch, workspaceId);
-  }
+  if (!resolvedUserId) return false;
+
+  await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName, membershipPatch, workspaceId);
+  return true;
 }
 
 async function updatePlanByUserId(
@@ -286,6 +292,22 @@ async function updatePlanByUserId(
 ) {
   const profile = await upsertProfileByUserId(userId, patch, email);
   await ensureMembershipForProfile(userId, profile?.email ?? email ?? null, orgName, membershipPatch, workspaceId);
+}
+
+async function updateSubscriptionStatusByCustomerId(
+  customerId: string,
+  patch: Pick<ProfilePatch, "subscription_status" | "current_period_end" | "stripe_subscription_id" | "stripe_customer_id">
+): Promise<boolean> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .update(patch)
+    .eq("stripe_customer_id", customerId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data?.id);
 }
 
 async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
@@ -301,110 +323,233 @@ async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise
   return "free";
 }
 
+async function markWebhookEventAsProcessing(event: Stripe.Event): Promise<boolean> {
+  if (!event.id) return true;
+
+  const admin = createServiceRoleClient();
+  try {
+    const { error } = await admin.from("stripe_webhook_events").insert({
+      event_id: event.id,
+      event_type: event.type
+    });
+
+    if (!error) return true;
+
+    const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
+    if (code === "23505") {
+      if (isDev) console.info("[stripe] duplicate event ignored");
+      return false;
+    }
+
+    if (isKnownMissingTableError(error)) {
+      if (isDev) console.warn("[stripe] stripe_webhook_events table missing, duplicate protection disabled");
+      return true;
+    }
+
+    throw error;
+  } catch (error) {
+    if (isKnownMissingTableError(error)) {
+      if (isDev) console.warn("[stripe] stripe_webhook_events table missing, duplicate protection disabled");
+      return true;
+    }
+    throw error;
+  }
+}
+
+async function releaseWebhookEvent(eventId: string | undefined) {
+  if (!eventId) return;
+  const admin = createServiceRoleClient();
+  try {
+    const { error } = await admin.from("stripe_webhook_events").delete().eq("event_id", eventId);
+    if (error && !isKnownMissingTableError(error)) throw error;
+  } catch (error) {
+    if (isDev) {
+      console.warn("[stripe] failed to release webhook event reservation", {
+        eventId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+}
+
+async function applySubscriptionPatchFromSubscription(subscription: Stripe.Subscription) {
+  const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
+  if (!customerId) return;
+
+  const patch = {
+    ...buildSubscriptionPatch(subscription),
+    stripe_customer_id: customerId
+  };
+  const updated = await updatePlanByCustomerId(customerId, patch, null, {
+    role: "owner",
+    plan_name: toSubscriptionName(resolvePlanFromSubscription(subscription)),
+    stripe_price_id: patch.stripe_price_id ?? null,
+    stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
+  });
+
+  if (!updated && isDev) {
+    console.warn("[stripe] subscription event ignored for unknown customer", { customerId, subscriptionId: subscription.id });
+  }
+}
+
+function resolveInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const parentSubscription = invoice.parent?.subscription_details?.subscription;
+  if (typeof parentSubscription === "string") {
+    return parentSubscription;
+  }
+
+  const legacySubscription = (invoice as Stripe.Invoice & { subscription?: unknown }).subscription;
+  return typeof legacySubscription === "string" ? legacySubscription : null;
+}
+
+async function applyInvoiceStatus(
+  invoice: Stripe.Invoice,
+  fallbackStatus: string
+) {
+  const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+  if (!customerId) return;
+
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+  if (subscriptionId) {
+    try {
+      const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+      await applySubscriptionPatchFromSubscription(subscription);
+      return;
+    } catch (error) {
+      if (isDev) {
+        console.warn("[stripe] failed to resolve subscription from invoice", {
+          customerId,
+          subscriptionId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  }
+
+  const updated = await updateSubscriptionStatusByCustomerId(customerId, {
+    stripe_customer_id: customerId,
+    subscription_status: fallbackStatus
+  });
+
+  if (!updated && isDev) {
+    console.warn("[stripe] invoice event ignored for unknown customer", { customerId, invoiceId: invoice.id });
+  }
+}
+
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
-  if (event.id && processedEventIds.has(event.id)) {
-    if (isDev) console.info("[stripe] duplicate event ignored");
+  const shouldProcess = await markWebhookEventAsProcessing(event);
+  if (!shouldProcess) {
     return;
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const email = session.customer_details?.email ?? session.customer_email;
-      const customerId = typeof session.customer === "string" ? session.customer : null;
-      const workspaceNameFromMetadata = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
-      const workspaceIdFromMetadata = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
-        ? session.metadata.workspace_id
-        : null;
-      const userIdFromMetadata = typeof session.metadata?.user_id === "string" ? session.metadata.user_id : null;
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const email = session.customer_details?.email ?? session.customer_email;
+        const customerId = typeof session.customer === "string" ? session.customer : null;
+        const workspaceNameFromMetadata = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
+        const workspaceIdFromMetadata = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
+          ? session.metadata.workspace_id
+          : null;
+        const userIdFromMetadata = typeof session.metadata?.user_id === "string" ? session.metadata.user_id : null;
 
-      const checkoutPlan = await resolvePlanFromSession(session);
-      let patch: ProfilePatch = {
-        plan: checkoutPlan,
-        stripe_customer_id: customerId
-      };
-      let membershipPatch: MembershipPatch = {
-        role: "owner",
-        plan_name: toSubscriptionName(checkoutPlan),
-        stripe_price_id: null,
-        stripe_product_id: null
-      };
-
-      if (typeof session.subscription === "string") {
-        const subscription = await getStripe().subscriptions.retrieve(session.subscription);
-        patch = {
-          ...patch,
-          ...buildSubscriptionPatch(subscription)
+        const checkoutPlan = await resolvePlanFromSession(session);
+        let patch: ProfilePatch = {
+          plan: checkoutPlan,
+          stripe_customer_id: customerId
         };
-        membershipPatch = {
+        let membershipPatch: MembershipPatch = {
           role: "owner",
           plan_name: toSubscriptionName(checkoutPlan),
-          stripe_price_id: patch.stripe_price_id ?? null,
-          stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
+          stripe_price_id: null,
+          stripe_product_id: null
         };
-      } else {
-        patch.subscription_name = toSubscriptionName(checkoutPlan);
-      }
 
-      if (userIdFromMetadata) {
-        await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
-        if (email) {
-          await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+        if (typeof session.subscription === "string") {
+          const subscription = await getStripe().subscriptions.retrieve(session.subscription);
+          patch = {
+            ...patch,
+            ...buildSubscriptionPatch(subscription)
+          };
+          membershipPatch = {
+            role: "owner",
+            plan_name: toSubscriptionName(checkoutPlan),
+            stripe_price_id: patch.stripe_price_id ?? null,
+            stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
+          };
+        } else {
+          patch.subscription_name = toSubscriptionName(checkoutPlan);
         }
-      } else if (email) {
-        await updatePlanByEmail(email, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
-        await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
-      } else if (customerId) {
-        await updatePlanByCustomerId(customerId, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
-      } else {
-        throw new Error("Missing identifiers in checkout.session.completed webhook");
+
+        if (userIdFromMetadata) {
+          await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+          if (email) {
+            await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+          }
+        } else if (email) {
+          await updatePlanByEmail(email, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+          await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+        } else if (customerId) {
+          const updated = await updatePlanByCustomerId(customerId, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+          if (!updated && isDev) {
+            console.warn("[stripe] checkout session ignored for unknown customer without resolvable email", { customerId, sessionId: session.id });
+          }
+        } else {
+          throw new Error("Missing identifiers in checkout.session.completed webhook");
+        }
+        break;
       }
-      break;
-    }
 
-    case "customer.subscription.created":
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
-      if (!customerId) break;
-
-      const patch = {
-        ...buildSubscriptionPatch(subscription),
-        stripe_customer_id: customerId
-      };
-      await updatePlanByCustomerId(customerId, patch, null, {
-        role: "owner",
-        plan_name: toSubscriptionName(resolvePlanFromSubscription(subscription)),
-        stripe_price_id: patch.stripe_price_id ?? null,
-        stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
-      });
-      break;
-    }
-
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
-      if (!customerId) break;
-
-      await updatePlanByCustomerId(customerId, {
-        plan: "free",
-        stripe_customer_id: customerId,
-        stripe_subscription_id: null,
-        stripe_price_id: null,
-        subscription_name: "Free",
-        subscription_status: "canceled",
-        current_period_end: null
-      });
-      break;
-    }
-
-    default: {
-      if (isDev) {
-        console.info(`[stripe] ignored event type=${event.type}`);
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await applySubscriptionPatchFromSubscription(subscription);
+        break;
       }
-      break;
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
+        if (!customerId) break;
+
+        const updated = await updatePlanByCustomerId(customerId, {
+          plan: "free",
+          stripe_customer_id: customerId,
+          stripe_subscription_id: null,
+          stripe_price_id: null,
+          subscription_name: "Free",
+          subscription_status: "canceled",
+          current_period_end: null
+        });
+
+        if (!updated && isDev) {
+          console.warn("[stripe] subscription deletion ignored for unknown customer", { customerId, subscriptionId: subscription.id });
+        }
+        break;
+      }
+
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        await applyInvoiceStatus(invoice, "active");
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        await applyInvoiceStatus(invoice, "past_due");
+        break;
+      }
+
+      default: {
+        if (isDev) {
+          console.info(`[stripe] ignored event type=${event.type}`);
+        }
+        break;
+      }
     }
+  } catch (error) {
+    await releaseWebhookEvent(event.id);
+    throw error;
   }
-
-  if (event.id) processedEventIds.add(event.id);
 }

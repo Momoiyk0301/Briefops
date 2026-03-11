@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { OnboardingStepKey, OnboardingSteps } from "@/components/onboarding/OnboardingSteps";
 import {
+  activateOnboardingPlan,
   createOnboardingCheckoutSession,
   getMe,
   getProducts,
@@ -14,7 +15,7 @@ import {
   updateOnboardingStep
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Product } from "@/lib/types";
+import type { MeResponse, Product } from "@/lib/types";
 
 function normalizeStep(raw?: string | null): OnboardingStepKey {
   if (raw === "products") return "products";
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
   const requestedStep = params.get("step");
   const [submittingProductId, setSubmittingProductId] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
+  const demoStepSyncStarted = useRef(false);
   const meQuery = useQuery({
     queryKey: ["me"],
     queryFn: getMe,
@@ -50,6 +52,13 @@ export default function OnboardingPage() {
 
   const products = useMemo(() => (productsQuery.data ?? []).slice(0, 3), [productsQuery.data]);
 
+  const updateCachedOnboardingStep = (step: "workspace" | "products" | "demo" | "done") => {
+    queryClient.setQueryData<MeResponse>(["me"], (current) => {
+      if (!current) return current;
+      return { ...current, onboarding_step: step };
+    });
+  };
+
   useEffect(() => {
     if (!authLoading && !session) {
       navigate("/login", { replace: true });
@@ -65,8 +74,10 @@ export default function OnboardingPage() {
   const createWorkspaceMutation = useMutation({
     mutationFn: postOnboarding,
     onSuccess: async () => {
+      updateCachedOnboardingStep("products");
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       toast.success("Workspace created");
+      navigate("/onboarding?step=products");
     },
     onError: (error) => toast.error(toApiMessage(error))
   });
@@ -76,16 +87,24 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
-    if (requestedStep === "demo" && meQuery.data?.onboarding_step !== "done" && meQuery.data?.onboarding_step !== "demo") {
+    if (requestedStep !== "demo" || meQuery.data?.onboarding_step === "done" || meQuery.data?.onboarding_step === "demo") {
+      demoStepSyncStarted.current = false;
+      return;
+    }
+
+    if (!demoStepSyncStarted.current) {
+      demoStepSyncStarted.current = true;
       void (async () => {
         try {
           await saveStepMutation.mutateAsync("demo");
+          updateCachedOnboardingStep("demo");
+          await queryClient.invalidateQueries({ queryKey: ["me"] });
         } catch (error) {
           toast.error(toApiMessage(error));
         }
       })();
     }
-  }, [meQuery.data?.onboarding_step, requestedStep, saveStepMutation]);
+  }, [meQuery.data?.onboarding_step, queryClient, requestedStep, saveStepMutation]);
 
   const finishDemoMutation = useMutation({
     mutationFn: async () => {
@@ -110,14 +129,23 @@ export default function OnboardingPage() {
       toast.error("Create your workspace first");
       return;
     }
-    if (!product.stripe_price_id) {
-      toast.error("Missing Stripe price for this product");
-      return;
-    }
 
     setSubmittingProductId(product.id);
     try {
       await saveStepMutation.mutateAsync("products");
+      updateCachedOnboardingStep("products");
+      if (product.slug === "starter") {
+        await activateOnboardingPlan("starter");
+        updateCachedOnboardingStep("demo");
+        await queryClient.invalidateQueries({ queryKey: ["me"] });
+        navigate("/onboarding?step=demo");
+        return;
+      }
+
+      if (!product.stripe_price_id) {
+        throw new Error("Missing Stripe price for this product");
+      }
+
       const session = await createOnboardingCheckoutSession({
         stripe_price_id: product.stripe_price_id,
         workspace_id: workspace.id,
@@ -132,6 +160,7 @@ export default function OnboardingPage() {
 
   const handleBackToWorkspace = async () => {
     await saveStepMutation.mutateAsync("workspace");
+    updateCachedOnboardingStep("workspace");
     await queryClient.invalidateQueries({ queryKey: ["me"] });
   };
 
@@ -148,7 +177,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <OnboardingModal step={onboardingStep}>
+    <OnboardingModal step={onboardingStep} demoIndex={demoIndex}>
       <OnboardingSteps
         step={onboardingStep}
         workspaceName={workspace?.name ?? ""}

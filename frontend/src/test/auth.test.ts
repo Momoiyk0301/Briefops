@@ -5,6 +5,7 @@ const signUpMock = vi.fn();
 const setSessionMock = vi.fn();
 const getSessionMock = vi.fn();
 const signOutMock = vi.fn();
+const resetPasswordForEmailMock = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
@@ -13,7 +14,8 @@ vi.mock("@/lib/supabase", () => ({
       signUp: signUpMock,
       setSession: setSessionMock,
       getSession: getSessionMock,
-      signOut: signOutMock
+      signOut: signOutMock,
+      resetPasswordForEmail: resetPasswordForEmailMock
     }
   }
 }));
@@ -76,5 +78,17 @@ describe("auth helpers", () => {
 
     const { signOut } = await import("@/lib/auth");
     await expect(signOut()).resolves.toBeUndefined();
+  });
+
+  it("uses the reset password route as redirect target", async () => {
+    resetPasswordForEmailMock.mockResolvedValueOnce({ error: null });
+    window.history.replaceState({}, "", "/login");
+
+    const { resetPasswordForEmail } = await import("@/lib/auth");
+    await resetPasswordForEmail("ops@briefops.app");
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("ops@briefops.app", {
+      redirectTo: `${window.location.origin}/auth/reset-password`
+    });
   });
 });

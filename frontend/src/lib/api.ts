@@ -378,6 +378,13 @@ export async function createOnboardingCheckoutSession(input: {
   });
 }
 
+export async function activateOnboardingPlan(plan: "starter"): Promise<{ ok: boolean; plan: "starter"; onboarding_step: string }> {
+  return requestJson<{ ok: boolean; plan: "starter"; onboarding_step: string }>("/api/onboarding/activate-plan", {
+    method: "POST",
+    body: { plan }
+  });
+}
+
 export async function createStripePortalSession(): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/portal", {
     method: "POST"

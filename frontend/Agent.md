@@ -533,7 +533,7 @@ Télécharger PDF
 
 # PARAMÈTRES
 
-Organisation
+worskpace
 
 nom  
 logo  

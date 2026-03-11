@@ -1,79 +1,116 @@
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import { updatePassword, useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/Button";
+import { PasswordPageShell } from "@/components/auth/PasswordPageShell";
+import { PasswordUpdateForm } from "@/components/auth/PasswordUpdateForm";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-
-const schema = z.object({
-  password: z.string().min(8, "Minimum 8 caractères"),
-  confirmPassword: z.string().min(8, "Minimum 8 caractères")
-}).refine((value) => value.password === value.confirmPassword, {
-  path: ["confirmPassword"],
-  message: "Les mots de passe ne correspondent pas"
-});
-
-type Values = z.infer<typeof schema>;
+import { completeAuthRedirectSession, getAuthRedirectErrorMessage, hasAuthCallbackParams, updatePassword, useAuth } from "@/lib/auth";
+import { toApiMessage } from "@/lib/api";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
-  const form = useForm<Values>({
-    resolver: zodResolver(schema),
-    defaultValues: { password: "", confirmPassword: "" }
-  });
+  const [status, setStatus] = useState<"checking" | "ready" | "invalid" | "error" | "success">("checking");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const authErrorMessage = useMemo(() => getAuthRedirectErrorMessage(), []);
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      await updatePassword(values.password);
-      toast.success("Mot de passe mis à jour");
-      navigate("/login", { replace: true });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Impossible de mettre à jour le mot de passe");
+  useEffect(() => {
+    let active = true;
+
+    if (loading) return;
+
+    if (session) {
+      setStatus("ready");
+      return;
     }
-  });
+
+    if (authErrorMessage) {
+      setStatus("error");
+      setErrorMessage("Le lien de réinitialisation est invalide ou expiré. Demande un nouvel email puis réessaie.");
+      return;
+    }
+
+    if (!hasAuthCallbackParams()) {
+      setStatus("invalid");
+      return;
+    }
+
+    void (async () => {
+      try {
+        const recoveredSession = await completeAuthRedirectSession();
+        if (!active) return;
+
+        if (!recoveredSession) {
+          setStatus("invalid");
+          return;
+        }
+
+        setStatus("ready");
+      } catch (error) {
+        if (!active) return;
+        setStatus("error");
+        setErrorMessage(toApiMessage(error));
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [authErrorMessage, loading, session]);
+
+  const handleSubmit = async (password: string) => {
+    try {
+      await updatePassword(password);
+      setStatus("success");
+      toast.success("Mot de passe mis à jour.");
+      window.setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 900);
+    } catch (error) {
+      toast.error(toApiMessage(error));
+      throw error;
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#e7f0ff,transparent_45%),linear-gradient(180deg,#f8fbff_0%,#eef3fb_100%)] p-6 dark:bg-[#0b1120]">
-      <Card className="w-full max-w-lg p-8">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-lg font-bold text-white shadow-panel">
-            B
-          </div>
-          <h1 className="text-2xl font-semibold">Nouveau mot de passe</h1>
-          <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-            Définis un nouveau mot de passe pour ton compte BriefOPS.
-          </p>
-        </div>
+    <PasswordPageShell
+      backTo={status === "success" ? "/login" : "/auth/forgot-password"}
+      backLabel={status === "success" ? "Retour à la connexion" : "Demander un nouveau lien"}
+      description="Utilise ce lien une seule fois pour enregistrer un mot de passe neuf et reprendre l’accès à ton espace."
+      eyebrow="Sécurité"
+      title="Définir un nouveau mot de passe"
+    >
+      {status === "checking" ? (
+        <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Vérification du lien de récupération en cours...</p>
+      ) : null}
 
-        {loading ? (
-          <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Vérification du lien de récupération...</p>
-        ) : !session ? (
-          <div className="space-y-4">
-            <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
-              Aucun lien de récupération actif n’a été détecté. Rouvre l’email de réinitialisation et clique à nouveau sur le lien.
-            </p>
-            <Link
-              to="/login"
-              className="inline-flex items-center justify-center rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-600"
-            >
-              Retour à la connexion
-            </Link>
-          </div>
-        ) : (
-          <form className="space-y-3" onSubmit={onSubmit}>
-            <Input type="password" placeholder="Nouveau mot de passe" {...form.register("password")} />
-            <Input type="password" placeholder="Confirmer le mot de passe" {...form.register("confirmPassword")} />
-            <Button type="submit" className="w-full" withArrow>
-              Enregistrer le nouveau mot de passe
-            </Button>
-          </form>
-        )}
-      </Card>
-    </div>
+      {status === "invalid" ? (
+        <Card className="rounded-[24px] border-[#f0d5da] bg-[#fff8f9] p-4 text-sm leading-6 text-[#8f3148] dark:border-[#4f2530] dark:bg-[#211419] dark:text-[#ff9cb0]">
+          Aucun lien de récupération actif n’a été détecté sur cette page. Retourne sur l’email reçu puis clique à nouveau sur le lien complet.
+        </Card>
+      ) : null}
+
+      {status === "error" ? (
+        <Card className="rounded-[24px] border-[#f0d5da] bg-[#fff8f9] p-4 text-sm leading-6 text-[#8f3148] dark:border-[#4f2530] dark:bg-[#211419] dark:text-[#ff9cb0]">
+          {errorMessage ?? "Impossible d’activer la session de récupération pour le moment."}
+        </Card>
+      ) : null}
+
+      {status === "success" ? (
+        <Card className="rounded-[24px] border-[#d8e8dd] bg-[#f4fbf6] p-4 text-sm leading-6 text-[#256146] dark:border-[#28543d] dark:bg-[#102419] dark:text-[#92d3a9]">
+          Ton nouveau mot de passe est enregistré. Redirection vers la page de connexion...
+        </Card>
+      ) : null}
+
+      {status === "ready" ? (
+        <PasswordUpdateForm
+          helperText="Choisis un mot de passe d’au moins 8 caractères. Tu pourras ensuite te reconnecter immédiatement."
+          onSubmit={handleSubmit}
+          pendingLabel="Enregistrement..."
+          submitLabel="Enregistrer le nouveau mot de passe"
+        />
+      ) : null}
+    </PasswordPageShell>
   );
 }

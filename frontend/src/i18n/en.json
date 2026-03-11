@@ -145,7 +145,9 @@
     "currentOrHigher": "Current or higher plan",
     "currentPlan": "Current plan",
     "manageBilling": "Manage billing",
-    "opening": "Opening..."
+    "opening": "Opening...",
+    "billingReturned": "You are back from the billing portal. Stripe changes will sync automatically to your account.",
+    "billingWarning": "A payment issue was detected on the subscription. Check your payment method in the billing portal."
   },
   "share": {
     "title": "Share PDF",
