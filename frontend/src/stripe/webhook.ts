@@ -392,6 +392,16 @@ async function applySubscriptionPatchFromSubscription(subscription: Stripe.Subsc
   }
 }
 
+function resolveInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const parentSubscription = invoice.parent?.subscription_details?.subscription;
+  if (typeof parentSubscription === "string") {
+    return parentSubscription;
+  }
+
+  const legacySubscription = (invoice as Stripe.Invoice & { subscription?: unknown }).subscription;
+  return typeof legacySubscription === "string" ? legacySubscription : null;
+}
+
 async function applyInvoiceStatus(
   invoice: Stripe.Invoice,
   fallbackStatus: string
@@ -399,16 +409,17 @@ async function applyInvoiceStatus(
   const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
   if (!customerId) return;
 
-  if (typeof invoice.subscription === "string") {
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+  if (subscriptionId) {
     try {
-      const subscription = await getStripe().subscriptions.retrieve(invoice.subscription);
+      const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
       await applySubscriptionPatchFromSubscription(subscription);
       return;
     } catch (error) {
       if (isDev) {
         console.warn("[stripe] failed to resolve subscription from invoice", {
           customerId,
-          subscriptionId: invoice.subscription,
+          subscriptionId,
           error: error instanceof Error ? error.message : String(error)
         });
       }
