@@ -8,19 +8,13 @@ import { getBriefingExportById, updateBriefingExport } from "@/supabase/queries/
 import { listModules } from "@/supabase/queries/modules";
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
-import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
+import { checkQuota, getPlanLimits } from "@/lib/quotas";
+import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
-
-const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
-  free: 3,
-  starter: 100,
-  plus: 300,
-  pro: Number.POSITIVE_INFINITY
-};
 
 type Params = { params: Promise<{ id: string; exportId: string }> };
 
@@ -58,13 +52,22 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const plan = await getUserPlan(client, userId);
-    const limit = PDF_LIMITS[plan];
-    if (Number.isFinite(limit)) {
-      const usageResult = await consumePdfExport(client, userId, limit);
-      if (!usageResult.allowed) {
-        const usage = await getCurrentMonthUsage(client, userId);
-        throw new HttpError(402, `Monthly PDF export limit reached for ${plan} plan (${usage?.pdf_exports ?? usageResult.used}/${limit})`);
-      }
+    const workspace = await getWorkspaceById(client, workspaceId);
+    const quota = checkQuota({ ...workspace, plan }, "export_pdf");
+    if (!quota.allowed) {
+      throw new HttpError(402, quota.message ?? `Monthly PDF export limit reached for ${plan} plan`);
+    }
+
+    const { error: quotaUpdateError } = await service
+      .from("workspaces")
+      .update({
+        pdf_exports_month: Number(quota.org.pdf_exports_month ?? workspace.pdf_exports_month ?? 0) + 1,
+        pdf_exports_reset_at: quota.org.pdf_exports_reset_at
+      })
+      .eq("id", workspace.id);
+
+    if (quotaUpdateError) {
+      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
     }
 
     await updateBriefingExport(service, normalizedExportId, {
@@ -79,6 +82,7 @@ export async function POST(request: Request, { params }: Params) {
         title: briefing.title,
         event_date: briefing.event_date,
         location_text: briefing.location_text,
+        watermark: getPlanLimits(plan).watermark,
         modules: modules.map((mod) => ({
           module_key: mod.module_key,
           enabled: mod.enabled,

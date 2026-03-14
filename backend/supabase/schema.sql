@@ -53,6 +53,13 @@ create table if not exists public.workspaces (
   team_size integer,
   vat_number text,
   owner_id uuid not null unique references public.profiles(id) on delete restrict,
+  plan text not null default 'starter' check (plan in ('starter', 'pro', 'guest', 'funder', 'enterprise')),
+  stripe_customer_id text unique,
+  stripe_subscription_id text unique,
+  stripe_price_id text,
+  subscription_name text,
+  subscription_status text,
+  current_period_end timestamptz,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -66,9 +73,6 @@ create table if not exists public.memberships (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner', 'admin', 'member')),
-  plan_name text,
-  stripe_price_id text,
-  stripe_product_id text,
   created_at timestamptz not null default timezone('utc', now()),
   unique (workspace_id, user_id),
   unique (user_id)

@@ -9,8 +9,7 @@ const getBriefingExportById = vi.fn();
 const updateBriefingExport = vi.fn();
 const listModules = vi.fn();
 const getUserPlan = vi.fn();
-const consumePdfExport = vi.fn();
-const getCurrentMonthUsage = vi.fn();
+const getWorkspaceById = vi.fn();
 const renderBriefingPdf = vi.fn();
 const upload = vi.fn();
 const updateEq = vi.fn();
@@ -38,7 +37,7 @@ vi.mock("@/supabase/queries/briefingExports", () => ({
 }));
 vi.mock("@/supabase/queries/modules", () => ({ listModules }));
 vi.mock("@/supabase/queries/profiles", () => ({ getUserPlan }));
-vi.mock("@/supabase/queries/usage", () => ({ consumePdfExport, getCurrentMonthUsage }));
+vi.mock("@/supabase/queries/workspaces", () => ({ getWorkspaceById }));
 vi.mock("@/pdf/renderBriefingPdf", () => ({ renderBriefingPdf }));
 
 describe("frontend /api/briefings/:id/export routes", () => {
@@ -47,6 +46,14 @@ describe("frontend /api/briefings/:id/export routes", () => {
     updateEq.mockResolvedValue({ error: null });
     requireUser.mockResolvedValue({ client: { from: () => ({ update }) }, userId: "u1" });
     getUserWorkspaceId.mockResolvedValue("workspace-1");
+    getWorkspaceById.mockResolvedValue({
+      id: "workspace-1",
+      name: "Ops",
+      briefings_count: 0,
+      storage_used_bytes: 0,
+      pdf_exports_month: 0,
+      pdf_exports_reset_at: new Date().toISOString()
+    });
     getBriefingById.mockResolvedValue({
       id: "briefing-1",
       workspace_id: "workspace-1",
@@ -97,7 +104,6 @@ describe("frontend /api/briefings/:id/export routes", () => {
       error_message: null
     });
     getUserPlan.mockResolvedValue("pro");
-    consumePdfExport.mockResolvedValue({ allowed: true, used: 1 });
     listModules.mockResolvedValue([]);
     renderBriefingPdf.mockResolvedValue(new Uint8Array([1, 2, 3]));
     upload.mockResolvedValue({ error: null });

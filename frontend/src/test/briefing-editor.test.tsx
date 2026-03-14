@@ -7,20 +7,12 @@ import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow } from "@/lib/types";
 
 const apiMocks = vi.hoisted(() => ({
-  createBriefingExportJob: vi.fn(),
-  startBriefingExportJob: vi.fn(),
-  getBriefingExportJob: vi.fn(),
-  downloadBriefingExport: vi.fn().mockResolvedValue({ blob: new Blob(["pdf"]), filename: "demo-briefing-v1.pdf" }),
   listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   createBriefingShareLink: vi.fn(),
   revokeBriefingShareLink: vi.fn()
 }));
 
 vi.mock("@/lib/api", () => ({
-  createBriefingExportJob: apiMocks.createBriefingExportJob,
-  startBriefingExportJob: apiMocks.startBriefingExportJob,
-  getBriefingExportJob: apiMocks.getBriefingExportJob,
-  downloadBriefingExport: apiMocks.downloadBriefingExport,
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: apiMocks.createBriefingShareLink,
   revokeBriefingShareLink: apiMocks.revokeBriefingShareLink,
@@ -35,6 +27,10 @@ describe("BriefingEditor", () => {
     window.URL.createObjectURL = vi.fn(() => "blob:test");
     window.URL.revokeObjectURL = vi.fn();
     HTMLAnchorElement.prototype.click = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign: vi.fn() }
+    });
   });
 
   const briefing: Briefing = {
@@ -60,58 +56,43 @@ describe("BriefingEditor", () => {
     updated_at: new Date().toISOString()
   }));
 
-  it("opens selected module form in right sidebar when clicking module list item", async () => {
+  it("switches tabs and shows the selected module form", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    expect(screen.getAllByText(/Edition module/i).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: /Edition/i }));
-    expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("move-access")).toBeInTheDocument();
-    expect(screen.queryByLabelText("move-notes")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^General$/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Event name/i)).toBeInTheDocument();
 
-    const notesItem = screen
-      .getAllByText(/^Notes$/i)
-      .map((node) => node.closest('[role="button"]'))
-      .find((node): node is HTMLElement => Boolean(node));
-    expect(notesItem).toBeTruthy();
-    await user.click(notesItem!);
+    await user.click(screen.getByRole("button", { name: /^(Access|Accès)$/i }));
+    expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: /^Notes$/i }));
 
     expect(screen.getAllByPlaceholderText(/^Notes$/i).length).toBeGreaterThan(0);
   });
 
-  it("shows mobile panel tabs for meta/modules/edition", () => {
+  it("shows the configuration sidebar sections", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
-    expect(screen.getByRole("button", { name: "Meta" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Modules" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edition" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Configuration/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Module settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/Module library/i)).toBeInTheDocument();
   });
 
-  it("shows loading then displays the PDF icon link after generation", async () => {
+  it("routes PDF export through the team-aware export page", async () => {
     const user = userEvent.setup();
-    apiMocks.createBriefingExportJob.mockResolvedValueOnce({ export_id: "export-1", version: 1, status: "creating" });
-    apiMocks.startBriefingExportJob.mockResolvedValueOnce({ export_id: "export-1", version: 1, status: "generating", file_path: "briefings/b1/exports/v1.pdf" });
-    apiMocks.getBriefingExportJob.mockResolvedValueOnce({
-      export_id: "export-1",
-      version: 1,
-      status: "ready",
-      file_path: "briefings/b1/exports/v1.pdf",
-      error_message: null
-    });
 
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /^pdf$/i }));
-    await waitFor(() => expect(apiMocks.createBriefingExportJob).toHaveBeenCalledWith(briefing.id));
-    await waitFor(() => expect(screen.getByRole("button", { name: /prêt|ready/i })).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /Export PDF/i }));
+    expect(window.location.assign).toHaveBeenCalledWith(`/briefings/${briefing.id}/export`);
   });
 
   it("opens share drawer and loads links for the current briefing", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /partager/i }));
-    expect(await screen.findByRole("heading", { name: /Partager/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Share$/i }));
+    expect(await screen.findByRole("heading", { name: /Share briefing/i })).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 
@@ -119,7 +100,7 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    const titleInput = screen.getAllByPlaceholderText(/Title/i)[0];
+    const titleInput = screen.getByLabelText(/Event name/i);
     await user.type(titleInput, " updated");
 
     await waitFor(() => {
@@ -127,14 +108,24 @@ describe("BriefingEditor", () => {
     }, { timeout: 3000 });
   });
 
-  it("adds a page and lets the selected module move to page 2", async () => {
+  it("adds a page and lets the selected module move to page 2 from configuration", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getAllByRole("button", { name: /Ajouter une page/i })[0]);
-    const selectors = screen.getAllByRole("combobox", { name: /page-selector/i });
-    await user.selectOptions(selectors[0], "1");
+    await user.click(screen.getByRole("button", { name: "toggle-visual-editor" }));
+    await user.click(screen.getByRole("button", { name: /(Access|Accès)/i }));
+    await user.click(screen.getByRole("button", { name: /Add page/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /page-selector/i }), "1");
 
     expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
   }, 10000);
+
+  it("opens the preview modal from the header action", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getByRole("button", { name: /^Preview$/i }));
+    expect(screen.getByLabelText("close-preview")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Preview$/i).length).toBeGreaterThan(0);
+  });
 });

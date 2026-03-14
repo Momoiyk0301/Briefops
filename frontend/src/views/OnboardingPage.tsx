@@ -134,6 +134,10 @@ export default function OnboardingPage() {
     try {
       await saveStepMutation.mutateAsync("products");
       updateCachedOnboardingStep("products");
+      if (product.slug === "enterprise") {
+        navigate("/help?subject=enterprise");
+        return;
+      }
       if (product.slug === "starter") {
         await activateOnboardingPlan("starter");
         updateCachedOnboardingStep("demo");

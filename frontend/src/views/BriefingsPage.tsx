@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ExternalLink, FileText, Plus, Share2, Users, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ExternalLink, FileText, Plus, Share2, Trash2, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -21,7 +21,7 @@ import {
   listPublicLinks,
   toApiMessage
 } from "@/lib/api";
-import { Briefing } from "@/lib/types";
+import { Briefing, PublicLinkWithBriefing } from "@/lib/types";
 import { queryKeys } from "@/lib/queryKeys";
 
 function getStatusTone(status: Briefing["status"]) {
@@ -45,12 +45,29 @@ function formatDate(date: string | null) {
   });
 }
 
+function extractTeams(links: PublicLinkWithBriefing[], briefingId: string) {
+  return Array.from(
+    new Set(
+      links
+        .filter((link) => link.briefing_id === briefingId)
+        .map((link) => link.team ?? link.audience_tag ?? "")
+        .filter(Boolean)
+    )
+  );
+}
+
+function buildExportPath(briefingId: string, team: string | null) {
+  return team ? `/briefings/${briefingId}/export?team=${encodeURIComponent(team)}` : `/briefings/${briefingId}/export`;
+}
+
 export default function BriefingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
   const [briefingToDelete, setBriefingToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [shareBriefing, setShareBriefing] = useState<{ id: string } | null>(null);
+  const [shareBriefing, setShareBriefing] = useState<{ id: string; teams: string[]; selectedTeam: string | null } | null>(null);
+  const [selectedTeamByBriefing, setSelectedTeamByBriefing] = useState<Record<string, string>>({});
 
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
@@ -69,6 +86,7 @@ export default function BriefingsPage() {
     },
     onError: (error) => toast.error(toApiMessage(error))
   });
+
   const deleteMutation = useMutation({
     mutationFn: (briefingId: string) => deleteBriefing(briefingId),
     onSuccess: async () => {
@@ -80,6 +98,7 @@ export default function BriefingsPage() {
   });
 
   const briefings = briefingsQuery.data?.data ?? [];
+  const publicLinks = publicLinksQuery.data ?? [];
   const normalizedSearch = search.trim().toLowerCase();
   const filteredBriefings = useMemo(() => {
     if (!normalizedSearch) return briefings;
@@ -120,10 +139,10 @@ export default function BriefingsPage() {
         .map((member) => member.email?.toLowerCase() || `${member.full_name.toLowerCase()}|${member.phone ?? ""}`)
     ).size;
 
-    const activePublicLinks = (publicLinksQuery.data ?? []).filter((link) => link.status === "active").length;
+    const activePublicLinks = publicLinks.filter((link) => link.status === "active").length;
 
     return { createdThisMonth, upcomingEvents, pastEvents, activeStaffThisMonth, activePublicLinks };
-  }, [briefings, publicLinksQuery.data, staffQuery.data]);
+  }, [briefings, publicLinks, staffQuery.data]);
 
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
@@ -221,100 +240,115 @@ export default function BriefingsPage() {
           />
         </Card>
       ) : (
-        <>
-          <Card className="list-surface hidden overflow-hidden p-0 md:block">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-[#f6f8fc] text-left text-xs font-semibold uppercase tracking-[0.14em] text-[#7a839d] dark:bg-[#181818] dark:text-[#97a0ba]">
-                  <tr>
-                    <th className="px-5 py-4">Briefing</th>
-                    <th className="px-5 py-4">Date</th>
-                    <th className="px-5 py-4">Lieu</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4">Shared</th>
-                    <th className="px-5 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBriefings.map((briefing) => (
-                    <tr key={briefing.id} className="border-t border-[#edf1f7] dark:border-white/10">
-                      <td className="px-5 py-4">
-                        <button type="button" className="text-left" onClick={() => navigate(`/briefings/${briefing.id}`)}>
-                          <p className="font-semibold text-[#111827] dark:text-white">{briefing.title}</p>
-                          <p className="mt-1 text-xs text-[#7a839d] dark:text-[#97a0ba]">Mis à jour {formatDate(briefing.updated_at.slice(0, 10))}</p>
-                        </button>
-                      </td>
-                      <td className="px-5 py-4 text-[#42506a] dark:text-[#c8d2ea]">{formatDate(briefing.event_date)}</td>
-                      <td className="px-5 py-4 text-[#42506a] dark:text-[#c8d2ea]">{briefing.location_text ?? "Lieu non défini"}</td>
-                      <td className="px-5 py-4">
-                        <Badge className={getStatusTone(briefing.status)}>{formatStatus(briefing.status)}</Badge>
-                      </td>
-                      <td className="px-5 py-4">
-                        <Badge className={briefing.shared ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-900/20 dark:text-sky-200" : ""}>
-                          {briefing.shared ? "Oui" : "Non"}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="secondary" onClick={() => navigate(`/briefings/${briefing.id}`)}>
-                            <ExternalLink size={14} />
-                            Ouvrir
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            aria-label="Partager le briefing"
-                            onClick={() => setShareBriefing({ id: briefing.id })}
-                          >
-                            <Share2 size={14} />
-                            Partager
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            aria-label="Supprimer le briefing"
-                            onClick={() => setBriefingToDelete({ id: briefing.id, title: briefing.title })}
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        <div className="grid gap-3">
+          {filteredBriefings.map((briefing) => {
+            const teams = extractTeams(publicLinks, briefing.id);
+            const selectedTeam = selectedTeamByBriefing[briefing.id] ?? "all";
+            const isExpanded = expandedBriefingId === briefing.id;
+            const resolvedSelectedTeam = selectedTeam === "all" ? null : selectedTeam;
 
-          <div className="grid gap-3 md:hidden">
-            {filteredBriefings.map((briefing) => (
-              <Card key={briefing.id} className="surface-pad">
-                <div className="flex items-start justify-between gap-3">
-                  <button type="button" className="text-left" onClick={() => navigate(`/briefings/${briefing.id}`)}>
-                    <p className="font-semibold text-[#111827] dark:text-white">{briefing.title}</p>
-                    <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">{formatDate(briefing.event_date)}</p>
-                    <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">{briefing.location_text ?? "Lieu non défini"}</p>
-                  </button>
-                  <Button variant="ghost" aria-label="Partager le briefing" onClick={() => setShareBriefing({ id: briefing.id })}>
-                    <Share2 size={16} />
-                  </Button>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge className={getStatusTone(briefing.status)}>{formatStatus(briefing.status)}</Badge>
-                  <Badge className={briefing.shared ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-900/20 dark:text-sky-200" : ""}>
-                    Shared: {briefing.shared ? "Oui" : "Non"}
-                  </Badge>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => navigate(`/briefings/${briefing.id}`)}>
-                    Ouvrir
-                  </Button>
-                  <Button variant="ghost" onClick={() => setBriefingToDelete({ id: briefing.id, title: briefing.title })}>
-                    Supprimer
-                  </Button>
-                </div>
+            return (
+              <Card key={briefing.id} className="overflow-hidden p-0">
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-4 px-5 py-4 text-left transition hover:bg-[#f8faff] dark:hover:bg-white/[0.02] md:flex-row md:items-center md:justify-between"
+                  onClick={() => {
+                    setExpandedBriefingId((current) => (current === briefing.id ? null : briefing.id));
+                    if (!selectedTeamByBriefing[briefing.id]) {
+                      setSelectedTeamByBriefing((prev) => ({ ...prev, [briefing.id]: "all" }));
+                    }
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-semibold text-[#111827] dark:text-white">{briefing.title}</p>
+                      <Badge className={getStatusTone(briefing.status)}>{formatStatus(briefing.status)}</Badge>
+                      <Badge className={briefing.shared ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-900/20 dark:text-sky-200" : ""}>
+                        {briefing.shared ? "Shared" : "Private"}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+                      {formatDate(briefing.event_date)} · {briefing.location_text ?? "Lieu non défini"}
+                    </p>
+                    <p className="mt-1 text-xs text-[#7a839d] dark:text-[#97a0ba]">Mis à jour {formatDate(briefing.updated_at.slice(0, 10))}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {teams.length > 0 ? (
+                      <Badge className="border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/20 dark:bg-brand-900/20 dark:text-brand-300">
+                        {teams.length} team{teams.length > 1 ? "s" : ""}
+                      </Badge>
+                    ) : null}
+                    <ChevronDown
+                      size={18}
+                      className={`text-[#7a839d] transition ${isExpanded ? "rotate-180" : ""}`}
+                    />
+                  </div>
+                </button>
+
+                {isExpanded ? (
+                  <div className="border-t border-[#edf1f7] bg-[#fbfcff] px-5 py-4 dark:border-white/10 dark:bg-[#121315]">
+                    {teams.length > 0 ? (
+                      <div className="mb-4">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Teams</p>
+                        <div className="flex flex-wrap gap-2">
+                          {["all", ...teams].map((team) => {
+                            const active = selectedTeam === team;
+                            return (
+                              <button
+                                key={team}
+                                type="button"
+                                onClick={() => setSelectedTeamByBriefing((prev) => ({ ...prev, [briefing.id]: team }))}
+                                className={`rounded-full px-3 py-1.5 text-sm transition ${
+                                  active
+                                    ? "bg-[#dde6f7] text-[#172033] dark:bg-white/10 dark:text-white"
+                                    : "bg-white text-slate-600 hover:bg-[#f3f6fb] dark:bg-[#171717] dark:text-slate-300 dark:hover:bg-[#1f1f1f]"
+                                }`}
+                              >
+                                {team === "all" ? "All teams" : team}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="secondary" onClick={() => navigate(`/briefings/${briefing.id}`)}>
+                        <ExternalLink size={14} />
+                        Ouvrir
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        aria-label="Partager le briefing"
+                        onClick={() => setShareBriefing({ id: briefing.id, teams, selectedTeam: resolvedSelectedTeam })}
+                      >
+                        <Share2 size={14} />
+                        Partager
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        aria-label="Exporter le PDF"
+                        onClick={() => navigate(buildExportPath(briefing.id, resolvedSelectedTeam))}
+                      >
+                        <FileText size={14} />
+                        PDF
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        aria-label="Supprimer le briefing"
+                        onClick={() => setBriefingToDelete({ id: briefing.id, title: briefing.title })}
+                      >
+                        <Trash2 size={14} />
+                        Supprimer
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </Card>
-            ))}
-          </div>
-        </>
+            );
+          })}
+        </div>
       )}
 
       <DraggableConfirmModal
@@ -330,10 +364,17 @@ export default function BriefingsPage() {
           deleteMutation.mutate(briefingToDelete.id);
         }}
       />
+
       <SharePanel
         open={Boolean(shareBriefing)}
         onClose={() => setShareBriefing(null)}
         briefingId={shareBriefing?.id ?? ""}
+        teams={shareBriefing?.teams ?? []}
+        selectedTeam={shareBriefing?.selectedTeam ?? null}
+        onExportPdf={(team) => {
+          if (!shareBriefing) return;
+          navigate(buildExportPath(shareBriefing.id, team));
+        }}
       />
     </div>
   );

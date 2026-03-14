@@ -115,7 +115,7 @@ export function toApiMessage(error: unknown): string {
 export async function getMe(): Promise<MeResponse> {
   try {
     const response = await requestJson<{
-      user: { id: string; email: string };
+      user: { id: string; email: string; full_name?: string | null; avatar_path?: string | null; initials?: string };
       plan: UserPlan;
       subscription_name: string | null;
       subscription_status: string | null;
@@ -126,8 +126,8 @@ export async function getMe(): Promise<MeResponse> {
         pdf_exports_limit: number | null;
         pdf_exports_remaining: number | null;
       };
-      org: { id: string; name: string } | null;
-      workspace?: { id: string; name: string } | null;
+      org: MeResponse["org"];
+      workspace?: MeResponse["workspace"];
       has_membership?: boolean;
       onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
       role: "owner" | "admin" | "member" | null;
@@ -286,8 +286,9 @@ export async function updateWorkspaceModuleEnabled(id: string, enabled: boolean)
   return response.data;
 }
 
-export async function downloadPdf(id: string): Promise<Blob> {
-  const path = `/api/pdf/${id}`;
+export async function downloadPdf(id: string, team?: string | null): Promise<{ blob: Blob; filename: string | null }> {
+  const query = team ? `?team=${encodeURIComponent(team)}` : "";
+  const path = `/api/pdf/${id}${query}`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
   const response = await fetch(`${API_URL}${path}`, {
@@ -311,7 +312,12 @@ export async function downloadPdf(id: string): Promise<Blob> {
   }
 
   logApiSuccess("GET", path, response.status, startedAt);
-  return response.blob();
+  const contentDisposition = response.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/i);
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? null
+  };
 }
 
 export async function createBriefingExportJob(
@@ -375,7 +381,50 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
   };
 }
 
-export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {
+export async function uploadStorageFile(bucket: "logos" | "avatars" | "assets" | "exports", file: File) {
+  const method = "POST";
+  const path = "/api/storage/upload";
+  const startedAt = logApiStart(method, path);
+  const headers = await getAuthHeader();
+  const formData = new FormData();
+  formData.append("bucket", bucket);
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: formData
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && "error" in payload
+        ? String((payload as { error: string }).error)
+        : `HTTP ${response.status}`;
+    logApiError(method, path, response.status, message, startedAt);
+    throw { status: response.status, message } as ApiError;
+  }
+
+  logApiSuccess(method, path, response.status, startedAt);
+  return payload as { bucket: string; path: string };
+}
+
+export async function updateMyAvatar(avatar_path: string | null) {
+  return requestJson<{ data: { id: string; avatar_path: string | null } }>("/api/me", {
+    method: "PATCH",
+    body: { avatar_path }
+  });
+}
+
+export async function updateWorkspaceLogo(logo_path: string | null) {
+  return requestJson<{ data: { id: string; logo_path: string | null } }>("/api/workspace", {
+    method: "PATCH",
+    body: { logo_path }
+  });
+}
+
+export async function getStorageSignedUrl(bucket: "logos" | "avatars" | "assets" | "exports", path: string, expiresIn = 3600) {
   const response = await requestJson<{ url: string }>(
     `/api/storage/signed-url?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}&expires_in=${expiresIn}`
   );
@@ -415,12 +464,27 @@ export async function listPublicLinks(): Promise<PublicLinkWithBriefing[]> {
 }
 
 export async function createStripeCheckoutSession(
-  plan: "starter" | "plus" | "pro",
+  plan: "starter" | "pro" | "guest" | "funder",
   workspace_name?: string
 ): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
     body: { plan, workspace_name }
+  });
+}
+
+export async function createStripeCheckoutSessionByPrice(input: {
+  stripe_price_id: string;
+  plan: "starter" | "pro" | "guest" | "funder";
+  workspace_name?: string;
+}): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/checkout", {
+    method: "POST",
+    body: {
+      stripe_price_id: input.stripe_price_id,
+      plan: input.plan,
+      workspace_name: input.workspace_name ?? ""
+    }
   });
 }
 

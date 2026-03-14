@@ -7,21 +7,15 @@ import { createBriefingExport, getNextBriefingExportVersion } from "@/supabase/q
 import { listModules } from "@/supabase/queries/modules";
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
-import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
+import { checkQuota, getPlanLimits } from "@/lib/quotas";
+import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);
 const teamSchema = z.string().trim().min(1).max(64).optional();
-
-const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
-  free: 3,
-  starter: 100,
-  plus: 300,
-  pro: Number.POSITIVE_INFINITY
-};
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -81,22 +75,32 @@ export async function GET(request: Request, { params }: Params) {
     const modules = await listModules(client, briefingId);
 
     const plan = await getUserPlan(client, userId);
-    const limit = PDF_LIMITS[plan];
-    if (Number.isFinite(limit)) {
-      const usageResult = await consumePdfExport(client, userId, limit);
-      if (!usageResult.allowed) {
-        const usage = await getCurrentMonthUsage(client, userId);
-        ctx.warn("pdf limit reached", { userId, plan, used: usage?.pdf_exports ?? usageResult.used, limit });
-        return NextResponse.json(
-          {
-            error: `Monthly PDF export limit reached for ${plan} plan`,
-            used: usage?.pdf_exports ?? usageResult.used,
-            limit,
-            request_id: ctx.requestId
-          },
-          { status: 402 }
-        );
-      }
+    const workspace = await getWorkspaceById(client, workspaceId);
+    const quota = checkQuota({ ...workspace, plan }, "export_pdf");
+    if (!quota.allowed) {
+      ctx.warn("pdf limit reached", { userId, plan, used: quota.current, limit: quota.limit });
+      return NextResponse.json(
+        {
+          error: quota.message ?? `Monthly PDF export limit reached for ${plan} plan`,
+          used: quota.current,
+          limit: quota.limit,
+          request_id: ctx.requestId
+        },
+        { status: 402 }
+      );
+    }
+
+    const service = createServiceRoleClient();
+    const { error: quotaUpdateError } = await service
+      .from("workspaces")
+      .update({
+        pdf_exports_month: Number(quota.org.pdf_exports_month ?? workspace.pdf_exports_month ?? 0) + 1,
+        pdf_exports_reset_at: quota.org.pdf_exports_reset_at
+      })
+      .eq("id", workspace.id);
+
+    if (quotaUpdateError) {
+      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
     }
 
     const bytes = await renderBriefingPdf({
@@ -105,6 +109,7 @@ export async function GET(request: Request, { params }: Params) {
       event_date: briefing.event_date,
       location_text: briefing.location_text,
       team: selectedTeam,
+      watermark: getPlanLimits(plan).watermark,
       modules: modules.map((mod) => ({
         module_key: mod.module_key,
         enabled: mod.enabled,
@@ -112,7 +117,6 @@ export async function GET(request: Request, { params }: Params) {
       })).filter((mod) => isModuleVisibleForTeam(mod, selectedTeam))
     });
 
-    const service = createServiceRoleClient();
     const version = await getNextBriefingExportVersion(service, briefing.id);
     const storagePath = `briefings/${briefing.id}/exports/v${version}.pdf`;
 

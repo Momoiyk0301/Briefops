@@ -114,27 +114,33 @@ export default function BriefingDetailPage() {
             <p className="mt-1 text-xs text-[#8b92a6] dark:text-[#a8afc6]">Dernière modification le {lastUpdatedLabel}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (!editing) {
-                  setEditing(true);
-                  return;
-                }
-                setSaveNonce((value) => value + 1);
-              }}
-            >
-              <PencilLine size={16} />
-              {editing ? "Enregistrer" : "Modifier"}
-            </Button>
-            <Button variant="secondary" onClick={() => setShareOpen(true)}>
-              <Share2 size={16} />
-              Partager
-            </Button>
-            <Button variant="secondary" onClick={() => navigate(`/briefings/${id}/export`)}>
-              <FileDown size={16} />
-              Générer PDF
-            </Button>
+            {editing ? (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setSaveNonce((value) => value + 1);
+                  setEditing(false);
+                }}
+              >
+                <PencilLine size={16} />
+                Preview
+              </Button>
+            ) : (
+              <>
+                <Button variant="primary" onClick={() => setEditing(true)}>
+                  <PencilLine size={16} />
+                  Modifier
+                </Button>
+                <Button variant="secondary" onClick={() => setShareOpen(true)}>
+                  <Share2 size={16} />
+                  Partager
+                </Button>
+                <Button variant="secondary" onClick={() => navigate(`/briefings/${id}/export`)}>
+                  <FileDown size={16} />
+                  Générer PDF
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </Card>
@@ -158,7 +164,7 @@ export default function BriefingDetailPage() {
         onClose={() => setShareOpen(false)}
         briefingId={briefingQuery.data.id}
         teams={Array.isArray((previewState.modules.metadata.data.teams ?? [])) ? previewState.modules.metadata.data.teams : []}
-        onExportPdf={() => navigate(`/briefings/${id}/export`)}
+        onExportPdf={(team) => navigate(team ? `/briefings/${id}/export?team=${encodeURIComponent(team)}` : `/briefings/${id}/export`)}
       />
 
       {showInitOverlay ? (

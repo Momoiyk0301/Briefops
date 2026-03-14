@@ -1,7 +1,7 @@
 import type { MeResponse, UserPlan } from "@/lib/types";
 
 function hasPaidPlan(plan: UserPlan | null) {
-  return plan === "starter" || plan === "plus" || plan === "pro";
+  return plan === "starter" || plan === "pro" || plan === "guest" || plan === "funder" || plan === "enterprise";
 }
 
 export function getPostAuthRedirect(me: MeResponse): string {

@@ -33,6 +33,7 @@ type BriefingHtmlInput = {
   event_date: string | null;
   location_text: string | null;
   team?: string | null;
+  watermark?: boolean | string;
   modules: ModuleInput[];
 };
 
@@ -164,6 +165,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
   const eventDate = input.event_date || "Not set";
   const location = input.location_text || "Not set";
   const pageCount = getPageCountFromLayouts(activeModules.map((module) => module.layoutDesktop));
+  const watermarkLabel = input.watermark ? escapeHtml(typeof input.watermark === "string" ? input.watermark : "BriefOps Starter") : null;
   const pages = Array.from({ length: pageCount }, (_, pageIndex) => {
     const pageModules = activeModules.filter((module) => getDesktopPage(module.layoutDesktop) === pageIndex);
     const moduleSections = pageModules.length
@@ -181,6 +183,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
 
     return `
       <section class="pdf-page">
+        ${watermarkLabel ? `<div class="watermark">${watermarkLabel}</div>` : ""}
         ${pageIndex === 0 ? `
           <header class="header">
             <h1>${escapeHtml(titleWithTeam)}</h1>
@@ -220,6 +223,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       min-height: 269mm;
       page-break-after: always;
       break-after: page;
+      position: relative;
     }
     .pdf-page:last-child {
       page-break-after: auto;
@@ -306,6 +310,25 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       color: #6b7280;
       font-size: 11px;
       text-align: right;
+    }
+    .watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: rgba(37, 99, 235, 0.09);
+      transform: rotate(-28deg);
+      pointer-events: none;
+      text-transform: uppercase;
+      z-index: 0;
+    }
+    .header, .canvas, .footer, .page-marker {
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>

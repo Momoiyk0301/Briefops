@@ -1,16 +1,36 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
 import BriefingsPage from "@/views/BriefingsPage";
 
 const apiMocks = vi.hoisted(() => ({
-  getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" } }),
+  getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" }, workspace: { id: "org-1", name: "Org" } }),
   createBriefing: vi.fn(),
-  listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   getStaff: vi.fn().mockResolvedValue([]),
-  listPublicLinks: vi.fn().mockResolvedValue([])
+  listPublicLinks: vi.fn().mockResolvedValue([
+    {
+      id: "l1",
+      briefing_id: "demo-1",
+      resource_type: "pdf",
+      link_type: "audience",
+      audience_tag: "Audio",
+      team: "Audio",
+      token: "t1",
+      created_by: "u1",
+      expires_at: null,
+      revoked_at: null,
+      created_at: "",
+      status: "active",
+      url: "http://localhost/briefings/demo-1/audio/t1",
+      briefing_title: "Demo - One",
+      pdf_path: null
+    }
+  ]),
+  listBriefingShareLinks: vi.fn().mockResolvedValue([]),
+  toApiMessage: vi.fn((e: unknown) => String(e))
 }));
 
 const routerMocks = vi.hoisted(() => ({
@@ -50,7 +70,7 @@ vi.mock("@/lib/api", () => ({
   createBriefingShareLink: vi.fn(),
   revokeBriefingShareLink: vi.fn(),
   upsertBriefingModules: vi.fn(),
-  toApiMessage: vi.fn((e: unknown) => String(e))
+  toApiMessage: apiMocks.toApiMessage
 }));
 
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -67,15 +87,10 @@ vi.mock("react-hot-toast", () => ({
 
 describe("BriefingsPage", () => {
   beforeEach(() => {
-    apiMocks.getMe.mockResolvedValue({ org: { id: "org-1", name: "Org" } });
-    apiMocks.createBriefing.mockReset();
-    apiMocks.listBriefingShareLinks.mockClear();
-    routerMocks.navigate.mockReset();
-    toastMocks.error.mockReset();
-    toastMocks.success.mockReset();
+    vi.clearAllMocks();
   });
 
-  it("shows demo data badge when fallback is used", async () => {
+  function renderPage() {
     const client = new QueryClient();
     render(
       <MemoryRouter>
@@ -84,56 +99,50 @@ describe("BriefingsPage", () => {
         </QueryClientProvider>
       </MemoryRouter>
     );
+  }
 
-    await waitFor(() => {
-      expect(screen.getByText(/Demo data/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/Status/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Shared/i).length).toBeGreaterThan(0);
-    });
-  });
-
-  it("opens share panel for selected briefing", async () => {
-    const client = new QueryClient();
-    const userEvent = (await import("@testing-library/user-event")).default;
+  it("shows demo data badge and expandable briefing actions", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <QueryClientProvider client={client}>
-          <BriefingsPage />
-        </QueryClientProvider>
-      </MemoryRouter>
-    );
+    renderPage();
 
-    await waitFor(() => expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0));
-    await user.click(screen.getAllByLabelText(/Partager le briefing/i)[0]);
+    await waitFor(() => expect(screen.getByText(/Demo data/i)).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /Demo - One/i }));
+
+    expect(screen.getByRole("button", { name: /Partager le briefing/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Exporter le PDF/i })).toBeInTheDocument();
+  });
+
+  it("shows team tabs when a briefing has teams and defaults to all teams", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
+
+    expect(screen.getByRole("button", { name: /All teams/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Audio$/i })).toBeInTheDocument();
+  });
+
+  it("opens the share panel for the selected briefing", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
+    await user.click(screen.getByRole("button", { name: /Partager le briefing/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Partager le briefing/i)).toBeInTheDocument();
+      expect(screen.getByText(/Share briefing/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
   });
 
-  it("redirects to onboarding when workspace is missing", async () => {
-    apiMocks.getMe.mockResolvedValue({ org: null, workspace: null });
-
-    const client = new QueryClient();
-    const userEvent = (await import("@testing-library/user-event")).default;
+  it("routes to the team-aware PDF export from row actions", async () => {
     const user = userEvent.setup();
+    renderPage();
 
-    render(
-      <MemoryRouter>
-        <QueryClientProvider client={client}>
-          <BriefingsPage />
-        </QueryClientProvider>
-      </MemoryRouter>
-    );
+    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
+    await user.click(screen.getByRole("button", { name: /^Audio$/i }));
+    await user.click(screen.getByRole("button", { name: /Exporter le PDF/i }));
 
-    await waitFor(() => expect(screen.getAllByText(/Demo - One/).length).toBeGreaterThan(0));
-    await user.click(screen.getAllByRole("button", { name: /Nouveau briefing/i })[0]);
-
-    expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding");
-    expect(toastMocks.error).toHaveBeenCalledWith("Workspace missing. Complete onboarding first.");
-    expect(apiMocks.createBriefing).not.toHaveBeenCalled();
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/demo-1/export?team=Audio");
   });
 });

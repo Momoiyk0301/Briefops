@@ -8,12 +8,13 @@ const webhookEventInsert = vi.fn();
 const webhookEventDeleteEq = vi.fn();
 
 const profileUpsert = vi.fn();
-const profileUpdate = vi.fn();
 const membershipUpsert = vi.fn();
 const membershipMaybeSingle = vi.fn();
 const workspaceMaybeSingle = vi.fn();
 const ownerWorkspaceMaybeSingle = vi.fn();
 const workspaceInsertSingle = vi.fn();
+const workspaceUpdateEq = vi.fn();
+const workspaceUpdate = vi.fn();
 
 vi.mock("@/lib/mail", () => ({
   sendCheckoutConfirmationEmails
@@ -58,19 +59,12 @@ describe("stripe webhook integration", () => {
       current_period_end: 1_800_000_000
     });
 
-    profileUpsert.mockResolvedValue({
-      data: { id: "user-1", email: "client@example.com" },
-      error: null
-    });
-    profileUpdate.mockResolvedValue({
-      data: { id: "user-1", email: "client@example.com" },
-      error: null
-    });
+    profileUpsert.mockResolvedValue({ error: null });
     membershipUpsert.mockResolvedValue({ error: null });
     webhookEventInsert.mockResolvedValue({ error: null });
     webhookEventDeleteEq.mockResolvedValue({ error: null });
     membershipMaybeSingle.mockResolvedValue({
-      data: { id: "membership-1", workspace_id: "11111111-1111-1111-1111-111111111111" },
+      data: { workspace_id: "11111111-1111-1111-1111-111111111111" },
       error: null
     });
     workspaceMaybeSingle.mockResolvedValue({
@@ -85,34 +79,31 @@ describe("stripe webhook integration", () => {
       data: { id: "22222222-2222-2222-2222-222222222222" },
       error: null
     });
-
-    mockAdminFrom.mockImplementation((table: string) => {
-      if (table === "profiles") {
-        return {
-          upsert: (...args: unknown[]) => {
-            profileUpsert(...args);
+    workspaceUpdateEq.mockResolvedValue({ error: null });
+    workspaceUpdate.mockImplementation((payload: unknown) => {
+      const currentPayload = payload;
+      return {
+        eq: (field: string, value: string) => {
+          workspaceUpdateEq(field, value, currentPayload);
+          if (field === "stripe_customer_id") {
             return {
               select: () => ({
                 maybeSingle: vi.fn().mockResolvedValue({
-                  data: { id: "user-1", email: "client@example.com" },
+                  data: { id: "11111111-1111-1111-1111-111111111111" },
                   error: null
                 })
               })
             };
-          },
-          update: (...args: unknown[]) => {
-            profileUpdate(...args);
-            return {
-              eq: () => ({
-                select: () => ({
-                  maybeSingle: vi.fn().mockResolvedValue({
-                    data: { id: "user-1", email: "client@example.com" },
-                    error: null
-                  })
-                })
-              })
-            };
-          },
+          }
+          return { error: null };
+        }
+      };
+    });
+
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === "profiles") {
+        return {
+          upsert: profileUpsert,
           select: () => ({
             eq: () => ({
               maybeSingle: vi.fn().mockResolvedValue({
@@ -138,10 +129,14 @@ describe("stripe webhook integration", () => {
       if (table === "workspaces") {
         return {
           select: () => ({
-            eq: (_field: string, value: string) => ({
-              maybeSingle: value === "user-1" ? ownerWorkspaceMaybeSingle : workspaceMaybeSingle
+            eq: (field: string, value: string) => ({
+              maybeSingle:
+                field === "owner_id"
+                  ? ownerWorkspaceMaybeSingle
+                  : workspaceMaybeSingle
             })
           }),
+          update: workspaceUpdate,
           insert: () => ({
             select: () => ({
               single: workspaceInsertSingle
@@ -163,7 +158,7 @@ describe("stripe webhook integration", () => {
     });
   });
 
-  it("uses the central mail service and updates existing membership with Stripe data", async () => {
+  it("uses the central mail service and writes Stripe state to the workspace", async () => {
     const { handleStripeWebhookEvent } = await import("@/stripe/webhook");
 
     await handleStripeWebhookEvent({
@@ -189,18 +184,26 @@ describe("stripe webhook integration", () => {
       expect.objectContaining({
         workspace_id: "11111111-1111-1111-1111-111111111111",
         user_id: "user-1",
-        role: "owner",
-        plan_name: "Starter",
-        stripe_price_id: "price_starter",
-        stripe_product_id: "prod_123"
+        role: "owner"
       }),
       { onConflict: "user_id" }
+    );
+    expect(workspaceUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: "starter",
+        stripe_customer_id: "cus_123",
+        stripe_subscription_id: "sub_123",
+        stripe_price_id: "price_starter",
+        subscription_name: "Starter",
+        subscription_status: "active"
+      })
     );
     expect(sendCheckoutConfirmationEmails).toHaveBeenCalledWith(
       "client@example.com",
       "starter",
       expect.objectContaining({ id: "cs_123" })
     );
+    expect(workspaceUpdate).toHaveBeenCalledWith(expect.objectContaining({ due_at: expect.any(String) }));
   });
 
   it("creates a workspace and membership from webhook fallback when none exist", async () => {
@@ -230,7 +233,8 @@ describe("stripe webhook integration", () => {
     expect(membershipUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         workspace_id: "22222222-2222-2222-2222-222222222222",
-        user_id: "user-1"
+        user_id: "user-1",
+        role: "owner"
       }),
       { onConflict: "user_id" }
     );
@@ -252,7 +256,7 @@ describe("stripe webhook integration", () => {
     } as never);
 
     expect(retrieveSubscription).toHaveBeenCalledWith("sub_123");
-    expect(profileUpdate).toHaveBeenCalledWith(
+    expect(workspaceUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         plan: "starter",
         stripe_subscription_id: "sub_123",
@@ -287,7 +291,7 @@ describe("stripe webhook integration", () => {
       }
     } as never);
 
-    expect(profileUpdate).toHaveBeenCalledWith(
+    expect(workspaceUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         subscription_status: "past_due"
       })
@@ -315,6 +319,6 @@ describe("stripe webhook integration", () => {
       }
     } as never);
 
-    expect(profileUpdate).not.toHaveBeenCalled();
+    expect(workspaceUpdate).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { Bell, Boxes, CircleUser, Files, FileText, LogOut, Settings, Users } from "lucide-react";
+import { Bell, Boxes, CircleUser, Files, FileText, HelpCircle, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -88,6 +88,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
               <div className="border-t border-white/20 pt-2">
                 <SidebarItem to="/settings" title="Settings" icon={<Settings size={18} />} end />
               </div>
+              <SidebarItem to="/help" title="Aide" icon={<HelpCircle size={18} />} end />
               <button type="button" title="Logout" onClick={() => void signOut()} className={iconButton}>
                 <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
                   <LogOut size={18} />
@@ -168,6 +169,15 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           >
             <CircleUser size={16} />
             Compte
+          </NavLink>
+          <NavLink
+            to="/help"
+            className={({ isActive }) =>
+              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
+            }
+          >
+            <HelpCircle size={16} />
+            Aide
           </NavLink>
           <button
             type="button"

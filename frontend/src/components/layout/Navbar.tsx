@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { AvatarBadge } from "@/components/ui/AvatarBadge";
 import { UserPlan } from "@/lib/types";
-import { getBriefingsWithFallback, getMe } from "@/lib/api";
+import { getBriefingsWithFallback, getMe, getStorageSignedUrl } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { getInitials } from "@/lib/branding";
 
 type Props = {
   plan: UserPlan | null;
@@ -22,6 +24,8 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   const pathname = location.pathname;
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
+  const [workspaceLogoUrl, setWorkspaceLogoUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
@@ -83,6 +87,38 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   }
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function resolveBranding() {
+      try {
+        if (meQuery.data?.workspace?.logo_path) {
+          const url = await getStorageSignedUrl("logos", meQuery.data.workspace.logo_path);
+          if (!cancelled) setWorkspaceLogoUrl(url);
+        } else if (!cancelled) {
+          setWorkspaceLogoUrl(null);
+        }
+
+        if (meQuery.data?.user?.avatar_path) {
+          const url = await getStorageSignedUrl("avatars", meQuery.data.user.avatar_path);
+          if (!cancelled) setAvatarUrl(url);
+        } else if (!cancelled) {
+          setAvatarUrl(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkspaceLogoUrl(null);
+          setAvatarUrl(null);
+        }
+      }
+    }
+
+    void resolveBranding();
+    return () => {
+      cancelled = true;
+    };
+  }, [meQuery.data?.workspace?.logo_path, meQuery.data?.user?.avatar_path]);
+
+  useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setNotificationsOpen(false);
@@ -107,7 +143,15 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             </Button>
           ) : null}
           <div className="min-w-0">
-            <p className="section-kicker hidden md:block">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? "BriefOps"}</p>
+            <div className="hidden items-center gap-2 md:flex">
+              <AvatarBadge
+                label="Workspace"
+                imageUrl={workspaceLogoUrl}
+                initials={meQuery.data?.workspace?.initials || getInitials(meQuery.data?.workspace?.name, "WS")}
+                className="h-7 w-7"
+              />
+              <p className="section-kicker">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? "BriefOps"}</p>
+            </div>
             <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
           </div>
         </div>
@@ -185,15 +229,18 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             onClick={() => navigate("/account")}
             className="hidden max-w-[280px] items-center gap-2 rounded-full border border-[#e4e9f3] bg-white/88 px-3 py-2 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-brand-500/40 md:flex dark:border-white/10 dark:bg-[#171717]"
           >
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-xs font-semibold text-brand-600 dark:text-brand-400">
-              {(meQuery.data?.user?.email?.slice(0, 1) ?? "U").toUpperCase()}
-            </span>
+            <AvatarBadge
+              label="Utilisateur"
+              imageUrl={avatarUrl}
+              initials={meQuery.data?.user?.initials || getInitials(meQuery.data?.user?.full_name || meQuery.data?.user?.email, "US")}
+              className="h-7 w-7 shrink-0"
+            />
             <span className="min-w-0">
               <span className="block truncate text-xs font-semibold text-[#21263a] dark:text-[#dbe3ff]">
                 {meQuery.data?.user?.email ?? "Utilisateur"}
               </span>
               <span className="block truncate text-[11px] text-[#767c91] dark:text-[#9da5bf]">
-                Plan {meQuery.data?.plan ?? "free"}
+                Plan {meQuery.data?.plan ?? "starter"}
               </span>
             </span>
           </button>

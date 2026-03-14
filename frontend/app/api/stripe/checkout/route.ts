@@ -8,14 +8,14 @@ import { env } from "@/env";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({
-  plan: z.enum(["starter", "plus", "pro"]).optional(),
+  plan: z.enum(["starter", "pro", "guest", "funder"]).optional(),
   stripe_price_id: z.string().trim().min(1).optional(),
   workspace_id: z.string().uuid().optional(),
   workspace_name: z.string().trim().min(2).max(120).optional()
     .or(z.literal("")),
   source: z.enum(["billing", "onboarding"]).optional()
 });
-const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, plus: 2, pro: 3 };
+const planRank: Record<string, number> = { starter: 1, pro: 2, guest: 2, funder: 2, enterprise: 3 };
 
 function resolveAppUrl(request: Request): string {
   const origin = request.headers.get("origin");
@@ -39,6 +39,18 @@ export async function POST(request: Request) {
       throw new HttpError(400, "Missing price identifier");
     }
 
+    const { data: membership, error: membershipError } = await admin
+      .from("memberships")
+      .select("workspace_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (membershipError) throw membershipError;
+
+    const workspaceId = body.workspace_id ?? membership?.workspace_id ?? null;
+    if (!workspaceId) {
+      throw new HttpError(409, "Workspace requis avant de lancer Stripe.");
+    }
+
     const { error: profileUpsertError } = await admin
       .from("profiles")
       .upsert(
@@ -50,42 +62,33 @@ export async function POST(request: Request) {
       );
     if (profileUpsertError) throw profileUpsertError;
 
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
+    const { data: workspace, error: workspaceError } = await admin
+      .from("workspaces")
       .select("id,plan,stripe_customer_id")
-      .eq("id", userId)
+      .eq("id", workspaceId)
       .maybeSingle();
-    if (profileError) throw profileError;
-    if (!profile) throw new HttpError(500, "Profile not found after upsert");
+    if (workspaceError) throw workspaceError;
+    if (!workspace) throw new HttpError(404, "Workspace introuvable");
 
-    const currentPlan = profile?.plan ?? "free";
+    const currentPlan = workspace.plan ?? "starter";
     if (requestedPlan && (planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
       throw new HttpError(409, `Already on ${currentPlan} plan or higher`);
     }
 
-    const { data: membership, error: membershipError } = await admin
-      .from("memberships")
-      .select("workspace_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (membershipError) throw membershipError;
-
-    const workspaceId = body.workspace_id ?? membership?.workspace_id ?? null;
-
     const stripe = getStripe();
-    let customerId = profile?.stripe_customer_id ?? null;
+    let customerId = workspace.stripe_customer_id ?? null;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: email ?? undefined,
-        metadata: { user_id: userId }
+        metadata: { user_id: userId, workspace_id: workspaceId }
       });
       customerId = customer.id;
 
       const { error: updateError } = await admin
-        .from("profiles")
+        .from("workspaces")
         .update({ stripe_customer_id: customerId })
-        .eq("id", userId);
+        .eq("id", workspaceId);
       if (updateError) throw updateError;
     }
 
@@ -103,6 +106,7 @@ export async function POST(request: Request) {
         user_id: userId,
         workspace_id: workspaceId ?? "",
         plan: requestedPlan ?? "",
+        plan_slug: requestedPlan ?? "",
         workspace_name: body.workspace_name ?? "",
         onboarding_source: source
       }

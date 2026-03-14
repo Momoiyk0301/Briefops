@@ -4,8 +4,10 @@ import { z } from "zod";
 import { countBriefingsByWorkspace, createBriefing, listBriefings } from "@/supabase/queries/briefings";
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
-import { requireUser } from "@/supabase/server";
+import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { checkQuota } from "@/lib/quotas";
+import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 const createSchema = z.object({
   workspace_id: z.string().uuid(),
@@ -13,12 +15,6 @@ const createSchema = z.object({
   event_date: z.string().date().optional(),
   location_text: z.string().trim().optional()
 });
-const BRIEFING_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
-  free: 1,
-  starter: 20,
-  plus: 100,
-  pro: Number.POSITIVE_INFINITY
-};
 
 export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/briefings");
@@ -45,14 +41,20 @@ export async function POST(request: Request) {
       throw new HttpError(403, "Forbidden");
     }
     const plan = await getUserPlan(client, userId);
-    const limit = BRIEFING_LIMITS[plan];
-    if (Number.isFinite(limit)) {
-      const count = await countBriefingsByWorkspace(client, workspaceId);
-      if (count >= limit) {
-        throw new HttpError(402, `Briefing limit reached for ${plan} plan (${limit})`);
-      }
+    const workspace = await getWorkspaceById(client, workspaceId);
+    const quota = checkQuota({ ...workspace, plan }, "create_briefing");
+    if (!quota.allowed) {
+      throw new HttpError(402, quota.message ?? "Briefing limit reached for this plan.");
     }
     const briefing = await createBriefing(client, userId, body);
+    const service = createServiceRoleClient();
+    const nextCount = Math.max(Number(quota.org.briefings_count ?? workspace.briefings_count ?? 0) + 1, await countBriefingsByWorkspace(client, workspaceId));
+    const { error: workspaceUpdateError } = await service
+      .from("workspaces")
+      .update({ briefings_count: nextCount })
+      .eq("id", workspaceId);
+
+    if (workspaceUpdateError) throw workspaceUpdateError;
     ctx.info("created briefing", { userId, briefingId: briefing.id });
     return NextResponse.json({ data: briefing }, { status: 201 });
   } catch (error) {

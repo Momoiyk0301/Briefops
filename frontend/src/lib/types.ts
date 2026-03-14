@@ -1,13 +1,35 @@
 import { ReactNode } from "react";
 import { ZodType, ZodTypeDef } from "zod";
 
-export type UserPlan = "free" | "starter" | "plus" | "pro";
+export type UserPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
 export type Locale = "fr" | "en";
 export type MembershipRole = "owner" | "admin" | "member";
 
 export type AppUser = {
   id: string;
   email: string;
+  full_name?: string | null;
+  avatar_path?: string | null;
+  initials?: string;
+};
+
+export type WorkspaceSummary = {
+  id: string;
+  name: string;
+  storage_used_bytes?: number | null;
+  briefings_count?: number | null;
+  pdf_exports_month?: number | null;
+  pdf_exports_reset_at?: string | null;
+  logo_path?: string | null;
+  initials?: string | null;
+  due_at?: string | null;
+  plan?: UserPlan | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_price_id?: string | null;
+  subscription_name?: string | null;
+  subscription_status?: string | null;
+  current_period_end?: string | null;
 };
 
 export type MeResponse = {
@@ -22,8 +44,8 @@ export type MeResponse = {
     pdf_exports_limit: number | null;
     pdf_exports_remaining: number | null;
   };
-  org: { id: string; name: string } | null;
-  workspace?: { id: string; name: string } | null;
+  org: WorkspaceSummary | null;
+  workspace?: WorkspaceSummary | null;
   has_membership?: boolean;
   onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
@@ -37,9 +59,9 @@ export type Product = {
   slug: string;
   description: string | null;
   stripe_price_id: string | null;
-  price_amount: number;
-  price_currency: string;
-  billing_interval: string;
+  price_amount: number | null;
+  price_currency: string | null;
+  billing_interval: string | null;
   features: string[];
   is_highlighted: boolean;
   sort_order: number;
