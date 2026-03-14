@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { countBriefingsByOrg, createBriefing, listBriefings } from "@/supabase/queries/briefings";
+import { countBriefingsByWorkspace, createBriefing, listBriefings } from "@/supabase/queries/briefings";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const plan = await getUserPlan(client, userId);
     const limit = BRIEFING_LIMITS[plan];
     if (Number.isFinite(limit)) {
-      const count = await countBriefingsByOrg(client, body.workspace_id);
+      const count = await countBriefingsByWorkspace(client, body.workspace_id);
       if (count >= limit) {
         throw new HttpError(402, `Briefing limit reached for ${plan} plan (${limit})`);
       }

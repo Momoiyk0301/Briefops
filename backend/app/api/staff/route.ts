@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { createStaff, listStaffByOrg } from "@/supabase/queries/staff";
+import { createStaff, listStaffByWorkspace } from "@/supabase/queries/staff";
 import { requireUser } from "@/supabase/server";
 
 export const runtime = "nodejs";
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     if (membershipError) throw membershipError;
     if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
-    const data = await listStaffByOrg(client, membership.workspace_id);
+    const data = await listStaffByWorkspace(client, membership.workspace_id);
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

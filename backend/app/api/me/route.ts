@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       userId,
       hasMembership,
       membershipRole: membership?.role ?? null,
-      membershipOrgId: membership?.workspace_id ?? null,
+      membershipWorkspaceId: membership?.workspace_id ?? null,
       hasWorkspace: Boolean(workspace),
       hasPlan: Boolean(profile?.plan),
       onboardingStep: profile?.onboarding_step ?? null

@@ -67,7 +67,6 @@ describe("BriefingEditor", () => {
     expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: /^Notes$/i }));
-
     expect(screen.getAllByPlaceholderText(/^Notes$/i).length).toBeGreaterThan(0);
   });
 
@@ -80,10 +79,9 @@ describe("BriefingEditor", () => {
 
   it("routes PDF export through the team-aware export page", async () => {
     const user = userEvent.setup();
-
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /Export PDF/i }));
+    await user.click(screen.getByRole("button", { name: /^PDF$/i }));
     expect(window.location.assign).toHaveBeenCalledWith(`/briefings/${briefing.id}/export`);
   });
 
@@ -91,7 +89,7 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /^Share$/i }));
+    await user.click(screen.getByRole("button", { name: /^Partager$/i }));
     expect(await screen.findByRole("heading", { name: /Share briefing/i })).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
@@ -108,23 +106,36 @@ describe("BriefingEditor", () => {
     }, { timeout: 3000 });
   });
 
-  it("adds a page and lets the selected module move to page 2 from configuration", async () => {
+  it("edits fields directly inside the visual preview", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: "toggle-visual-editor" }));
-    await user.click(screen.getByRole("button", { name: /(Access|Accès)/i }));
-    await user.click(screen.getByRole("button", { name: /Add page/i }));
-    await user.selectOptions(screen.getByRole("combobox", { name: /page-selector/i }), "1");
+    const visualNameInputs = screen.getAllByPlaceholderText(/Event name/i);
+    await user.clear(visualNameInputs[0]);
+    await user.type(visualNameInputs[0], "Visual briefing");
 
-    expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue("Visual briefing").length).toBeGreaterThan(0);
   }, 10000);
+
+  it("uses a multiselect for module teams", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    await user.click(screen.getByRole("button", { name: "toggle-team-mode" }));
+    await user.type(screen.getByPlaceholderText(/Add a team/i), "Audio");
+    await user.keyboard("{Enter}");
+    await user.click(screen.getAllByRole("button", { name: /(Access|Accès)/i })[0]);
+    await user.click(screen.getByRole("button", { name: /^Audio$/i }));
+
+    expect(screen.getAllByText(/^Audio$/i).length).toBeGreaterThan(0);
+  });
 
   it("opens the preview modal from the header action", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /^Preview$/i }));
+    await user.click(screen.getByRole("button", { name: /^Aperçu$/i }));
     expect(screen.getByLabelText("close-preview")).toBeInTheDocument();
     expect(screen.getAllByText(/^Preview$/i).length).toBeGreaterThan(0);
   });

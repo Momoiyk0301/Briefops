@@ -1,5 +1,5 @@
-import { PointerEvent as ReactPointerEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, Plus, Share2, X } from "lucide-react";
+import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Eye, PencilLine, Share2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -10,20 +10,21 @@ import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
 import { A4Preview } from "@/components/briefing/A4Preview";
 import { ContactForm } from "@/components/briefing/forms/ContactForm";
-import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
 import { SharePanel } from "@/components/briefing/SharePanel";
+import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
 import { DateInput } from "@/components/input/date";
 import { TelephoneInput } from "@/components/input/telephone";
 import { TextAreaInput, TextInput } from "@/components/input/text";
+import { ActionDropdownButton } from "@/components/ui/ActionDropdownButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Toggle } from "@/components/ui/Toggle";
 
 const CANVAS_COLS = 12;
 const CANVAS_ROWS = 24;
-
 const EDITOR_MODULE_KEYS = ["access", "staff", "equipment", "delivery", "vehicle", "notes", "metadata"] as const;
 
 type EditorModuleKey = (typeof EDITOR_MODULE_KEYS)[number];
@@ -73,13 +74,6 @@ function getDefaultSelectedModule(modules: EditorState["modules"]): Exclude<Modu
   return (fallback ?? "access") as Exclude<ModuleKey, "metadata">;
 }
 
-function getPageCount(modules: EditorState["modules"]) {
-  return Math.max(
-    1,
-    ...EDITOR_MODULE_KEYS.filter((key) => modules[key].enabled).map((key) => modules[key].layout.desktop.page + 1)
-  );
-}
-
 function isModuleVisibleForTeam(module: EditorState["modules"][ModuleKey], team: TeamScope) {
   if (team === "all") return module.enabled;
   if (module.audience.mode !== "teams") return module.enabled;
@@ -98,15 +92,7 @@ function getTabLabel(tab: EditorTabKey, language: string) {
   return moduleRegistry[tab].labels[locale];
 }
 
-function getLibraryLabel(key: EditorModuleKey, language: string) {
-  return getTabLabel(key, language);
-}
-
-export function buildInitialState(
-  briefing: Briefing,
-  rows: BriefingModuleRow[],
-  registryModules: RegistryModule[] = []
-): EditorState {
+export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[], registryModules: RegistryModule[] = []): EditorState {
   const rowMap = new Map(rows.map((row) => [row.module_key, row]));
   const registryMap = new Map(registryModules.map((mod) => [mod.type, mod]));
 
@@ -154,49 +140,6 @@ type Props = {
   saveNonce?: number;
 };
 
-type ActionButtonProps = {
-  label: string;
-  teams: string[];
-  scope: TeamScope;
-  onScopeChange: (scope: TeamScope) => void;
-  onClick: () => void;
-  disabled?: boolean;
-  icon?: ReactNode;
-  trailing?: ReactNode;
-};
-
-function ActionButton({ label, teams, scope, onScopeChange, onClick, disabled, icon, trailing }: ActionButtonProps) {
-  return (
-    <div className="flex items-stretch">
-      <Button
-        variant="secondary"
-        className="rounded-r-none border-r-0 px-4"
-        onClick={onClick}
-        disabled={disabled}
-      >
-        {icon}
-        {label}
-        {trailing}
-      </Button>
-      {teams.length > 0 ? (
-        <select
-          aria-label={`${label.toLowerCase()}-scope`}
-          value={scope}
-          onChange={(event) => onScopeChange(event.target.value)}
-          className="min-w-[116px] rounded-r-full border border-[#dde3f2] bg-white px-3 text-sm text-[#172033] shadow-[0_8px_24px_rgba(15,23,42,0.06)] focus:outline-none dark:border-white/10 dark:bg-[#171717] dark:text-white"
-        >
-          <option value="all">All teams</option>
-          {teams.map((team) => (
-            <option key={team} value={team}>
-              {team}
-            </option>
-          ))}
-        </select>
-      ) : null}
-    </div>
-  );
-}
-
 function GeneralTab({
   state,
   onCoreChange,
@@ -212,47 +155,17 @@ function GeneralTab({
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
         <div className="grid gap-3">
-          <TextInput
-            label="Event name"
-            placeholder="Event name"
-            value={state.core.title}
-            onChange={(event) => onCoreChange({ title: event.target.value })}
-          />
-          <DateInput
-            label="Date"
-            value={state.core.event_date ?? ""}
-            onChange={(event) => onCoreChange({ event_date: event.target.value || null })}
-          />
-          <TextInput
-            label="Location"
-            placeholder="Location"
-            value={state.core.location_text}
-            onChange={(event) => onCoreChange({ location_text: event.target.value })}
-          />
+          <TextInput label="Event name" placeholder="Event name" value={state.core.title} onChange={(event) => onCoreChange({ title: event.target.value })} />
+          <DateInput label="Date" value={state.core.event_date ?? ""} onChange={(event) => onCoreChange({ event_date: event.target.value || null })} />
+          <TextInput label="Location" placeholder="Location" value={state.core.location_text} onChange={(event) => onCoreChange({ location_text: event.target.value })} />
         </div>
       </Card>
 
       <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
         <div className="grid gap-3">
-          <TextInput
-            label="Contact"
-            placeholder="Main contact"
-            value={metadata.main_contact_name}
-            onChange={(event) => onMetadataChange({ main_contact_name: event.target.value })}
-          />
-          <TelephoneInput
-            label="Phone"
-            placeholder="Phone"
-            value={metadata.main_contact_phone}
-            onChange={(event) => onMetadataChange({ main_contact_phone: event.target.value })}
-          />
-          <TextAreaInput
-            label="Global notes"
-            placeholder="Global notes"
-            rows={6}
-            value={metadata.global_notes}
-            onChange={(event) => onMetadataChange({ global_notes: event.target.value })}
-          />
+          <TextInput label="Contact" placeholder="Main contact" value={metadata.main_contact_name} onChange={(event) => onMetadataChange({ main_contact_name: event.target.value })} />
+          <TelephoneInput label="Phone" placeholder="Phone" value={metadata.main_contact_phone} onChange={(event) => onMetadataChange({ main_contact_phone: event.target.value })} />
+          <TextAreaInput label="Global notes" placeholder="Global notes" rows={6} value={metadata.global_notes} onChange={(event) => onMetadataChange({ global_notes: event.target.value })} />
         </div>
       </Card>
     </div>
@@ -303,7 +216,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
   const [hoveredModuleKey, setHoveredModuleKey] = useState<EditorModuleKey | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
-  const [pageCountOverride, setPageCountOverride] = useState<number>(() => getPageCount(buildInitialState(briefing, modules, registryModules).modules));
   const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const lastSaved = useRef("");
 
@@ -313,7 +225,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
       lastSaved.current = snapshot;
       return;
     }
-
     if (snapshot === lastSaved.current) return;
 
     const id = window.setTimeout(() => {
@@ -324,14 +235,12 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     return () => window.clearTimeout(id);
   }, [state]);
 
-  const teamModeEnabled = state.modules.metadata.data.team_mode;
   const definedTeams = state.modules.metadata.data.teams;
+  const teamModeEnabled = state.modules.metadata.data.team_mode;
 
   useEffect(() => {
     const visibleTabs = getVisibleTabs(state.modules);
-    if (!visibleTabs.includes(selectedTab)) {
-      setSelectedTab("general");
-    }
+    if (!visibleTabs.includes(selectedTab)) setSelectedTab("general");
   }, [selectedTab, state.modules]);
 
   useEffect(() => {
@@ -351,11 +260,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
             changed = true;
             (nextModules as Record<ModuleKey, EditorState["modules"][ModuleKey]>)[key] = {
               ...module,
-              audience: {
-                ...module.audience,
-                mode: nextMode,
-                teams: filteredTeams
-              }
+              audience: { ...module.audience, mode: nextMode, teams: filteredTeams }
             };
           }
         });
@@ -409,10 +314,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
       ...prev,
       modules: {
         ...prev.modules,
-        [key]: {
-          ...prev.modules[key],
-          data
-        }
+        [key]: { ...prev.modules[key], data }
       }
     }));
   };
@@ -428,19 +330,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
         }
       });
 
-      const selectedModuleKey =
-        prev.selectedModuleKey === key && !enabled ? getDefaultSelectedModule(nextModules) : prev.selectedModuleKey;
-
       return {
         ...prev,
-        selectedModuleKey,
+        selectedModuleKey: prev.selectedModuleKey === key && !enabled ? getDefaultSelectedModule(nextModules) : prev.selectedModuleKey,
         modules: nextModules
       };
     });
 
-    if (selectedTab === key && !enabled) {
-      setSelectedTab("general");
-    }
+    if (selectedTab === key && !enabled) setSelectedTab("general");
   };
 
   const addTeam = () => {
@@ -484,13 +381,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     }));
   };
 
-  const startPointerInteraction = (
-    event: ReactPointerEvent,
-    key: EditorModuleKey,
-    page: number,
-    mode: "move" | "resize",
-    handle?: ResizeHandle
-  ) => {
+  const startPointerInteraction = (event: ReactPointerEvent, key: EditorModuleKey, page: number, mode: "move" | "resize", handle?: ResizeHandle) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -516,19 +407,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     const onPointerMove = (moveEvent: PointerEvent) => {
       const deltaX = Math.round((moveEvent.clientX - startX) / cellW);
       const deltaY = Math.round((moveEvent.clientY - startY) / cellH);
-
       if (deltaX === 0 && deltaY === 0) return;
 
       const nextRect =
         mode === "move"
-          ? tryMoveModuleRect({
-              current: initialRect,
-              others,
-              deltaX,
-              deltaY,
-              cols: CANVAS_COLS,
-              rows: CANVAS_ROWS
-            })
+          ? tryMoveModuleRect({ current: initialRect, others, deltaX, deltaY, cols: CANVAS_COLS, rows: CANVAS_ROWS })
           : tryResizeModuleRect({
               current: initialRect,
               others,
@@ -551,10 +434,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
           ...prev.modules,
           [key]: {
             ...prev.modules[key],
-            layout: {
-              ...prev.modules[key].layout,
-              desktop: { ...nextRect, page }
-            }
+            layout: { ...prev.modules[key].layout, desktop: { ...nextRect, page } }
           }
         }
       }));
@@ -573,24 +453,21 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     window.addEventListener("pointercancel", onPointerUp);
   };
 
-  const pageCount = Math.max(pageCountOverride, getPageCount(state.modules));
   const visibleTabs = getVisibleTabs(state.modules);
   const filteredLibraryEntries = EDITOR_MODULE_KEYS.filter((key) => {
     const q = librarySearch.trim().toLowerCase();
     if (!q) return true;
     const locale = i18n.language === "fr" ? "fr" : "en";
-    const label = getLibraryLabel(key, i18n.language).toLowerCase();
+    const label = getTabLabel(key, i18n.language).toLowerCase();
     const description = moduleRegistry[key].description[locale].toLowerCase();
     return label.includes(q) || description.includes(q);
   });
+
   const selectedConfigModuleKey = selectedTab === "general" ? null : selectedTab;
   const selectedConfigModule = selectedConfigModuleKey ? state.modules[selectedConfigModuleKey] : null;
+  const pageCount = Math.max(1, ...EDITOR_MODULE_KEYS.filter((key) => state.modules[key].enabled).map((key) => state.modules[key].layout.desktop.page + 1));
   const visibleModulesByPage = useMemo(
-    () =>
-      Array.from({ length: pageCount }, (_, pageIndex) => ({
-        pageIndex,
-        items: EDITOR_MODULE_KEYS.filter((key) => state.modules[key].enabled && state.modules[key].layout.desktop.page === pageIndex)
-      })),
+    () => Array.from({ length: pageCount }, (_, pageIndex) => ({ pageIndex, items: EDITOR_MODULE_KEYS.filter((key) => state.modules[key].enabled && state.modules[key].layout.desktop.page === pageIndex) })),
     [pageCount, state.modules]
   );
 
@@ -604,20 +481,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
         nextModules[key] = { ...currentModule, enabled: false };
         return;
       }
-
-      nextModules[key] = {
-        ...currentModule,
-        enabled: key === "metadata" ? currentModule.enabled : isModuleVisibleForTeam(currentModule, scope)
-      };
+      nextModules[key] = { ...currentModule, enabled: key === "metadata" ? currentModule.enabled : isModuleVisibleForTeam(currentModule, scope) };
     });
 
-    return {
-      ...state,
-      modules: nextModules as EditorState["modules"]
-    };
+    return { ...state, modules: nextModules as EditorState["modules"] };
   }, [previewScope, state]);
 
-  const updateSelectedModulePage = (page: number) => {
+  const updateAudienceTeams = (teams: string[]) => {
     if (!selectedConfigModuleKey) return;
     setState((prev) => ({
       ...prev,
@@ -625,46 +495,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
         ...prev.modules,
         [selectedConfigModuleKey]: {
           ...prev.modules[selectedConfigModuleKey],
-          layout: {
-            ...prev.modules[selectedConfigModuleKey].layout,
-            desktop: {
-              ...prev.modules[selectedConfigModuleKey].layout.desktop,
-              page
-            }
+          audience: {
+            ...prev.modules[selectedConfigModuleKey].audience,
+            mode: teams.length > 0 ? "teams" : "all",
+            teams
           }
         }
       }
     }));
-  };
-
-  const toggleTeamForSelectedModule = (team: string) => {
-    if (!selectedConfigModuleKey) return;
-    setState((prev) => {
-      const module = prev.modules[selectedConfigModuleKey];
-      const exists = module.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
-      const teams = exists
-        ? module.audience.teams.filter((value) => value.toLowerCase() !== team.toLowerCase())
-        : [...module.audience.teams, team];
-
-      return {
-        ...prev,
-        modules: {
-          ...prev.modules,
-          [selectedConfigModuleKey]: {
-            ...module,
-            audience: {
-              ...module.audience,
-              mode: teams.length > 0 ? "teams" : "all",
-              teams
-            }
-          }
-        }
-      };
-    });
-  };
-
-  const handleAddPage = () => {
-    setPageCountOverride((prev) => prev + 1);
   };
 
   const renderTabPanel = () => {
@@ -678,10 +516,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
               ...prev,
               modules: {
                 ...prev.modules,
-                metadata: {
-                  ...prev.modules.metadata,
-                  data: { ...prev.modules.metadata.data, ...patch }
-                }
+                metadata: { ...prev.modules.metadata, data: { ...prev.modules.metadata.data, ...patch } }
               }
             }))
           }
@@ -694,19 +529,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
         <div className="space-y-4">
           <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
             <p className="text-sm font-semibold text-[#172033] dark:text-white">Operational metadata</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Team mode, team targeting and page assignment are managed in the Configuration panel.
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Team mode and team targeting are managed in the configuration panel.</p>
             <div className="mt-4 rounded-2xl border border-[#e8eaf3] bg-[#fafbff] p-4 dark:border-white/10 dark:bg-[#101114]">
-              <MetadataPreview
-                title={state.core.title}
-                eventDate={state.core.event_date}
-                location={state.core.location_text}
-                metadata={state.modules.metadata.data}
-              />
+              <MetadataPreview title={state.core.title} eventDate={state.core.event_date} location={state.core.location_text} metadata={state.modules.metadata.data} />
             </div>
           </Card>
-
           <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
             <p className="mb-4 text-sm font-semibold text-[#172033] dark:text-white">Project contacts</p>
             <ContactForm value={state.modules.contact.data} onChange={(value) => updateModuleData("contact", value)} />
@@ -722,24 +549,40 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     );
   };
 
+  const scopeOptions = (currentScope: TeamScope, setScope: (scope: TeamScope) => void, verb: string) => {
+    const base = [{ label: "Toutes les équipes", description: `${verb} sans filtre équipe`, onSelect: () => setScope("all") }];
+    if (!teamModeEnabled) return base;
+    return [
+      ...base,
+      ...definedTeams.map((team) => ({
+        label: team,
+        description: currentScope === team ? "Filtre actif" : `${verb} avec le filtre ${team}`,
+        onSelect: () => setScope(team)
+      }))
+    ];
+  };
+
   return (
     <div className="space-y-4">
       <Card className="border-[#dde4f1] bg-white/92 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#121212]">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-3 rounded-full border border-[#e8eaf3] bg-[#f8faff] px-4 py-2 dark:border-white/10 dark:bg-[#101114]">
+              <div className="flex items-center gap-3 rounded-[24px] border border-[#e8eaf3] bg-[#f8faff] px-4 py-3 dark:border-white/10 dark:bg-[#101114]">
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${visualEditor ? "bg-brand-500 text-white" : "bg-white text-[#6f7892] dark:bg-[#171717] dark:text-[#cfd6e7]"}`}>
+                  <PencilLine size={16} />
+                </span>
                 <div>
-                  <p className="text-sm font-semibold text-[#172033] dark:text-white">Visual editor</p>
-                  <p className="text-xs text-slate-500">Switch between tabs and visual layout.</p>
+                  <p className="text-sm font-semibold text-[#172033] dark:text-white">Custom Layout</p>
+                  <p className="text-xs text-slate-500">Inputs classiques ou édition directe dans l’aperçu.</p>
                 </div>
                 <Toggle checked={visualEditor} onChange={setVisualEditor} ariaLabel="toggle-visual-editor" />
               </div>
 
-              <div className="flex items-center gap-3 rounded-full border border-[#e8eaf3] bg-[#f8faff] px-4 py-2 dark:border-white/10 dark:bg-[#101114]">
+              <div className="flex items-center gap-3 rounded-[24px] border border-[#e8eaf3] bg-[#f8faff] px-4 py-3 dark:border-white/10 dark:bg-[#101114]">
                 <div>
                   <p className="text-sm font-semibold text-[#172033] dark:text-white">Team Mode</p>
-                  <p className="text-xs text-slate-500">Filter actions and module visibility by team.</p>
+                  <p className="text-xs text-slate-500">Un module peut cibler plusieurs équipes.</p>
                 </div>
                 <Toggle
                   checked={teamModeEnabled}
@@ -751,10 +594,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                         ...prev.modules,
                         metadata: {
                           ...prev.modules.metadata,
-                          data: {
-                            ...prev.modules.metadata.data,
-                            team_mode: value
-                          }
+                          data: { ...prev.modules.metadata.data, team_mode: value }
                         }
                       }
                     }))
@@ -762,47 +602,25 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                 />
               </div>
             </div>
-
-            <p className="text-xs text-slate-500">
-              {saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}
-            </p>
+            <p className="text-xs text-slate-500">{saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}</p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <ActionButton
-              label="Preview"
-              teams={teamModeEnabled ? definedTeams : []}
-              scope={previewScope}
-              onScopeChange={setPreviewScope}
-              onClick={() => setPreviewOpen(true)}
-              icon={<Eye size={15} />}
-            />
-            <ActionButton
-              label="Share"
-              teams={teamModeEnabled ? definedTeams : []}
-              scope={shareScope}
-              onScopeChange={setShareScope}
-              onClick={() => setShareOpen(true)}
-              icon={<Share2 size={15} />}
-            />
-            <ActionButton
-              label="Export PDF"
-              teams={teamModeEnabled ? definedTeams : []}
-              scope={exportScope}
-              onScopeChange={setExportScope}
+            <ActionDropdownButton label={previewScope === "all" ? "Aperçu" : `Aperçu · ${previewScope}`} icon={<Eye size={15} />} onClick={() => setPreviewOpen(true)} options={scopeOptions(previewScope, setPreviewScope, "Ouvrir l’aperçu")} />
+            <ActionDropdownButton label={shareScope === "all" ? "Partager" : `Partager · ${shareScope}`} icon={<Share2 size={15} />} onClick={() => setShareOpen(true)} options={scopeOptions(shareScope, setShareScope, "Partager")} />
+            <ActionDropdownButton
+              label={exportScope === "all" ? "PDF" : `PDF · ${exportScope}`}
               onClick={() => {
                 const query = exportScope !== "all" ? `?team=${encodeURIComponent(exportScope)}` : "";
                 window.location.assign(`/briefings/${briefing.id}/export${query}`);
               }}
-              disabled={false}
-              icon={null}
-              trailing={null}
+              options={scopeOptions(exportScope, setExportScope, "Générer le PDF")}
             />
           </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className={`grid grid-cols-1 ${visualEditor ? "gap-3 xl:grid-cols-[minmax(0,1.35fr)_300px]" : "gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"}`}>
         <div className="space-y-4">
           {!visualEditor ? (
             <>
@@ -815,11 +633,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                         key={tab}
                         type="button"
                         onClick={() => setSelectedTab(tab)}
-                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
-                          active
-                            ? "bg-[#dde6f7] text-[#172033] dark:bg-white/10 dark:text-white"
-                            : "bg-transparent text-slate-500 hover:bg-[#f5f7fb] dark:text-slate-300 dark:hover:bg-white/5"
-                        }`}
+                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${active ? "bg-[#dde6f7] text-[#172033] dark:bg-white/10 dark:text-white" : "bg-transparent text-slate-500 hover:bg-[#f5f7fb] dark:text-slate-300 dark:hover:bg-white/5"}`}
                       >
                         {getTabLabel(tab, i18n.language)}
                       </button>
@@ -840,16 +654,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
             <Card className="border-[#e6ebf5] bg-[radial-gradient(circle_at_top,_rgba(235,240,250,0.95),_rgba(244,247,252,0.92)_30%,_rgba(238,242,248,0.95)_100%)] p-3 shadow-[0_20px_45px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#101115]">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visual editor</p>
-                  <p className="mt-1 text-sm text-slate-500">Drag modules to define page placement and reading order.</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visual mode</p>
+                  <p className="mt-1 text-sm text-slate-500">L’aperçu devient la zone d’édition principale.</p>
                 </div>
-                <Button variant="secondary" onClick={handleAddPage}>
-                  <Plus size={14} />
-                  Add page
-                </Button>
+                <p className="text-xs text-slate-500">Clique un bloc pour ajuster ses règles dans la sidebar.</p>
               </div>
 
-              <div className="a4-frame w-full space-y-3 rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+              <div className="a4-frame a4-frame--wide w-full space-y-3 rounded-xl border border-slate-200 bg-white p-2 shadow-panel dark:border-slate-700 dark:bg-slate-900">
                 {visibleModulesByPage.map(({ pageIndex, items }) => (
                   <div key={pageIndex} className="space-y-2">
                     <div className="flex items-center justify-between px-1">
@@ -865,37 +676,30 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                         const module = state.modules[key];
                         const style = toCanvasStyle(module.layout);
                         const isActive = hoveredModuleKey === key || selectedTab === key;
-                        const PreviewComponent = moduleRegistry[key].PreviewComponent;
+                        const FormComponent = key === "metadata" ? null : moduleRegistry[key].FormComponent;
 
                         return (
                           <section
                             key={key}
                             style={style}
-                            className={`absolute touch-none overflow-hidden rounded-2xl border p-2 shadow-[0_8px_20px_rgba(15,23,42,0.07)] transition dark:bg-[#151515] ${
-                              MODULE_TONE_CLASS[key]
-                            } ${
-                              isActive ? "border-brand-500 ring-2 ring-brand-500/15" : "border-[#edf1f7] dark:border-white/10"
-                            }`}
+                            className={`visual-editor-module absolute touch-none overflow-auto rounded-2xl border p-2 shadow-[0_8px_20px_rgba(15,23,42,0.07)] transition dark:bg-[#151515] ${MODULE_TONE_CLASS[key]} ${isActive ? "border-brand-500 ring-2 ring-brand-500/15" : "border-[#edf1f7] dark:border-white/10"}`}
                             onMouseEnter={() => setHoveredModuleKey(key)}
                             onMouseLeave={() => setHoveredModuleKey((prev) => (prev === key ? null : prev))}
                             onClick={() => setSelectedTab(key)}
                           >
-                            <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                              {getTabLabel(key, i18n.language)}
-                            </p>
-
-                            <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
-                              {key === "metadata" ? (
-                                <MetadataPreview
-                                  title={state.core.title}
-                                  eventDate={state.core.event_date}
-                                  location={state.core.location_text}
-                                  metadata={state.modules.metadata.data}
-                                />
-                              ) : (
-                                <PreviewComponent value={module.data as never} />
-                              )}
-                            </div>
+                            <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">{getTabLabel(key, i18n.language)}</p>
+                            {key === "metadata" ? (
+                              <div className="grid gap-2">
+                                <TextInput placeholder="Event name" value={state.core.title} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, title: event.target.value } }))} />
+                                <DateInput value={state.core.event_date ?? ""} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, event_date: event.target.value || null } }))} />
+                                <TextInput placeholder="Location" value={state.core.location_text} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, location_text: event.target.value } }))} />
+                                <TextInput placeholder="Main contact" value={state.modules.metadata.data.main_contact_name} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, main_contact_name: event.target.value })} />
+                                <TelephoneInput placeholder="Phone" value={state.modules.metadata.data.main_contact_phone} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, main_contact_phone: event.target.value })} />
+                                <TextAreaInput rows={3} placeholder="Global notes" value={state.modules.metadata.data.global_notes} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, global_notes: event.target.value })} />
+                              </div>
+                            ) : FormComponent ? (
+                              <FormComponent value={module.data as never} onChange={(value) => updateModuleData(key, value as never)} />
+                            ) : null}
 
                             {isActive ? (
                               <>
@@ -905,7 +709,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                                   className="absolute left-1/2 top-0 z-20 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-slate-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.22)] md:h-4 md:w-4"
                                   onPointerDown={(event) => startPointerInteraction(event, key, pageIndex, "move")}
                                 />
-
                                 {RESIZE_HANDLES.map((handle) => (
                                   <button
                                     key={handle.key}
@@ -932,7 +735,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
         <Card className="space-y-4 border-[#dde4f1] bg-white/92 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#121212]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Configuration</p>
-            <h3 className="mt-1 text-lg font-semibold text-[#172033] dark:text-white">Configuration</h3>
+            <h3 className="mt-1 text-lg font-semibold text-[#172033] dark:text-white">Réglages du module</h3>
           </div>
 
           <div className="rounded-2xl border border-[#e8eaf3] bg-[#fafbff] p-4 dark:border-white/10 dark:bg-[#101114]">
@@ -940,95 +743,31 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
             {selectedConfigModule && selectedConfigModuleKey ? (
               <div className="mt-4 space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Page</label>
-                  <select
-                    aria-label="page-selector"
-                    className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-white/10 dark:bg-[#101010]"
-                    value={selectedConfigModule.layout.desktop.page}
-                    onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
-                  >
-                    {Array.from({ length: pageCount }, (_, pageIndex) => (
-                      <option key={pageIndex} value={pageIndex}>
-                        Page {pageIndex + 1}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Teams</p>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Team</p>
                   {!teamModeEnabled || definedTeams.length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-500">Enable Team Mode and add teams to target this module.</p>
+                    <p className="mt-2 text-sm text-slate-500">Active Team Mode puis ajoute des équipes pour cibler ce module.</p>
                   ) : (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={`rounded-full border px-3 py-1.5 text-xs ${
-                          selectedConfigModule.audience.teams.length === 0
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                            : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                        }`}
-                        onClick={() =>
-                          setState((prev) => ({
-                            ...prev,
-                            modules: {
-                              ...prev.modules,
-                              [selectedConfigModuleKey]: {
-                                ...prev.modules[selectedConfigModuleKey],
-                                audience: {
-                                  ...prev.modules[selectedConfigModuleKey].audience,
-                                  mode: "all",
-                                  teams: []
-                                }
-                              }
-                            }
-                          }))
-                        }
-                      >
-                        All teams
-                      </button>
-                      {definedTeams.map((team) => {
-                        const selected = selectedConfigModule.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
-                        return (
-                          <button
-                            key={team}
-                            type="button"
-                            className={`rounded-full border px-3 py-1.5 text-xs ${
-                              selected
-                                ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                                : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                            }`}
-                            onClick={() => toggleTeamForSelectedModule(team)}
-                          >
-                            {team}
-                          </button>
-                        );
-                      })}
+                    <div className="mt-2">
+                      <MultiSelect
+                        label="Visible pour"
+                        options={definedTeams}
+                        value={selectedConfigModule.audience.teams}
+                        onChange={updateAudienceTeams}
+                        emptyText="Toutes les équipes"
+                      />
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-slate-500">General is always visible and cannot be disabled.</p>
+              <p className="mt-3 text-sm text-slate-500">General est toujours visible. Active un module pour régler sa visibilité d’équipe.</p>
             )}
           </div>
 
           <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-4 dark:border-white/10 dark:bg-[#151515]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Teams</p>
-                <p className="mt-1 text-sm text-slate-500">Audience management.</p>
-              </div>
-              {definedTeams.length === 0 ? (
-                <button
-                  type="button"
-                  aria-label="add-team"
-                  onClick={addTeam}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d9deeb] bg-white text-slate-600 dark:border-white/10 dark:bg-[#171717] dark:text-slate-200"
-                >
-                  <Plus size={14} />
-                </button>
-              ) : null}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Teams</p>
+              <p className="mt-1 text-sm text-slate-500">Liste de référence pour le multiselect des modules.</p>
             </div>
 
             <div className="mt-4 flex items-center gap-2">
@@ -1044,7 +783,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                 }}
               />
               <Button variant="secondary" className="px-3" onClick={addTeam}>
-                <Plus size={14} />
+                Ajouter
               </Button>
             </div>
 
@@ -1053,12 +792,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                 <p className="text-sm text-slate-500">No team yet.</p>
               ) : (
                 definedTeams.map((team) => (
-                  <button
-                    key={team}
-                    type="button"
-                    className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-900/20 dark:text-brand-300"
-                    onClick={() => removeTeam(team)}
-                  >
+                  <button key={team} type="button" className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-900/20 dark:text-brand-300" onClick={() => removeTeam(team)}>
                     {team} x
                   </button>
                 ))
@@ -1069,11 +803,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
           <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-4 dark:border-white/10 dark:bg-[#151515]">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Module library</p>
             <div className="mt-4 space-y-2">
-              <Input
-                value={librarySearch}
-                onChange={(event) => setLibrarySearch(event.target.value)}
-                placeholder={i18n.language === "fr" ? "Rechercher un module..." : "Search module..."}
-              />
+              <Input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder={i18n.language === "fr" ? "Rechercher un module..." : "Search module..."} />
               {filteredLibraryEntries.map((key) => {
                 const enabled = state.modules[key].enabled;
                 const selected = selectedTab === key;
@@ -1090,16 +820,10 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                         setSelectedTab(key);
                       }
                     }}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2 transition ${
-                      selected
-                        ? "border-brand-500 bg-brand-500/10"
-                        : enabled
-                          ? "border-brand-500/30 bg-brand-500/5"
-                          : "border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#101010]"
-                    }`}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 transition ${selected ? "border-brand-500 bg-brand-500/10" : enabled ? "border-brand-500/30 bg-brand-500/5" : "border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#101010]"}`}
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#172033] dark:text-white">{getLibraryLabel(key, i18n.language)}</p>
+                      <p className="text-sm font-medium text-[#172033] dark:text-white">{getTabLabel(key, i18n.language)}</p>
                       <p className="truncate text-xs text-slate-500">{moduleRegistry[key].description[i18n.language === "fr" ? "fr" : "en"]}</p>
                     </div>
                     <div onClick={(event) => event.stopPropagation()}>
@@ -1115,13 +839,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
 
       {previewOpen ? (
         <div className="fixed inset-0 z-40 bg-black/30 p-4" onClick={() => setPreviewOpen(false)}>
-          <div className="mx-auto max-h-[92vh] w-full max-w-6xl overflow-auto rounded-3xl bg-white p-4 shadow-2xl dark:bg-[#121212]" onClick={(event) => event.stopPropagation()}>
+          <div className="mx-auto max-h-[92vh] w-full max-w-7xl overflow-auto rounded-3xl bg-white p-4 shadow-2xl dark:bg-[#121212]" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Preview</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  {previewScope === "all" ? "All teams" : previewScope}
-                </p>
+                <p className="mt-1 text-sm text-slate-500">{previewScope === "all" ? "All teams" : previewScope}</p>
               </div>
               <button type="button" aria-label="close-preview" onClick={() => setPreviewOpen(false)} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
                 <X size={16} />

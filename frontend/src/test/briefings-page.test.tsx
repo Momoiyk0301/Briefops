@@ -33,14 +33,8 @@ const apiMocks = vi.hoisted(() => ({
   toApiMessage: vi.fn((e: unknown) => String(e))
 }));
 
-const routerMocks = vi.hoisted(() => ({
-  navigate: vi.fn()
-}));
-
-const toastMocks = vi.hoisted(() => ({
-  error: vi.fn(),
-  success: vi.fn()
-}));
+const routerMocks = vi.hoisted(() => ({ navigate: vi.fn() }));
+const toastMocks = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
 
 vi.mock("@/lib/api", () => ({
   getMe: apiMocks.getMe,
@@ -75,15 +69,10 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
-  return {
-    ...actual,
-    useNavigate: () => routerMocks.navigate
-  };
+  return { ...actual, useNavigate: () => routerMocks.navigate };
 });
 
-vi.mock("react-hot-toast", () => ({
-  default: toastMocks
-}));
+vi.mock("react-hot-toast", () => ({ default: toastMocks }));
 
 describe("BriefingsPage", () => {
   beforeEach(() => {
@@ -101,48 +90,40 @@ describe("BriefingsPage", () => {
     );
   }
 
-  it("shows demo data badge and expandable briefing actions", async () => {
-    const user = userEvent.setup();
+  it("shows demo data badge and row actions", async () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText(/Demo data/i)).toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: /Demo - One/i }));
-
     expect(screen.getByRole("button", { name: /Partager le briefing/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Exporter le PDF/i })).toBeInTheDocument();
   });
 
-  it("shows team tabs when a briefing has teams and defaults to all teams", async () => {
+  it("routes to the briefing preview when clicking on a row", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
-
-    expect(screen.getByRole("button", { name: /All teams/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Audio$/i })).toBeInTheDocument();
+    await user.click(await screen.findByRole("link", { name: /Demo - One/i }));
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/demo-1");
   });
 
-  it("opens the share panel for the selected briefing", async () => {
+  it("opens the share panel from row actions without triggering row navigation", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
-    await user.click(screen.getByRole("button", { name: /Partager le briefing/i }));
+    await user.click(await screen.findByRole("button", { name: /Partager le briefing/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Share briefing/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
+    expect(routerMocks.navigate).not.toHaveBeenCalledWith("/briefings/demo-1");
   });
 
   it("routes to the team-aware PDF export from row actions", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /Demo - One/i }));
-    await user.click(screen.getByRole("button", { name: /^Audio$/i }));
-    await user.click(screen.getByRole("button", { name: /Exporter le PDF/i }));
-
+    await user.click(await screen.findByRole("button", { name: /Exporter le PDF/i }));
     expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/demo-1/export?team=Audio");
   });
 });

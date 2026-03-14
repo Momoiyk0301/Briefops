@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { buildApiUrl } from "@/lib/apiBase";
+import { captureClientError } from "@/lib/monitoring";
 import {
   Briefing,
   BriefingExportWithBriefing,
@@ -75,6 +76,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network failure";
     logApiError(method, path, "NETWORK", message, startedAt);
+    captureClientError(error, { method, path, stage: "network" });
     throw { status: 0, message: `Failed to fetch backend (${message})` } as ApiError;
   }
 
@@ -98,6 +100,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       message = "Backend error: HTML response received (check backend env and server logs)";
     }
     logApiError(method, path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method, path, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 
@@ -291,10 +294,16 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
   const path = `/api/pdf/${id}${query}`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(buildApiUrl(path), {
-    method: "GET",
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method: "GET",
+      headers
+    });
+  } catch (error) {
+    captureClientError(error, { method: "GET", path, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -308,6 +317,7 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
       }
     }
     logApiError("GET", path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method: "GET", path, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 
@@ -360,15 +370,22 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
   const path = `/api/briefing-exports/${exportId}/download`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(buildApiUrl(path), {
-    method: "GET",
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method: "GET",
+      headers
+    });
+  } catch (error) {
+    captureClientError(error, { method: "GET", path, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
 
   if (!response.ok) {
     const text = await response.text();
     const message = text || `HTTP ${response.status}`;
     logApiError("GET", path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method: "GET", path, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 
@@ -390,11 +407,17 @@ export async function uploadStorageFile(bucket: "logos" | "avatars" | "assets" |
   formData.append("bucket", bucket);
   formData.append("file", file);
 
-  const response = await fetch(buildApiUrl(path), {
-    method,
-    headers,
-    body: formData
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method,
+      headers,
+      body: formData
+    });
+  } catch (error) {
+    captureClientError(error, { method, path, bucket, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
@@ -403,6 +426,7 @@ export async function uploadStorageFile(bucket: "logos" | "avatars" | "assets" |
         ? String((payload as { error: string }).error)
         : `HTTP ${response.status}`;
     logApiError(method, path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method, path, bucket, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 

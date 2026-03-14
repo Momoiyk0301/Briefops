@@ -3,8 +3,13 @@ import type { Metadata } from "next";
 import "@/styles.css";
 
 export const metadata: Metadata = {
-  title: "BriefOPS",
-  description: "BriefOPS frontend"
+  title: "BriefOps",
+  description: "BriefOps MVP",
+  icons: {
+    icon: "/logo.ico",
+    shortcut: "/logo.ico",
+    apple: "/logo.ico"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -20,12 +20,10 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api", () => apiMocks);
-vi.mock("@/lib/auth", () => ({
-  signOut: vi.fn()
-}));
+vi.mock("@/lib/auth", () => ({ signOut: vi.fn() }));
 
 describe("AppShell", () => {
-  it("renders the Aide navigation entry", async () => {
+  it("renders notifications above settings in desktop navigation", async () => {
     const client = new QueryClient();
     render(
       <MemoryRouter>
@@ -37,6 +35,11 @@ describe("AppShell", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findAllByText(/Aide/i)).not.toHaveLength(0);
+    const notifications = await screen.findAllByText(/Notifications/i);
+    const settings = await screen.findAllByText(/Settings/i);
+
+    expect(notifications.length).toBeGreaterThan(0);
+    expect(settings.length).toBeGreaterThan(0);
+    expect(notifications[0].compareDocumentPosition(settings[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

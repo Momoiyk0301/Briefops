@@ -20,7 +20,7 @@ import {
   updateWorkspaceLogo,
   uploadStorageFile
 } from "@/lib/api";
-import { formatBytes, getInitials } from "@/lib/branding";
+import { getInitials } from "@/lib/branding";
 import type { Product } from "@/lib/types";
 
 const PHONE_STORAGE_KEY = "briefops:account_phone";
@@ -342,10 +342,6 @@ export default function AccountPage() {
               <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Quota PDF</p>
               <p className="mt-2 text-2xl font-bold">{usage?.pdf_exports_remaining === null ? "Illimite" : usage?.pdf_exports_remaining ?? 0}</p>
               <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Restants ce mois</p>
-            </div>
-            <div className="rounded-2xl border border-[#e6e8f2] px-4 py-4 dark:border-white/10">
-              <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Stockage</p>
-              <p className="mt-2 font-semibold">{formatBytes(workspace?.storage_used_bytes ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-[#e6e8f2] px-4 py-4 dark:border-white/10">
               <p className="text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Usage PDF</p>
