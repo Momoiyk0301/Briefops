@@ -1,4 +1,5 @@
 import { getSession } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/apiBase";
 import {
   Briefing,
   BriefingExportWithBriefing,
@@ -14,7 +15,6 @@ import {
   UserPlan
 } from "@/lib/types";
 
-const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
 const isDev = process.env.NODE_ENV === "development";
 
 type ApiError = {
@@ -67,7 +67,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       ...(options.headers ?? {})
     };
 
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(buildApiUrl(path), {
       method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
@@ -291,7 +291,7 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
   const path = `/api/pdf/${id}${query}`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     method: "GET",
     headers
   });
@@ -360,7 +360,7 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
   const path = `/api/briefing-exports/${exportId}/download`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     method: "GET",
     headers
   });
@@ -390,7 +390,7 @@ export async function uploadStorageFile(bucket: "logos" | "avatars" | "assets" |
   formData.append("bucket", bucket);
   formData.append("file", file);
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     method,
     headers,
     body: formData

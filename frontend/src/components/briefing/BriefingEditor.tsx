@@ -596,23 +596,24 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
 
   const previewState = useMemo(() => {
     const scope = previewScope;
-    const nextModules = { ...state.modules } as EditorState["modules"];
+    const nextModules = { ...state.modules } as Record<ModuleKey, EditorState["modules"][ModuleKey]>;
 
     (Object.keys(nextModules) as ModuleKey[]).forEach((key) => {
+      const currentModule = nextModules[key];
       if (key === "contact") {
-        nextModules[key] = { ...nextModules[key], enabled: false } as EditorState["modules"][typeof key];
+        nextModules[key] = { ...currentModule, enabled: false };
         return;
       }
 
       nextModules[key] = {
-        ...nextModules[key],
-        enabled: key === "metadata" ? nextModules[key].enabled : isModuleVisibleForTeam(nextModules[key], scope)
-      } as EditorState["modules"][typeof key];
+        ...currentModule,
+        enabled: key === "metadata" ? currentModule.enabled : isModuleVisibleForTeam(currentModule, scope)
+      };
     });
 
     return {
       ...state,
-      modules: nextModules
+      modules: nextModules as EditorState["modules"]
     };
   }, [previewScope, state]);
 

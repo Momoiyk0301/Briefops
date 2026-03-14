@@ -10,6 +10,23 @@ const patchSchema = z.object({
   avatar_path: z.string().trim().min(1).nullable().optional()
 });
 
+type WorkspaceSnapshot = {
+  id: string;
+  name: string;
+  storage_used_bytes: number | null;
+  briefings_count: number | null;
+  pdf_exports_month: number | null;
+  pdf_exports_reset_at: string | null;
+  logo_path: string | null;
+  initials: string | null;
+  due_at: string | null;
+  plan: string | null;
+  stripe_price_id: string | null;
+  subscription_name: string | null;
+  subscription_status: string | null;
+  current_period_end: string | null;
+};
+
 export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/me");
 
@@ -32,7 +49,7 @@ export async function GET(request: Request) {
 
     if (membershipError) throw membershipError;
 
-    let workspace: { id: string; name: string } | null = null;
+    let workspace: WorkspaceSnapshot | null = null;
     if (membership?.workspace_id) {
       const { data: resolvedWorkspace, error: organizationError } = await client
         .from("workspaces")
@@ -44,15 +61,15 @@ export async function GET(request: Request) {
       workspace = resolvedWorkspace ?? null;
     }
 
-    const rawPlan = String(workspace && "plan" in workspace ? workspace.plan ?? "" : "").toLowerCase();
+    const rawPlan = String(workspace?.plan ?? "").toLowerCase();
     const plan = rawPlan === "pro" || rawPlan === "guest" || rawPlan === "funder" || rawPlan === "enterprise" ? rawPlan : "starter";
     const quota = getRemainingQuota({
       ...workspace,
       plan,
-      storage_used_bytes: workspace && "storage_used_bytes" in workspace ? workspace.storage_used_bytes : 0,
-      briefings_count: workspace && "briefings_count" in workspace ? workspace.briefings_count : 0,
-      pdf_exports_month: workspace && "pdf_exports_month" in workspace ? workspace.pdf_exports_month : 0,
-      pdf_exports_reset_at: workspace && "pdf_exports_reset_at" in workspace ? workspace.pdf_exports_reset_at : null
+      storage_used_bytes: workspace?.storage_used_bytes ?? 0,
+      briefings_count: workspace?.briefings_count ?? 0,
+      pdf_exports_month: workspace?.pdf_exports_month ?? 0,
+      pdf_exports_reset_at: workspace?.pdf_exports_reset_at ?? null
     });
     const hasMembership = Boolean(membership?.workspace_id);
 
@@ -62,7 +79,7 @@ export async function GET(request: Request) {
       membershipRole: membership?.role ?? null,
       membershipWorkspaceId: membership?.workspace_id ?? null,
       hasWorkspace: Boolean(workspace),
-      hasPlan: Boolean(workspace && "plan" in workspace ? workspace.plan : null),
+      hasPlan: Boolean(workspace?.plan ?? null),
       onboardingStep: profile?.onboarding_step ?? null
     });
 
@@ -75,12 +92,12 @@ export async function GET(request: Request) {
         initials: getInitials(profile?.full_name || email || "User", "US")
       },
       plan,
-      subscription_name: workspace && "subscription_name" in workspace ? workspace.subscription_name ?? null : null,
-      subscription_status: workspace && "subscription_status" in workspace ? workspace.subscription_status ?? null : null,
-      stripe_price_id: workspace && "stripe_price_id" in workspace ? workspace.stripe_price_id ?? null : null,
-      current_period_end: workspace && "current_period_end" in workspace ? workspace.current_period_end ?? null : null,
+      subscription_name: workspace?.subscription_name ?? null,
+      subscription_status: workspace?.subscription_status ?? null,
+      stripe_price_id: workspace?.stripe_price_id ?? null,
+      current_period_end: workspace?.current_period_end ?? null,
       usage: {
-        pdf_exports_used: Number(workspace && "pdf_exports_month" in workspace ? workspace.pdf_exports_month : 0),
+        pdf_exports_used: Number(workspace?.pdf_exports_month ?? 0),
         pdf_exports_limit: quota.pdf_month,
         pdf_exports_remaining: quota.pdf_month
       },
