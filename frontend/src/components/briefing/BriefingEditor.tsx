@@ -1,5 +1,5 @@
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, PencilLine, Share2, X } from "lucide-react";
+import { PencilLine, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -8,7 +8,6 @@ import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
-import { A4Preview } from "@/components/briefing/A4Preview";
 import { ContactForm } from "@/components/briefing/forms/ContactForm";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
 import { SharePanel } from "@/components/briefing/SharePanel";
@@ -72,12 +71,6 @@ function normalizeLayouts(modules: EditorState["modules"]) {
 function getDefaultSelectedModule(modules: EditorState["modules"]): Exclude<ModuleKey, "metadata"> {
   const fallback = moduleEntries.find((entry) => entry.key !== "metadata" && entry.key !== "contact" && modules[entry.key].enabled)?.key;
   return (fallback ?? "access") as Exclude<ModuleKey, "metadata">;
-}
-
-function isModuleVisibleForTeam(module: EditorState["modules"][ModuleKey], team: TeamScope) {
-  if (team === "all") return module.enabled;
-  if (module.audience.mode !== "teams") return module.enabled;
-  return module.enabled && module.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
 }
 
 function getVisibleTabs(modules: EditorState["modules"]): EditorTabKey[] {
@@ -207,8 +200,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [selectedTab, setSelectedTab] = useState<EditorTabKey>("general");
   const [visualEditor, setVisualEditor] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewScope, setPreviewScope] = useState<TeamScope>("all");
   const [shareScope, setShareScope] = useState<TeamScope>("all");
   const [exportScope, setExportScope] = useState<TeamScope>("all");
   const [teamDraft, setTeamDraft] = useState("");
@@ -471,22 +462,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     [pageCount, state.modules]
   );
 
-  const previewState = useMemo(() => {
-    const scope = previewScope;
-    const nextModules = { ...state.modules } as Record<ModuleKey, EditorState["modules"][ModuleKey]>;
-
-    (Object.keys(nextModules) as ModuleKey[]).forEach((key) => {
-      const currentModule = nextModules[key];
-      if (key === "contact") {
-        nextModules[key] = { ...currentModule, enabled: false };
-        return;
-      }
-      nextModules[key] = { ...currentModule, enabled: key === "metadata" ? currentModule.enabled : isModuleVisibleForTeam(currentModule, scope) };
-    });
-
-    return { ...state, modules: nextModules as EditorState["modules"] };
-  }, [previewScope, state]);
-
   const updateAudienceTeams = (teams: string[]) => {
     if (!selectedConfigModuleKey) return;
     setState((prev) => ({
@@ -606,7 +581,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <ActionDropdownButton label={previewScope === "all" ? "Aperçu" : `Aperçu · ${previewScope}`} icon={<Eye size={15} />} onClick={() => setPreviewOpen(true)} options={scopeOptions(previewScope, setPreviewScope, "Ouvrir l’aperçu")} />
             <ActionDropdownButton label={shareScope === "all" ? "Partager" : `Partager · ${shareScope}`} icon={<Share2 size={15} />} onClick={() => setShareOpen(true)} options={scopeOptions(shareScope, setShareScope, "Partager")} />
             <ActionDropdownButton
               label={exportScope === "all" ? "PDF" : `PDF · ${exportScope}`}
@@ -836,23 +810,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
           </div>
         </Card>
       </div>
-
-      {previewOpen ? (
-        <div className="fixed inset-0 z-40 bg-black/30 p-4" onClick={() => setPreviewOpen(false)}>
-          <div className="mx-auto max-h-[92vh] w-full max-w-7xl overflow-auto rounded-3xl bg-white p-4 shadow-2xl dark:bg-[#121212]" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Preview</p>
-                <p className="mt-1 text-sm text-slate-500">{previewScope === "all" ? "All teams" : previewScope}</p>
-              </div>
-              <button type="button" aria-label="close-preview" onClick={() => setPreviewOpen(false)} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
-                <X size={16} />
-              </button>
-            </div>
-            <A4Preview state={previewState} />
-          </div>
-        </div>
-      ) : null}
 
       <SharePanel
         open={shareOpen}

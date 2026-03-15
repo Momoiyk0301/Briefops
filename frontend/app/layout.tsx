@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "BriefOps",
   description: "BriefOps MVP",
   icons: {
-    icon: "/logo.ico",
+    icon: [
+      { url: "/assets/logo.svg", type: "image/svg+xml" },
+      { url: "/logo.ico", sizes: "48x48", type: "image/x-icon" }
+    ],
     shortcut: "/logo.ico",
     apple: "/logo.ico"
   }

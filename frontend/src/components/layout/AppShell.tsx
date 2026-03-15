@@ -54,10 +54,10 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           <Link
             to="/briefings"
             title="Aller au dashboard"
-            className="mb-4 flex h-11 w-full items-center justify-center rounded-2xl border border-white/35 bg-white/16 px-2 text-white shadow-[0_18px_40px_rgba(10,20,60,0.25)] backdrop-blur-xl transition-all duration-300 hover:bg-white/22 group-hover/sidebar:justify-start"
+            className="mb-5 flex h-14 w-full items-center justify-center rounded-[22px] border border-white/35 bg-white/16 px-2 text-white shadow-[0_18px_40px_rgba(10,20,60,0.25)] backdrop-blur-xl transition-all duration-300 hover:bg-white/22 group-hover/sidebar:justify-start"
           >
-            <BrandLogo compact className="shrink-0" />
-            <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover/sidebar:ml-2 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+            <BrandLogo compact size="md" className="shrink-0" />
+            <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap text-base font-semibold opacity-0 transition-all duration-200 group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
               BriefOps
             </span>
           </Link>

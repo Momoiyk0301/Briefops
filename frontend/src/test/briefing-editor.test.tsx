@@ -130,13 +130,4 @@ describe("BriefingEditor", () => {
 
     expect(screen.getAllByText(/^Audio$/i).length).toBeGreaterThan(0);
   });
-
-  it("opens the preview modal from the header action", async () => {
-    const user = userEvent.setup();
-    render(<BriefingEditor briefing={briefing} modules={modules} />);
-
-    await user.click(screen.getByRole("button", { name: /^Aperçu$/i }));
-    expect(screen.getByLabelText("close-preview")).toBeInTheDocument();
-    expect(screen.getAllByText(/^Preview$/i).length).toBeGreaterThan(0);
-  });
 });

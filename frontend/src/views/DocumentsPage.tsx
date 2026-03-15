@@ -37,10 +37,15 @@ export default function DocumentsPage() {
   const filteredLinks = useMemo(
     () =>
       (linksQuery.data ?? []).filter((link) =>
-        [link.briefing_title, link.status, link.url].join(" ").toLowerCase().includes(normalizedSearch)
+        [link.briefing_title, link.status, link.url, link.link_type, link.team ?? "", link.audience_tag ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
       ),
     [linksQuery.data, normalizedSearch]
   );
+
+  const getLinkLabel = (link: { link_type: string; team?: string | null; audience_tag?: string | null }) => {
+    if (link.link_type === "staff") return "Crew";
+    return link.team ?? link.audience_tag ?? "Team";
+  };
 
   const stats = useMemo(
     () => ({
@@ -183,7 +188,10 @@ export default function DocumentsPage() {
               {filteredLinks.map((link) => (
                 <div key={link.id} className="space-y-2 rounded-[24px] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10">
                   <div className="flex items-center justify-between gap-4">
-                    <p className="font-medium">{link.briefing_title}</p>
+                    <div>
+                      <p className="font-medium">{link.briefing_title}</p>
+                      <p className="text-xs text-slate-500">{getLinkLabel(link)}</p>
+                    </div>
                     <p className="text-xs capitalize text-slate-500">{link.status}</p>
                   </div>
                   <p className="text-xs text-slate-500">
