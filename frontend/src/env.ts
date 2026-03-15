@@ -20,6 +20,10 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
+function isStripePriceId(value: string): boolean {
+  return /^price_/i.test(value.trim());
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
@@ -90,6 +94,19 @@ export function getStripeEnv() {
   const plusId = stripeParsed.data.STRIPE_PLUS_ID || stripeParsed.data.STRPE_PLUS_ID;
   if (!plusId) {
     console.error("Invalid Stripe environment variables", { STRIPE_PLUS_ID: ["Required"] });
+    throw new Error("Missing or invalid Stripe environment variables");
+  }
+
+  const invalidPriceIds = [
+    ["STRIPE_STARTER_ID", stripeParsed.data.STRIPE_STARTER_ID],
+    ["STRIPE_PRO_ID", stripeParsed.data.STRIPE_PRO_ID],
+    ["STRIPE_PLUS_ID", plusId]
+  ].filter(([, value]) => !isStripePriceId(value));
+
+  if (invalidPriceIds.length) {
+    console.error("Invalid Stripe environment variables", {
+      stripe_prices: invalidPriceIds.map(([name, value]) => `${name} must be a Stripe price id (price_...), got ${value}`)
+    });
     throw new Error("Missing or invalid Stripe environment variables");
   }
 

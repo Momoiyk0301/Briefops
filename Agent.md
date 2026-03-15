@@ -104,3 +104,5 @@ Explain how to test it locally.
 Never rewrite the entire project unless explicitly requested.
 
 If something is unclear, make the simplest assumption and proceed.
+
+don't delete SQL file

@@ -104,7 +104,7 @@ export async function revokePublicLink(client: SupabaseClient, linkId: string, c
 async function getPublicBriefingPayload(client: SupabaseClient, briefingId: string) {
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("id, org_id, title, status, shared, event_date, location_text, created_by, created_at, updated_at")
+    .select("id, title, status, shared, event_date, location_text, created_by, created_at, updated_at")
     .eq("id", briefingId)
     .single();
 

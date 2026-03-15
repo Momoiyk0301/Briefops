@@ -14,6 +14,7 @@ import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
 import DocumentsPage from "@/views/DocumentsPage";
 import ForgotPasswordPage from "@/views/ForgotPasswordPage";
+import HelpPage from "@/views/HelpPage";
 import LoginPage from "@/views/LoginPage";
 import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/help", element: <HelpPage /> },
           { path: "/settings/billing", element: <Navigate to="/account" replace /> },
           {
             element: <RequireAdmin />,

@@ -1,6 +1,9 @@
 import { getSession } from "@/lib/auth";
+import { buildApiUrl } from "@/lib/apiBase";
+import { captureClientError } from "@/lib/monitoring";
 import {
   Briefing,
+  BriefingExportWithBriefing,
   BriefingModuleRow,
   MeResponse,
   ModuleDataMap,
@@ -13,7 +16,6 @@ import {
   UserPlan
 } from "@/lib/types";
 
-const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
 const isDev = process.env.NODE_ENV === "development";
 
 type ApiError = {
@@ -66,7 +68,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       ...(options.headers ?? {})
     };
 
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(buildApiUrl(path), {
       method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
@@ -74,6 +76,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network failure";
     logApiError(method, path, "NETWORK", message, startedAt);
+    captureClientError(error, { method, path, stage: "network" });
     throw { status: 0, message: `Failed to fetch backend (${message})` } as ApiError;
   }
 
@@ -97,6 +100,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       message = "Backend error: HTML response received (check backend env and server logs)";
     }
     logApiError(method, path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method, path, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 
@@ -114,7 +118,7 @@ export function toApiMessage(error: unknown): string {
 export async function getMe(): Promise<MeResponse> {
   try {
     const response = await requestJson<{
-      user: { id: string; email: string };
+      user: { id: string; email: string; full_name?: string | null; avatar_path?: string | null; initials?: string };
       plan: UserPlan;
       subscription_name: string | null;
       subscription_status: string | null;
@@ -125,8 +129,8 @@ export async function getMe(): Promise<MeResponse> {
         pdf_exports_limit: number | null;
         pdf_exports_remaining: number | null;
       };
-      org: { id: string; name: string } | null;
-      workspace?: { id: string; name: string } | null;
+      org: MeResponse["org"];
+      workspace?: MeResponse["workspace"];
       has_membership?: boolean;
       onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
       role: "owner" | "admin" | "member" | null;
@@ -194,7 +198,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
     const demoData: Briefing[] = [
       {
         id: "demo-briefing-1",
-        org_id: "demo-org",
+        workspace_id: "demo-workspace",
         title: "Demo - Festival Main Stage",
         status: "ready",
         shared: true,
@@ -206,7 +210,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
       },
       {
         id: "demo-briefing-2",
-        org_id: "demo-org",
+        workspace_id: "demo-workspace",
         title: "Demo - Corporate Summit",
         status: "draft",
         shared: false,
@@ -222,7 +226,7 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
   }
 }
 
-export async function createBriefing(input: { org_id: string; title: string; event_date?: string; location_text?: string }) {
+export async function createBriefing(input: { workspace_id: string; title: string; event_date?: string; location_text?: string }) {
   const response = await requestJson<{ data: Briefing }>("/api/briefings", {
     method: "POST",
     body: input
@@ -277,7 +281,7 @@ export async function getRegistryModules() {
   return response.data;
 }
 
-export async function updateRegistryModuleEnabled(id: string, enabled: boolean) {
+export async function updateWorkspaceModuleEnabled(id: string, enabled: boolean) {
   const response = await requestJson<{ data: RegistryModule }>(`/api/modules`, {
     method: "PUT",
     body: { id, enabled }
@@ -285,14 +289,21 @@ export async function updateRegistryModuleEnabled(id: string, enabled: boolean) 
   return response.data;
 }
 
-export async function downloadPdf(id: string): Promise<Blob> {
-  const path = `/api/pdf/${id}`;
+export async function downloadPdf(id: string, team?: string | null): Promise<{ blob: Blob; filename: string | null }> {
+  const query = team ? `?team=${encodeURIComponent(team)}` : "";
+  const path = `/api/pdf/${id}${query}`;
   const startedAt = logApiStart("GET", path);
   const headers = await getAuthHeader();
-  const response = await fetch(`${API_URL}${path}`, {
-    method: "GET",
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method: "GET",
+      headers
+    });
+  } catch (error) {
+    captureClientError(error, { method: "GET", path, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -306,21 +317,138 @@ export async function downloadPdf(id: string): Promise<Blob> {
       }
     }
     logApiError("GET", path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method: "GET", path, status: response.status, stage: "response" });
     throw { status: response.status, message } as ApiError;
   }
 
   logApiSuccess("GET", path, response.status, startedAt);
-  return response.blob();
+  const contentDisposition = response.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/i);
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? null
+  };
 }
 
-export async function generateBriefingPdf(id: string, team?: string | null): Promise<{ pdf_path: string; pdf_url: string; generated_at: string; team?: string | null }> {
-  const query = team ? `?format=json&team=${encodeURIComponent(team)}` : "?format=json";
-  return requestJson<{ ok: boolean; pdf_path: string; pdf_url: string; generated_at: string }>(
-    `/api/pdf/${id}${query}`
+export async function createBriefingExportJob(
+  id: string
+): Promise<{ export_id: string; version: number; status: "creating" }> {
+  return requestJson<{ export_id: string; version: number; status: "creating" }>(`/api/briefings/${id}/export`, {
+    method: "POST"
+  });
+}
+
+export async function startBriefingExportJob(
+  id: string,
+  exportId: string
+): Promise<{ export_id: string; version: number; status: "generating" | "ready" | "failed"; file_path: string | null }> {
+  return requestJson<{ export_id: string; version: number; status: "generating" | "ready" | "failed"; file_path: string | null }>(
+    `/api/briefings/${id}/export/${exportId}/generate`,
+    { method: "POST" }
   );
 }
 
-export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {
+export async function getBriefingExportJob(
+  id: string,
+  exportId: string
+): Promise<{ export_id: string; version: number; status: "creating" | "generating" | "ready" | "failed"; file_path: string | null; error_message?: string | null }> {
+  return requestJson<{
+    export_id: string;
+    version: number;
+    status: "creating" | "generating" | "ready" | "failed";
+    file_path: string | null;
+    error_message?: string | null;
+  }>(`/api/briefings/${id}/export/${exportId}`);
+}
+
+export async function listBriefingExports(): Promise<BriefingExportWithBriefing[]> {
+  const response = await requestJson<{ data: BriefingExportWithBriefing[] }>("/api/briefing-exports");
+  return response.data;
+}
+
+export async function downloadBriefingExport(exportId: string): Promise<{ blob: Blob; filename: string | null }> {
+  const path = `/api/briefing-exports/${exportId}/download`;
+  const startedAt = logApiStart("GET", path);
+  const headers = await getAuthHeader();
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method: "GET",
+      headers
+    });
+  } catch (error) {
+    captureClientError(error, { method: "GET", path, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    const message = text || `HTTP ${response.status}`;
+    logApiError("GET", path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method: "GET", path, status: response.status, stage: "response" });
+    throw { status: response.status, message } as ApiError;
+  }
+
+  logApiSuccess("GET", path, response.status, startedAt);
+  const contentDisposition = response.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/i);
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? null
+  };
+}
+
+export async function uploadStorageFile(bucket: "logos" | "avatars" | "assets" | "exports", file: File) {
+  const method = "POST";
+  const path = "/api/storage/upload";
+  const startedAt = logApiStart(method, path);
+  const headers = await getAuthHeader();
+  const formData = new FormData();
+  formData.append("bucket", bucket);
+  formData.append("file", file);
+
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      method,
+      headers,
+      body: formData
+    });
+  } catch (error) {
+    captureClientError(error, { method, path, bucket, stage: "network" });
+    throw { status: 0, message: toApiMessage(error) } as ApiError;
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && "error" in payload
+        ? String((payload as { error: string }).error)
+        : `HTTP ${response.status}`;
+    logApiError(method, path, response.status, message, startedAt);
+    captureClientError(new Error(message), { method, path, bucket, status: response.status, stage: "response" });
+    throw { status: response.status, message } as ApiError;
+  }
+
+  logApiSuccess(method, path, response.status, startedAt);
+  return payload as { bucket: string; path: string };
+}
+
+export async function updateMyAvatar(avatar_path: string | null) {
+  return requestJson<{ data: { id: string; avatar_path: string | null } }>("/api/me", {
+    method: "PATCH",
+    body: { avatar_path }
+  });
+}
+
+export async function updateWorkspaceLogo(logo_path: string | null) {
+  return requestJson<{ data: { id: string; logo_path: string | null } }>("/api/workspace", {
+    method: "PATCH",
+    body: { logo_path }
+  });
+}
+
+export async function getStorageSignedUrl(bucket: "logos" | "avatars" | "assets" | "exports", path: string, expiresIn = 3600) {
   const response = await requestJson<{ url: string }>(
     `/api/storage/signed-url?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}&expires_in=${expiresIn}`
   );
@@ -360,12 +488,27 @@ export async function listPublicLinks(): Promise<PublicLinkWithBriefing[]> {
 }
 
 export async function createStripeCheckoutSession(
-  plan: "starter" | "plus" | "pro",
+  plan: "starter" | "pro" | "guest" | "funder",
   workspace_name?: string
 ): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
     body: { plan, workspace_name }
+  });
+}
+
+export async function createStripeCheckoutSessionByPrice(input: {
+  stripe_price_id: string;
+  plan: "starter" | "pro" | "guest" | "funder";
+  workspace_name?: string;
+}): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/checkout", {
+    method: "POST",
+    body: {
+      stripe_price_id: input.stripe_price_id,
+      plan: input.plan,
+      workspace_name: input.workspace_name ?? ""
+    }
   });
 }
 

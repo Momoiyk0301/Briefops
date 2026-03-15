@@ -26,6 +26,7 @@ export default function App() {
   useEffect(() => {
     const savedTheme = localStorage.getItem("briefops:theme");
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    document.title = "BriefOps";
   }, []);
 
   return (

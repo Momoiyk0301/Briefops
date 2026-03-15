@@ -1,4 +1,4 @@
-import { Bell, Globe, Lock, Monitor, Settings2 } from "lucide-react";
+import { Bell, Globe, Monitor, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/Button";
@@ -29,14 +29,24 @@ export default function SettingsPage() {
     localStorage.setItem("briefops:lang", lang);
   };
 
-  const sections = [
-    {
-      title: "Workspace",
-      icon: <Settings2 size={16} />,
-      content: (
-        <div className="grid gap-3 md:grid-cols-2">
+  return (
+    <div className="stack-page">
+      <Card className="page-hero card-pad">
+        <p className="section-kicker">Préférences</p>
+        <h1 className="section-title mt-2">{t("settings.title")}</h1>
+        <p className="section-copy mt-2">Réglages utiles du workspace et de l’interface pour le MVP.</p>
+      </Card>
+
+      <Card className="card-pad">
+        <div className="flex items-center gap-2">
+          <span className="text-[#6f748a] dark:text-[#a8afc6]"><Settings2 size={16} /></span>
+          <h2 className="text-lg font-semibold">Workspace</h2>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
-            <p className="mb-1 text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">Langue</p>
+            <p className="mb-1 text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">
+              <span className="inline-flex items-center gap-2"><Globe size={14} /> Langue</span>
+            </p>
             <div className="flex gap-2">
               <Button variant={i18n.language === "fr" ? "primary" : "secondary"} onClick={() => void changeLanguage("fr")}>FR</Button>
               <Button variant={i18n.language === "en" ? "primary" : "secondary"} onClick={() => void changeLanguage("en")}>EN</Button>
@@ -51,13 +61,14 @@ export default function SettingsPage() {
             </select>
           </div>
         </div>
-      )
-    },
-    {
-      title: "Interface",
-      icon: <Monitor size={16} />,
-      content: (
-        <div className="grid gap-3 md:grid-cols-3">
+      </Card>
+
+      <Card className="card-pad">
+        <div className="flex items-center gap-2">
+          <span className="text-[#6f748a] dark:text-[#a8afc6]"><Monitor size={16} /></span>
+          <h2 className="text-lg font-semibold">Interface</h2>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div>
             <p className="mb-1 text-xs uppercase tracking-wide text-[#7f859b] dark:text-[#969eb8]">{t("settings.appearanceTitle")}</p>
             <div className="flex gap-2">
@@ -81,13 +92,14 @@ export default function SettingsPage() {
             </select>
           </div>
         </div>
-      )
-    },
-    {
-      title: "Notifications",
-      icon: <Bell size={16} />,
-      content: (
-        <div className="grid gap-3 md:grid-cols-2">
+      </Card>
+
+      <Card className="card-pad">
+        <div className="flex items-center gap-2">
+          <span className="text-[#6f748a] dark:text-[#a8afc6]"><Bell size={16} /></span>
+          <h2 className="text-lg font-semibold">Notifications</h2>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <label className="flex items-center justify-between rounded-2xl border border-[#e6e8f2] px-4 py-3 dark:border-white/10">
             <span className="text-sm font-medium">Emails opérationnels</span>
             <input type="checkbox" defaultChecked={emailNotifications === "true"} onChange={(event) => setPref("briefops:email_notifications", String(event.target.checked))} />
@@ -97,43 +109,7 @@ export default function SettingsPage() {
             <input type="checkbox" defaultChecked={digestEnabled === "true"} onChange={(event) => setPref("briefops:weekly_digest", String(event.target.checked))} />
           </label>
         </div>
-      )
-    },
-    {
-      title: "Security",
-      icon: <Lock size={16} />,
-      content: (
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-[#e6e8f2] px-4 py-3 dark:border-white/10">
-            <p className="text-sm font-semibold">Session</p>
-            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Garde un contrôle simple des appareils connectés et de la connexion actuelle.</p>
-          </div>
-          <div className="rounded-2xl border border-[#e6e8f2] px-4 py-3 dark:border-white/10">
-            <p className="text-sm font-semibold">Mot de passe</p>
-            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">La mise à jour du mot de passe se fait depuis la page Compte.</p>
-          </div>
-        </div>
-      )
-    }
-  ];
-
-  return (
-    <div className="stack-page">
-      <Card className="page-hero card-pad">
-        <p className="section-kicker">Préférences</p>
-        <h1 className="section-title mt-2">{t("settings.title")}</h1>
-        <p className="section-copy mt-2">Réglages essentiels du workspace, de l’interface et des notifications.</p>
       </Card>
-
-      {sections.map((section) => (
-        <Card key={section.title} className="card-pad">
-          <div className="flex items-center gap-2">
-            <span className="text-[#6f748a] dark:text-[#a8afc6]">{section.icon}</span>
-            <h2 className="text-lg font-semibold">{section.title}</h2>
-          </div>
-          <div className="mt-4">{section.content}</div>
-        </Card>
-      ))}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { env, getStripeEnv } from "@/env";
 
 let stripeInstance: Stripe | null = null;
-type PaidPlan = "starter" | "plus" | "pro";
+type PaidPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
 
 function getOrCreateStripe() {
   if (stripeInstance) return stripeInstance;
@@ -28,14 +28,12 @@ export function getStripe() {
 export function getStripePriceIdForPlan(plan: PaidPlan) {
   const stripeEnv = getStripeEnv();
   if (plan === "starter") return stripeEnv.STRIPE_STARTER_ID;
-  if (plan === "plus") return stripeEnv.STRIPE_PLUS_ID;
   return stripeEnv.STRIPE_PRO_ID;
 }
 
 export function getPlanFromStripePriceId(priceId: string): PaidPlan | null {
   const stripeEnv = getStripeEnv();
   if (priceId === stripeEnv.STRIPE_STARTER_ID) return "starter";
-  if (priceId === stripeEnv.STRIPE_PLUS_ID) return "plus";
   if (priceId === stripeEnv.STRIPE_PRO_ID) return "pro";
   return null;
 }

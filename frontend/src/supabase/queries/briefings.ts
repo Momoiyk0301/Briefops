@@ -2,7 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const createBriefingSchema = z.object({
-  org_id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
   title: z.string().min(1),
   status: z.enum(["draft", "ready", "archived"]).optional(),
   event_date: z.string().date().optional(),
@@ -20,7 +20,7 @@ export type CreateBriefingInput = z.infer<typeof createBriefingSchema>;
 export type UpdateBriefingInput = z.infer<typeof updateBriefingSchema>;
 
 const SELECT_BRIEFING_FIELDS =
-  "id, org_id, title, status, shared, event_date, location_text, pdf_path, created_by, created_at, updated_at";
+  "id, workspace_id, title, status, shared, event_date, location_text, pdf_path, created_by, created_at, updated_at";
 
 export async function listBriefings(client: SupabaseClient) {
   const { data, error } = await client
@@ -44,11 +44,11 @@ export async function createBriefing(client: SupabaseClient, userId: string, inp
   return data;
 }
 
-export async function countBriefingsByOrg(client: SupabaseClient, orgId: string) {
+export async function countBriefingsByWorkspace(client: SupabaseClient, workspaceId: string) {
   const { count, error } = await client
     .from("briefings")
     .select("id", { count: "exact", head: true })
-    .eq("org_id", orgId);
+    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
   return Number(count ?? 0);

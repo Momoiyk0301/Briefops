@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createPortalSession = vi.fn();
-
-const mockEq = vi.fn();
-const mockSingle = vi.fn();
-const mockSelect = vi.fn();
 const mockFrom = vi.fn();
 
 vi.mock("@/supabase/server", () => ({
@@ -28,23 +24,40 @@ vi.mock("@/env", () => ({
 describe("frontend /api/stripe/portal", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-
-    mockFrom.mockReturnValue({
-      select: mockSelect
-    });
-    mockSelect.mockReturnValue({
-      eq: mockEq
-    });
-    mockEq.mockReturnValue({
-      single: mockSingle
-    });
   });
 
   it("returns portal url and uses billing return url", async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: { id: "user-1", stripe_customer_id: "cus_1" },
+    const membershipMaybeSingle = vi.fn().mockResolvedValue({
+      data: { workspace_id: "ws-1" },
       error: null
     });
+    const workspaceMaybeSingle = vi.fn().mockResolvedValue({
+      data: { id: "ws-1", stripe_customer_id: "cus_1" },
+      error: null
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "memberships") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: membershipMaybeSingle
+            })
+          })
+        };
+      }
+      if (table === "workspaces") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: workspaceMaybeSingle
+            })
+          })
+        };
+      }
+      throw new Error(`Unexpected table ${table}`);
+    });
+
     createPortalSession.mockResolvedValueOnce({ url: "https://billing.stripe.test/portal" });
 
     const mod = await import("../../app/api/stripe/portal/route");
@@ -60,9 +73,35 @@ describe("frontend /api/stripe/portal", () => {
   });
 
   it("returns 409 when stripe customer is missing", async () => {
-    mockSingle.mockResolvedValueOnce({
-      data: { id: "user-1", stripe_customer_id: null },
+    const membershipMaybeSingle = vi.fn().mockResolvedValue({
+      data: { workspace_id: "ws-1" },
       error: null
+    });
+    const workspaceMaybeSingle = vi.fn().mockResolvedValue({
+      data: { id: "ws-1", stripe_customer_id: null },
+      error: null
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "memberships") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: membershipMaybeSingle
+            })
+          })
+        };
+      }
+      if (table === "workspaces") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: workspaceMaybeSingle
+            })
+          })
+        };
+      }
+      throw new Error(`Unexpected table ${table}`);
     });
 
     const mod = await import("../../app/api/stripe/portal/route");

@@ -5,7 +5,7 @@ do $$
 declare
   v_user_id uuid;
   v_email text;
-  v_org_id uuid;
+  v_workspace_id uuid;
   v_briefing_id uuid;
 begin
   select id, email
@@ -28,19 +28,19 @@ begin
   values ('Demo Org', v_user_id)
   on conflict (owner_id) do update
     set name = excluded.name
-  returning id into v_org_id;
+  returning id into v_workspace_id;
 
-  if v_org_id is null then
-    select id into v_org_id from public.workspaces where owner_id = v_user_id;
+  if v_workspace_id is null then
+    select id into v_workspace_id from public.workspaces where owner_id = v_user_id;
   end if;
 
-  insert into public.memberships (org_id, user_id, role)
-  values (v_org_id, v_user_id, 'owner')
-  on conflict (org_id, user_id) do update
+  insert into public.memberships (workspace_id, user_id, role)
+  values (v_workspace_id, v_user_id, 'owner')
+  on conflict (workspace_id, user_id) do update
     set role = excluded.role;
 
-  insert into public.briefings (org_id, title, event_date, location_text, created_by)
-  values (v_org_id, 'Demo Briefing', current_date + 7, 'Brussels Expo', v_user_id)
+  insert into public.briefings (workspace_id, title, event_date, location_text, created_by)
+  values (v_workspace_id, 'Demo Briefing', current_date + 7, 'Brussels Expo', v_user_id)
   returning id into v_briefing_id;
 
   insert into public.briefing_modules (briefing_id, module_key, enabled, data_json)

@@ -12,7 +12,7 @@ export default function SubscriptionPage() {
   if (meQuery.isLoading) return <Card>Chargement de l'abonnement...</Card>;
   if (meQuery.error) return <Card>{toApiMessage(meQuery.error)}</Card>;
 
-  const plan = meQuery.data?.plan ?? "free";
+  const plan = meQuery.data?.plan ?? "starter";
   const usage = meQuery.data?.usage;
 
   return (

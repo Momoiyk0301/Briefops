@@ -1,24 +1,34 @@
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Share2 } from "lucide-react";
+import { PencilLine, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
-import { getEnabledPageCount } from "@/lib/briefingPages";
+import { patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
 import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
 import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
-import { MetadataForm } from "@/components/briefing/MetadataForm";
-import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
-import { ModuleList } from "@/components/briefing/ModuleList";
+import { ContactForm } from "@/components/briefing/forms/ContactForm";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
 import { SharePanel } from "@/components/briefing/SharePanel";
+import { MetadataPreview } from "@/components/briefing/preview/MetadataPreview";
+import { DateInput } from "@/components/input/date";
+import { TelephoneInput } from "@/components/input/telephone";
+import { TextAreaInput, TextInput } from "@/components/input/text";
+import { ActionDropdownButton } from "@/components/ui/ActionDropdownButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import { Toggle } from "@/components/ui/Toggle";
 
 const CANVAS_COLS = 12;
 const CANVAS_ROWS = 24;
+const EDITOR_MODULE_KEYS = ["access", "staff", "equipment", "delivery", "vehicle", "notes", "metadata"] as const;
+
+type EditorModuleKey = (typeof EDITOR_MODULE_KEYS)[number];
+type EditorTabKey = "general" | EditorModuleKey;
+type TeamScope = "all" | string;
 
 function rectTouchesOrOverlaps(a: GridRect, b: GridRect) {
   if ((a.page ?? 0) !== (b.page ?? 0)) return false;
@@ -31,7 +41,7 @@ function normalizeLayouts(modules: EditorState["modules"]) {
 
   moduleEntries.forEach((entry, index) => {
     const current = next[entry.key];
-    if (!current.enabled) return;
+    if (!current.enabled || entry.key === "contact") return;
 
     let rect = { ...current.layout.desktop };
     let attempts = 0;
@@ -58,11 +68,24 @@ function normalizeLayouts(modules: EditorState["modules"]) {
   return next as EditorState["modules"];
 }
 
-export function buildInitialState(
-  briefing: Briefing,
-  rows: BriefingModuleRow[],
-  registryModules: RegistryModule[] = []
-): EditorState {
+function getDefaultSelectedModule(modules: EditorState["modules"]): Exclude<ModuleKey, "metadata"> {
+  const fallback = moduleEntries.find((entry) => entry.key !== "metadata" && entry.key !== "contact" && modules[entry.key].enabled)?.key;
+  return (fallback ?? "access") as Exclude<ModuleKey, "metadata">;
+}
+
+function getVisibleTabs(modules: EditorState["modules"]): EditorTabKey[] {
+  return ["general", ...EDITOR_MODULE_KEYS.filter((key) => modules[key].enabled)];
+}
+
+function getTabLabel(tab: EditorTabKey, language: string) {
+  if (tab === "general") return "General";
+  const locale = language === "fr" ? "fr" : "en";
+  if (tab === "delivery") return language === "fr" ? "Livraisons" : "Deliveries";
+  if (tab === "vehicle") return language === "fr" ? "Véhicules" : "Vehicles";
+  return moduleRegistry[tab].labels[locale];
+}
+
+export function buildInitialState(briefing: Briefing, rows: BriefingModuleRow[], registryModules: RegistryModule[] = []): EditorState {
   const rowMap = new Map(rows.map((row) => [row.module_key, row]));
   const registryMap = new Map(registryModules.map((mod) => [mod.type, mod]));
 
@@ -92,18 +115,13 @@ export function buildInitialState(
 
   const modules = normalizeLayouts(rawModules);
 
-  const defaultSelected = (moduleEntries.find((entry) => entry.key !== "metadata" && modules[entry.key].enabled)?.key ?? "access") as Exclude<
-    ModuleKey,
-    "metadata"
-  >;
-
   return {
     core: {
       title: briefing.title,
       event_date: briefing.event_date,
       location_text: briefing.location_text ?? ""
     },
-    selectedModuleKey: defaultSelected,
+    selectedModuleKey: getDefaultSelectedModule(modules),
     modules
   };
 }
@@ -112,16 +130,39 @@ type Props = {
   briefing: Briefing;
   modules: BriefingModuleRow[];
   registryModules?: RegistryModule[];
+  saveNonce?: number;
 };
 
-function toCanvasStyle(layout: EditorState["modules"][ModuleKey]["layout"]) {
-  const desktop = layout.desktop;
-  return {
-    left: `${(desktop.x / CANVAS_COLS) * 100}%`,
-    top: `${(desktop.y / CANVAS_ROWS) * 100}%`,
-    width: `${(desktop.w / CANVAS_COLS) * 100}%`,
-    height: `${(desktop.h / CANVAS_ROWS) * 100}%`
-  };
+function GeneralTab({
+  state,
+  onCoreChange,
+  onMetadataChange
+}: {
+  state: EditorState;
+  onCoreChange: (patch: Partial<EditorState["core"]>) => void;
+  onMetadataChange: (patch: Partial<EditorState["modules"]["metadata"]["data"]>) => void;
+}) {
+  const metadata = state.modules.metadata.data;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+        <div className="grid gap-3">
+          <TextInput label="Event name" placeholder="Event name" value={state.core.title} onChange={(event) => onCoreChange({ title: event.target.value })} />
+          <DateInput label="Date" value={state.core.event_date ?? ""} onChange={(event) => onCoreChange({ event_date: event.target.value || null })} />
+          <TextInput label="Location" placeholder="Location" value={state.core.location_text} onChange={(event) => onCoreChange({ location_text: event.target.value })} />
+        </div>
+      </Card>
+
+      <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+        <div className="grid gap-3">
+          <TextInput label="Contact" placeholder="Main contact" value={metadata.main_contact_name} onChange={(event) => onMetadataChange({ main_contact_name: event.target.value })} />
+          <TelephoneInput label="Phone" placeholder="Phone" value={metadata.main_contact_phone} onChange={(event) => onMetadataChange({ main_contact_phone: event.target.value })} />
+          <TextAreaInput label="Global notes" placeholder="Global notes" rows={6} value={metadata.global_notes} onChange={(event) => onMetadataChange({ global_notes: event.target.value })} />
+        </div>
+      </Card>
+    </div>
+  );
 }
 
 const RESIZE_HANDLES: Array<{ key: ResizeHandle; className: string; cursor: string }> = [
@@ -134,31 +175,38 @@ const RESIZE_HANDLES: Array<{ key: ResizeHandle; className: string; cursor: stri
   { key: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "ns-resize" }
 ];
 
-const MODULE_TONE_CLASS: Record<ModuleKey, string> = {
+const MODULE_TONE_CLASS: Record<EditorModuleKey, string> = {
   metadata: "border-sky-200/90 bg-sky-50/80",
   access: "border-emerald-200/90 bg-emerald-50/80",
   delivery: "border-amber-200/90 bg-amber-50/80",
   vehicle: "border-violet-200/90 bg-violet-50/80",
   equipment: "border-cyan-200/90 bg-cyan-50/80",
   staff: "border-rose-200/90 bg-rose-50/80",
-  notes: "border-indigo-200/90 bg-indigo-50/80",
-  contact: "border-orange-200/90 bg-orange-50/80"
+  notes: "border-indigo-200/90 bg-indigo-50/80"
 };
 
-export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
+function toCanvasStyle(layout: EditorState["modules"][ModuleKey]["layout"]) {
+  const desktop = layout.desktop;
+  return {
+    left: `${(desktop.x / CANVAS_COLS) * 100}%`,
+    top: `${(desktop.y / CANVAS_ROWS) * 100}%`,
+    width: `${(desktop.w / CANVAS_COLS) * 100}%`,
+    height: `${(desktop.h / CANVAS_ROWS) * 100}%`
+  };
+}
+
+export function BriefingEditor({ briefing, modules, registryModules = [], saveNonce = 0 }: Props) {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
-  const [saving, setSaving] = useState(false);
-  const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
-  const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
-  const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
+  const [selectedTab, setSelectedTab] = useState<EditorTabKey>("general");
+  const [visualEditor, setVisualEditor] = useState(false);
+  const [shareScope, setShareScope] = useState<TeamScope>("all");
+  const [exportScope, setExportScope] = useState<TeamScope>("all");
+  const [teamDraft, setTeamDraft] = useState("");
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [hoveredModuleKey, setHoveredModuleKey] = useState<EditorModuleKey | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfPath, setPdfPath] = useState<string | null>(briefing.pdf_path ?? null);
-  const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
-  const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
-  const [pageCountOverride, setPageCountOverride] = useState<number>(() => getEnabledPageCount(buildInitialState(briefing, modules, registryModules).modules));
   const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const lastSaved = useRef("");
 
@@ -168,7 +216,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       lastSaved.current = snapshot;
       return;
     }
-
     if (snapshot === lastSaved.current) return;
 
     const id = window.setTimeout(() => {
@@ -179,41 +226,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     return () => window.clearTimeout(id);
   }, [state]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      if (!briefing.pdf_path) return;
-      try {
-        const signedUrl = await getStorageSignedUrl("exports", briefing.pdf_path, 3600);
-        if (!cancelled) {
-          setPdfUrl(signedUrl);
-          setPdfPath(briefing.pdf_path);
-          setPdfButtonState("ready");
-        }
-      } catch {
-        if (!cancelled) setPdfUrl(null);
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [briefing.pdf_path]);
-
-  const teamModeEnabled = state.modules.metadata.data.team_mode;
   const definedTeams = state.modules.metadata.data.teams;
+  const teamModeEnabled = state.modules.metadata.data.team_mode;
 
   useEffect(() => {
-    if (!teamModeEnabled) {
-      if (selectedPdfTeam !== "all") setSelectedPdfTeam("all");
-      return;
-    }
-    if (selectedPdfTeam === "all") return;
-    const stillExists = definedTeams.some((team) => team.toLowerCase() === selectedPdfTeam.toLowerCase());
-    if (!stillExists) setSelectedPdfTeam("all");
-  }, [definedTeams, selectedPdfTeam, teamModeEnabled]);
+    const visibleTabs = getVisibleTabs(state.modules);
+    if (!visibleTabs.includes(selectedTab)) setSelectedTab("general");
+  }, [selectedTab, state.modules]);
 
   useEffect(() => {
     setState((prev) => {
@@ -222,7 +241,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       const teamSet = new Set(definedTeams.map((team) => team.toLowerCase()));
 
       (Object.keys(prev.modules) as ModuleKey[])
-        .filter((key) => key !== "metadata")
+        .filter((key) => key !== "contact")
         .forEach((key) => {
           const module = prev.modules[key];
           const filteredTeams = module.audience.teams.filter((team) => teamSet.has(team.toLowerCase()));
@@ -230,15 +249,10 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
           if (nextMode !== module.audience.mode || filteredTeams.length !== module.audience.teams.length) {
             changed = true;
-            const updatedModule: typeof module = {
+            (nextModules as Record<ModuleKey, EditorState["modules"][ModuleKey]>)[key] = {
               ...module,
-              audience: {
-                ...module.audience,
-                mode: nextMode,
-                teams: filteredTeams
-              }
+              audience: { ...module.audience, mode: nextMode, teams: filteredTeams }
             };
-            (nextModules as Record<string, EditorState["modules"][ModuleKey]>)[key] = updatedModule;
           }
         });
 
@@ -267,7 +281,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
   const handleSave = async (manual = true) => {
     try {
-      setSaving(true);
       await patchBriefing(briefing.id, {
         title: state.core.title,
         event_date: state.core.event_date,
@@ -279,65 +292,87 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       if (!manual) setSaveIndicator("saved");
     } catch (error) {
       toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
-    } finally {
-      setSaving(false);
     }
   };
 
-  const handlePdf = async () => {
-    const targetTeam = teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null;
+  useEffect(() => {
+    if (!saveNonce) return;
+    void handleSave(true);
+  }, [saveNonce]);
 
-    if (pdfButtonState === "ready" && !targetTeam) {
-      try {
-        if (pdfPath) {
-          const signedUrl = await getStorageSignedUrl("exports", pdfPath, 3600);
-          setPdfUrl(signedUrl);
-          window.open(signedUrl, "_blank", "noopener,noreferrer");
-          return;
-        }
-        if (pdfUrl) {
-          window.open(pdfUrl, "_blank", "noopener,noreferrer");
-          return;
-        }
-      } catch (error) {
-        toast.error(toApiMessage(error));
+  const updateModuleData = <K extends ModuleKey>(key: K, data: ModuleDataMap[K]) => {
+    setState((prev) => ({
+      ...prev,
+      modules: {
+        ...prev.modules,
+        [key]: { ...prev.modules[key], data }
       }
-    }
-
-    const toastId = toast.loading(
-      targetTeam ? t("editor.pdfGeneratingTeam", { team: targetTeam }) : t("editor.pdfGenerating")
-    );
-    let generated = false;
-    try {
-      setPdfButtonState("loading");
-      const result = await generateBriefingPdf(briefing.id, targetTeam);
-      setPdfUrl(result.pdf_url);
-      setPdfPath(result.pdf_path);
-      if (targetTeam) {
-        setTeamPdfPaths((prev) => ({
-          ...prev,
-          [targetTeam]: result.pdf_path
-        }));
-      }
-      setPdfButtonState("ready");
-      generated = true;
-      toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
-    } catch (error) {
-      const msg = toApiMessage(error);
-      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
-      setPdfButtonState("idle");
-    } finally {
-      if (!generated) setPdfButtonState("idle");
-    }
+    }));
   };
 
-  const startPointerInteraction = (
-    event: ReactPointerEvent,
-    key: ModuleKey,
-    page: number,
-    mode: "move" | "resize",
-    handle?: ResizeHandle
-  ) => {
+  const updateModuleEnabled = (key: EditorModuleKey, enabled: boolean) => {
+    setState((prev) => {
+      const nextModules = normalizeLayouts({
+        ...prev.modules,
+        [key]: {
+          ...prev.modules[key],
+          enabled,
+          metadata: { ...prev.modules[key].metadata, enabled }
+        }
+      });
+
+      return {
+        ...prev,
+        selectedModuleKey: prev.selectedModuleKey === key && !enabled ? getDefaultSelectedModule(nextModules) : prev.selectedModuleKey,
+        modules: nextModules
+      };
+    });
+
+    if (selectedTab === key && !enabled) setSelectedTab("general");
+  };
+
+  const addTeam = () => {
+    const nextTeam = teamDraft.trim();
+    if (!nextTeam) return;
+    if (definedTeams.some((team) => team.toLowerCase() === nextTeam.toLowerCase())) {
+      setTeamDraft("");
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      modules: {
+        ...prev.modules,
+        metadata: {
+          ...prev.modules.metadata,
+          data: {
+            ...prev.modules.metadata.data,
+            teams: [...prev.modules.metadata.data.teams, nextTeam],
+            team_mode: true
+          }
+        }
+      }
+    }));
+    setTeamDraft("");
+  };
+
+  const removeTeam = (teamToRemove: string) => {
+    setState((prev) => ({
+      ...prev,
+      modules: {
+        ...prev.modules,
+        metadata: {
+          ...prev.modules.metadata,
+          data: {
+            ...prev.modules.metadata.data,
+            teams: prev.modules.metadata.data.teams.filter((team) => team !== teamToRemove)
+          }
+        }
+      }
+    }));
+  };
+
+  const startPointerInteraction = (event: ReactPointerEvent, key: EditorModuleKey, page: number, mode: "move" | "resize", handle?: ResizeHandle) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -356,43 +391,31 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
     const initialRect = { ...state.modules[key].layout.desktop };
     const constraints = state.modules[key].layout.constraints;
-    const others = (Object.keys(state.modules) as ModuleKey[])
-      .filter(
-        (otherKey) =>
-          otherKey !== key &&
-          state.modules[otherKey].enabled &&
-          state.modules[otherKey].layout.desktop.page === page
-      )
+    const others = EDITOR_MODULE_KEYS
+      .filter((otherKey) => otherKey !== key && state.modules[otherKey].enabled && state.modules[otherKey].layout.desktop.page === page)
       .map((otherKey) => state.modules[otherKey].layout.desktop);
 
     const onPointerMove = (moveEvent: PointerEvent) => {
       const deltaX = Math.round((moveEvent.clientX - startX) / cellW);
       const deltaY = Math.round((moveEvent.clientY - startY) / cellH);
-
       if (deltaX === 0 && deltaY === 0) return;
 
-      const nextRect = mode === "move"
-        ? tryMoveModuleRect({
-            current: initialRect,
-            others,
-            deltaX,
-            deltaY,
-            cols: CANVAS_COLS,
-            rows: CANVAS_ROWS
-          })
-        : tryResizeModuleRect({
-            current: initialRect,
-            others,
-            handle: handle!,
-            deltaX,
-            deltaY,
-            minW: constraints.minW,
-            minH: constraints.minH,
-            maxW: constraints.maxW,
-            maxH: constraints.maxH,
-            cols: CANVAS_COLS,
-            rows: CANVAS_ROWS
-          });
+      const nextRect =
+        mode === "move"
+          ? tryMoveModuleRect({ current: initialRect, others, deltaX, deltaY, cols: CANVAS_COLS, rows: CANVAS_ROWS })
+          : tryResizeModuleRect({
+              current: initialRect,
+              others,
+              handle: handle!,
+              deltaX,
+              deltaY,
+              minW: constraints.minW,
+              minH: constraints.minH,
+              maxW: constraints.maxW,
+              maxH: constraints.maxH,
+              cols: CANVAS_COLS,
+              rows: CANVAS_ROWS
+            });
 
       if (!nextRect) return;
 
@@ -401,13 +424,10 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         modules: {
           ...prev.modules,
           [key]: {
-              ...prev.modules[key],
-              layout: {
-                ...prev.modules[key].layout,
-                desktop: { ...nextRect, page }
-              }
-            }
+            ...prev.modules[key],
+            layout: { ...prev.modules[key].layout, desktop: { ...nextRect, page } }
           }
+        }
       }));
     };
 
@@ -424,495 +444,382 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     window.addEventListener("pointercancel", onPointerUp);
   };
 
-  const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
-  const selectedModule = state.modules[state.selectedModuleKey];
-  const selectedAudienceTeams = selectedModule.audience.teams;
-  const pageCount = Math.max(pageCountOverride, getEnabledPageCount(state.modules));
+  const visibleTabs = getVisibleTabs(state.modules);
+  const filteredLibraryEntries = EDITOR_MODULE_KEYS.filter((key) => {
+    const q = librarySearch.trim().toLowerCase();
+    if (!q) return true;
+    const locale = i18n.language === "fr" ? "fr" : "en";
+    const label = getTabLabel(key, i18n.language).toLowerCase();
+    const description = moduleRegistry[key].description[locale].toLowerCase();
+    return label.includes(q) || description.includes(q);
+  });
 
+  const selectedConfigModuleKey = selectedTab === "general" ? null : selectedTab;
+  const selectedConfigModule = selectedConfigModuleKey ? state.modules[selectedConfigModuleKey] : null;
+  const pageCount = Math.max(1, ...EDITOR_MODULE_KEYS.filter((key) => state.modules[key].enabled).map((key) => state.modules[key].layout.desktop.page + 1));
   const visibleModulesByPage = useMemo(
-    () =>
-      Array.from({ length: pageCount }, (_, pageIndex) => ({
-        pageIndex,
-        items: visibleModules.filter((entry) => state.modules[entry.key].layout.desktop.page === pageIndex)
-      })),
-    [pageCount, state.modules, visibleModules]
+    () => Array.from({ length: pageCount }, (_, pageIndex) => ({ pageIndex, items: EDITOR_MODULE_KEYS.filter((key) => state.modules[key].enabled && state.modules[key].layout.desktop.page === pageIndex) })),
+    [pageCount, state.modules]
   );
 
-  const toggleTeamForSelectedModule = (team: string) => {
-    setState((prev) => {
-      const module = prev.modules[prev.selectedModuleKey];
-      const exists = module.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase());
-      const teams = exists
-        ? module.audience.teams.filter((value) => value.toLowerCase() !== team.toLowerCase())
-        : [...module.audience.teams, team];
-
-      return {
-        ...prev,
-        modules: {
-          ...prev.modules,
-          [prev.selectedModuleKey]: {
-            ...module,
-            audience: {
-              ...module.audience,
-              mode: teams.length > 0 ? "teams" : "all",
-              teams
-            }
-          }
-        }
-      };
-    });
-  };
-
-  const updateSelectedModulePage = (page: number) => {
+  const updateAudienceTeams = (teams: string[]) => {
+    if (!selectedConfigModuleKey) return;
     setState((prev) => ({
       ...prev,
       modules: {
         ...prev.modules,
-        [prev.selectedModuleKey]: {
-          ...prev.modules[prev.selectedModuleKey],
-          layout: {
-            ...prev.modules[prev.selectedModuleKey].layout,
-            desktop: {
-              ...prev.modules[prev.selectedModuleKey].layout.desktop,
-              page
-            }
+        [selectedConfigModuleKey]: {
+          ...prev.modules[selectedConfigModuleKey],
+          audience: {
+            ...prev.modules[selectedConfigModuleKey].audience,
+            mode: teams.length > 0 ? "teams" : "all",
+            teams
           }
         }
       }
     }));
   };
 
-  const handleAddPage = () => {
-    setPageCountOverride((prev) => prev + 1);
+  const renderTabPanel = () => {
+    if (selectedTab === "general") {
+      return (
+        <GeneralTab
+          state={state}
+          onCoreChange={(patch) => setState((prev) => ({ ...prev, core: { ...prev.core, ...patch } }))}
+          onMetadataChange={(patch) =>
+            setState((prev) => ({
+              ...prev,
+              modules: {
+                ...prev.modules,
+                metadata: { ...prev.modules.metadata, data: { ...prev.modules.metadata.data, ...patch } }
+              }
+            }))
+          }
+        />
+      );
+    }
+
+    if (selectedTab === "metadata") {
+      return (
+        <div className="space-y-4">
+          <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+            <p className="text-sm font-semibold text-[#172033] dark:text-white">Operational metadata</p>
+            <p className="mt-1 text-sm text-slate-500">Team mode and team targeting are managed in the configuration panel.</p>
+            <div className="mt-4 rounded-2xl border border-[#e8eaf3] bg-[#fafbff] p-4 dark:border-white/10 dark:bg-[#101114]">
+              <MetadataPreview title={state.core.title} eventDate={state.core.event_date} location={state.core.location_text} metadata={state.modules.metadata.data} />
+            </div>
+          </Card>
+          <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+            <p className="mb-4 text-sm font-semibold text-[#172033] dark:text-white">Project contacts</p>
+            <ContactForm value={state.modules.contact.data} onChange={(value) => updateModuleData("contact", value)} />
+          </Card>
+        </div>
+      );
+    }
+
+    return (
+      <Card className="border-[#e6ebf5] bg-white/92 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+        <ModulePanel state={state} selected={selectedTab} onChange={updateModuleData} />
+      </Card>
+    );
+  };
+
+  const scopeOptions = (currentScope: TeamScope, setScope: (scope: TeamScope) => void, verb: string) => {
+    const base = [{ label: "Toutes les équipes", description: `${verb} sans filtre équipe`, onSelect: () => setScope("all") }];
+    if (!teamModeEnabled) return base;
+    return [
+      ...base,
+      ...definedTeams.map((team) => ({
+        label: team,
+        description: currentScope === team ? "Filtre actif" : `${verb} avec le filtre ${team}`,
+        onSelect: () => setScope(team)
+      }))
+    ];
   };
 
   return (
-    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_390px]">
-      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-1.5 dark:border-white/10 dark:bg-[#121212]">
-        <div className="a4-frame w-full max-w-[820px] space-y-3 rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          {visibleModulesByPage.map(({ pageIndex, items }) => (
-            <div key={pageIndex} className="space-y-1.5">
-              <div className="flex items-center justify-between px-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {t("editor.page", { count: pageIndex + 1 })}
-                </p>
-                {pageIndex === selectedModule.layout.desktop.page ? (
-                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-900/20 dark:text-brand-300">
-                    {t("briefings.pageCurrent")}
-                  </span>
-                ) : null}
+    <div className="space-y-4">
+      <Card className="border-[#dde4f1] bg-white/92 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#121212]">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-3 rounded-[24px] border border-[#e8eaf3] bg-[#f8faff] px-4 py-3 dark:border-white/10 dark:bg-[#101114]">
+                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${visualEditor ? "bg-brand-500 text-white" : "bg-white text-[#6f7892] dark:bg-[#171717] dark:text-[#cfd6e7]"}`}>
+                  <PencilLine size={16} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-[#172033] dark:text-white">Custom Layout</p>
+                  <p className="text-xs text-slate-500">Inputs classiques ou édition directe dans l’aperçu.</p>
+                </div>
+                <Toggle checked={visualEditor} onChange={setVisualEditor} ariaLabel="toggle-visual-editor" />
               </div>
-              <div
-                ref={(node) => {
-                  canvasRefs.current[pageIndex] = node;
-                }}
-                className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
-              >
-                {items.map((entry) => {
-                  const module = state.modules[entry.key];
-                  const style = toCanvasStyle(module.layout);
-                  const isSelected = state.selectedModuleKey === entry.key;
-                  const isActive = hoveredModuleKey === entry.key || isSelected;
-                  const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
 
-                  return (
-                    <section
-                      key={entry.key}
-                      style={style}
-                      className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
-                        MODULE_TONE_CLASS[entry.key]
-                      } ${
-                        isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
-                      }`}
-                      onMouseEnter={() => setHoveredModuleKey(entry.key)}
-                      onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
-                      onClick={() => {
-                        if (entry.key !== "metadata") {
-                          setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
-                        }
-                      }}
-                    >
-                      <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                        {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
-                      </p>
-
-                      <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
-                        {entry.key === "metadata" ? (
-                          <MetadataPreview
-                            title={state.core.title}
-                            eventDate={state.core.event_date}
-                            location={state.core.location_text}
-                            metadata={state.modules.metadata.data}
-                          />
-                        ) : (
-                          <PreviewComponent value={module.data as never} />
-                        )}
-                      </div>
-
-                      {isActive ? (
-                        <>
-                          <button
-                            type="button"
-                            aria-label={`move-${entry.key}`}
-                            className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
-                            onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "move")}
-                          />
-
-                          {RESIZE_HANDLES.map((handle) => (
-                            <button
-                              key={handle.key}
-                              type="button"
-                              aria-label={`resize-${entry.key}-${handle.key}`}
-                              className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
-                              style={{ cursor: handle.cursor }}
-                              onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "resize", handle.key)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                    </section>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          <div className="flex justify-center pt-1">
-            <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleAddPage}>
-              {t("editor.addPage")}
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="space-y-2.5 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-2.5 dark:border-white/10 dark:bg-[#121212]">
-        <div className="grid grid-cols-3 gap-2 xl:hidden">
-          <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
-          <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
-          <Button variant={mobilePanel === "edit" ? "primary" : "secondary"} onClick={() => setMobilePanel("edit")}>Edition</Button>
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "meta" ? "hidden" : ""}`}>
-          <MetadataForm
-            core={state.core}
-            metadata={state.modules.metadata.data}
-            onChange={(core, metadata) => {
-              setState((prev) => ({
-                ...prev,
-                core,
-                modules: {
-                  ...prev.modules,
-                  metadata: { ...prev.modules.metadata, data: metadata }
-                }
-              }));
-            }}
-          />
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "modules" ? "hidden" : ""}`}>
-          <ModuleList
-            state={state}
-            selected={state.selectedModuleKey}
-            onSelect={(key) => {
-              setState((prev) => ({ ...prev, selectedModuleKey: key }));
-              setMobilePanel("edit");
-            }}
-            onToggle={(key, enabled) =>
-              setState((prev) => ({
-                ...prev,
-                modules: normalizeLayouts({
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    enabled,
-                    metadata: { ...prev.modules[key].metadata, enabled }
-                  }
-                })
-              }))
-            }
-          />
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.moduleEdit")}</p>
-          <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
-            <div className="flex items-center gap-2">
-              <select
-                aria-label="page-selector-mobile"
-                className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-                value={selectedModule.layout.desktop.page}
-                onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
-              >
-                {Array.from({ length: pageCount }, (_, pageIndex) => (
-                  <option key={pageIndex} value={pageIndex}>
-                    {t("editor.page", { count: pageIndex + 1 })}
-                  </option>
-                ))}
-              </select>
-              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
-                {t("editor.addPage")}
-              </Button>
-            </div>
-          </div>
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  className={`rounded-full border px-2 py-1 text-[11px] ${
-                    selectedAudienceTeams.length === 0
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                      : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                  }`}
-                  onClick={() =>
+              <div className="flex items-center gap-3 rounded-[24px] border border-[#e8eaf3] bg-[#f8faff] px-4 py-3 dark:border-white/10 dark:bg-[#101114]">
+                <div>
+                  <p className="text-sm font-semibold text-[#172033] dark:text-white">Team Mode</p>
+                  <p className="text-xs text-slate-500">Un module peut cibler plusieurs équipes.</p>
+                </div>
+                <Toggle
+                  checked={teamModeEnabled}
+                  ariaLabel="toggle-team-mode"
+                  onChange={(value) =>
                     setState((prev) => ({
                       ...prev,
                       modules: {
                         ...prev.modules,
-                        [prev.selectedModuleKey]: {
-                          ...prev.modules[prev.selectedModuleKey],
-                          audience: {
-                            ...prev.modules[prev.selectedModuleKey].audience,
-                            mode: "all",
-                            teams: []
-                          }
+                        metadata: {
+                          ...prev.modules.metadata,
+                          data: { ...prev.modules.metadata.data, team_mode: value }
                         }
                       }
                     }))
                   }
-                >
-                  {t("editor.allTeams")}
-                </button>
-                {definedTeams.map((team) => {
-                  const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
-                  return (
-                    <button
-                      key={team}
-                      type="button"
-                      className={`rounded-full border px-2 py-1 text-[11px] ${
-                        selected
-                          ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                          : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                      }`}
-                      onClick={() => toggleTeamForSelectedModule(team)}
-                    >
-                      {team}
-                    </button>
-                  );
-                })}
+                />
               </div>
             </div>
-          ) : null}
-          <ModulePanel
-            state={state}
-            selected={state.selectedModuleKey}
-            onChange={(key, data) =>
-              setState((prev) => ({
-                ...prev,
-                modules: {
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    data: data as ModuleDataMap[typeof key]
-                  }
-                }
-              }))
-            }
-          />
-        </div>
+            <p className="text-xs text-slate-500">{saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}</p>
+          </div>
 
-        <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
-          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.edit")}</p>
-            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="page-selector-desktop"
-                  className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-                  value={selectedModule.layout.desktop.page}
-                  onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
-                >
-                  {Array.from({ length: pageCount }, (_, pageIndex) => (
-                    <option key={pageIndex} value={pageIndex}>
-                      {t("editor.page", { count: pageIndex + 1 })}
-                    </option>
-                  ))}
-                </select>
-                <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
-                  {t("editor.addPage")}
-                </Button>
-              </div>
-            </div>
-            {teamModeEnabled && definedTeams.length > 0 ? (
-              <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    className={`rounded-full border px-2 py-1 text-[11px] ${
-                      selectedAudienceTeams.length === 0
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                        : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                    }`}
-                    onClick={() =>
-                      setState((prev) => ({
-                        ...prev,
-                        modules: {
-                          ...prev.modules,
-                          [prev.selectedModuleKey]: {
-                            ...prev.modules[prev.selectedModuleKey],
-                            audience: {
-                              ...prev.modules[prev.selectedModuleKey].audience,
-                              mode: "all",
-                              teams: []
-                            }
-                          }
-                        }
-                      }))
-                    }
-                  >
-                    {t("editor.allTeams")}
-                  </button>
-                  {definedTeams.map((team) => {
-                    const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+          <div className="flex flex-wrap gap-3">
+            <ActionDropdownButton label={shareScope === "all" ? "Partager" : `Partager · ${shareScope}`} icon={<Share2 size={15} />} onClick={() => setShareOpen(true)} options={scopeOptions(shareScope, setShareScope, "Partager")} />
+            <ActionDropdownButton
+              label={exportScope === "all" ? "PDF" : `PDF · ${exportScope}`}
+              onClick={() => {
+                const query = exportScope !== "all" ? `?team=${encodeURIComponent(exportScope)}` : "";
+                window.location.assign(`/briefings/${briefing.id}/export${query}`);
+              }}
+              options={scopeOptions(exportScope, setExportScope, "Générer le PDF")}
+            />
+          </div>
+        </div>
+      </Card>
+
+      <div className={`grid grid-cols-1 ${visualEditor ? "gap-3 xl:grid-cols-[minmax(0,1.35fr)_300px]" : "gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"}`}>
+        <div className="space-y-4">
+          {!visualEditor ? (
+            <>
+              <Card className="border-[#dde4f1] bg-white/92 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#121212]">
+                <div className="flex gap-2 overflow-x-auto">
+                  {visibleTabs.map((tab) => {
+                    const active = selectedTab === tab;
                     return (
                       <button
-                        key={team}
+                        key={tab}
                         type="button"
-                        className={`rounded-full border px-2 py-1 text-[11px] ${
-                          selected
-                            ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                            : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                        }`}
-                        onClick={() => toggleTeamForSelectedModule(team)}
+                        onClick={() => setSelectedTab(tab)}
+                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${active ? "bg-[#dde6f7] text-[#172033] dark:bg-white/10 dark:text-white" : "bg-transparent text-slate-500 hover:bg-[#f5f7fb] dark:text-slate-300 dark:hover:bg-white/5"}`}
                       >
-                        {team}
+                        {getTabLabel(tab, i18n.language)}
                       </button>
                     );
                   })}
                 </div>
+              </Card>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Editor</p>
+                  <h2 className="mt-1 text-xl font-semibold text-[#172033] dark:text-white">{getTabLabel(selectedTab, i18n.language)}</h2>
+                </div>
+                {renderTabPanel()}
               </div>
-            ) : null}
-            <ModulePanel
-              state={state}
-              selected={state.selectedModuleKey}
-              onChange={(key, data) =>
-                setState((prev) => ({
-                  ...prev,
-                  modules: {
-                    ...prev.modules,
-                    [key]: {
-                      ...prev.modules[key],
-                      data: data as ModuleDataMap[typeof key]
-                    }
-                  }
-                }))
-              }
-            />
-          </div>
+            </>
+          ) : (
+            <Card className="border-[#e6ebf5] bg-[radial-gradient(circle_at_top,_rgba(235,240,250,0.95),_rgba(244,247,252,0.92)_30%,_rgba(238,242,248,0.95)_100%)] p-3 shadow-[0_20px_45px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#101115]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visual mode</p>
+                  <p className="mt-1 text-sm text-slate-500">L’aperçu devient la zone d’édition principale.</p>
+                </div>
+                <p className="text-xs text-slate-500">Clique un bloc pour ajuster ses règles dans la sidebar.</p>
+              </div>
 
-          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-            <MetadataForm
-              core={state.core}
-              metadata={state.modules.metadata.data}
-              onChange={(core, metadata) => {
-                setState((prev) => ({
-                  ...prev,
-                  core,
-                  modules: {
-                    ...prev.modules,
-                    metadata: { ...prev.modules.metadata, data: metadata }
-                  }
-                }));
-              }}
-            />
-          </div>
+              <div className="a4-frame a4-frame--wide w-full space-y-3 rounded-xl border border-slate-200 bg-white p-2 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+                {visibleModulesByPage.map(({ pageIndex, items }) => (
+                  <div key={pageIndex} className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Page {pageIndex + 1}</p>
+                    </div>
+                    <div
+                      ref={(node) => {
+                        canvasRefs.current[pageIndex] = node;
+                      }}
+                      className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-[28px] border border-[#edf1f7] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#0f0f10]"
+                    >
+                      {items.map((key) => {
+                        const module = state.modules[key];
+                        const style = toCanvasStyle(module.layout);
+                        const isActive = hoveredModuleKey === key || selectedTab === key;
+                        const FormComponent = key === "metadata" ? null : moduleRegistry[key].FormComponent;
 
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.editTeams")}</p>
-              <div className="space-y-2">
-                {definedTeams.map((team) => (
-                  <div key={team} className="flex items-center justify-between rounded-lg border border-[#e8eaf3] px-2 py-1.5 text-xs dark:border-white/10">
-                    <span className="font-medium">{team}</span>
-                    <span className="text-slate-500">
-                      {t("editor.taggedModules", {
-                        count: Object.values(state.modules)
-                          .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
-                          .length
+                        return (
+                          <section
+                            key={key}
+                            style={style}
+                            className={`visual-editor-module absolute touch-none overflow-auto rounded-2xl border p-2 shadow-[0_8px_20px_rgba(15,23,42,0.07)] transition dark:bg-[#151515] ${MODULE_TONE_CLASS[key]} ${isActive ? "border-brand-500 ring-2 ring-brand-500/15" : "border-[#edf1f7] dark:border-white/10"}`}
+                            onMouseEnter={() => setHoveredModuleKey(key)}
+                            onMouseLeave={() => setHoveredModuleKey((prev) => (prev === key ? null : prev))}
+                            onClick={() => setSelectedTab(key)}
+                          >
+                            <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">{getTabLabel(key, i18n.language)}</p>
+                            {key === "metadata" ? (
+                              <div className="grid gap-2">
+                                <TextInput placeholder="Event name" value={state.core.title} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, title: event.target.value } }))} />
+                                <DateInput value={state.core.event_date ?? ""} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, event_date: event.target.value || null } }))} />
+                                <TextInput placeholder="Location" value={state.core.location_text} onChange={(event) => setState((prev) => ({ ...prev, core: { ...prev.core, location_text: event.target.value } }))} />
+                                <TextInput placeholder="Main contact" value={state.modules.metadata.data.main_contact_name} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, main_contact_name: event.target.value })} />
+                                <TelephoneInput placeholder="Phone" value={state.modules.metadata.data.main_contact_phone} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, main_contact_phone: event.target.value })} />
+                                <TextAreaInput rows={3} placeholder="Global notes" value={state.modules.metadata.data.global_notes} onChange={(event) => updateModuleData("metadata", { ...state.modules.metadata.data, global_notes: event.target.value })} />
+                              </div>
+                            ) : FormComponent ? (
+                              <FormComponent value={module.data as never} onChange={(value) => updateModuleData(key, value as never)} />
+                            ) : null}
+
+                            {isActive ? (
+                              <>
+                                <button
+                                  type="button"
+                                  aria-label={`move-${key}`}
+                                  className="absolute left-1/2 top-0 z-20 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-slate-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.22)] md:h-4 md:w-4"
+                                  onPointerDown={(event) => startPointerInteraction(event, key, pageIndex, "move")}
+                                />
+                                {RESIZE_HANDLES.map((handle) => (
+                                  <button
+                                    key={handle.key}
+                                    type="button"
+                                    aria-label={`resize-${key}-${handle.key}`}
+                                    className={`absolute z-20 h-3.5 w-3.5 rounded-full border border-white bg-brand-500 shadow-[0_6px_12px_rgba(108,99,255,0.28)] md:h-3 md:w-3 ${handle.className}`}
+                                    style={{ cursor: handle.cursor }}
+                                    onPointerDown={(event) => startPointerInteraction(event, key, pageIndex, "resize", handle.key)}
+                                  />
+                                ))}
+                              </>
+                            ) : null}
+                          </section>
+                        );
                       })}
-                    </span>
+                    </div>
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+        </div>
+
+        <Card className="space-y-4 border-[#dde4f1] bg-white/92 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#121212]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Configuration</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#172033] dark:text-white">Réglages du module</h3>
+          </div>
+
+          <div className="rounded-2xl border border-[#e8eaf3] bg-[#fafbff] p-4 dark:border-white/10 dark:bg-[#101114]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Module settings</p>
+            {selectedConfigModule && selectedConfigModuleKey ? (
+              <div className="mt-4 space-y-4">
+                <div>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Team</p>
+                  {!teamModeEnabled || definedTeams.length === 0 ? (
+                    <p className="mt-2 text-sm text-slate-500">Active Team Mode puis ajoute des équipes pour cibler ce module.</p>
+                  ) : (
+                    <div className="mt-2">
+                      <MultiSelect
+                        label="Visible pour"
+                        options={definedTeams}
+                        value={selectedConfigModule.audience.teams}
+                        onChange={updateAudienceTeams}
+                        emptyText="Toutes les équipes"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">General est toujours visible. Active un module pour régler sa visibilité d’équipe.</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-4 dark:border-white/10 dark:bg-[#151515]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Teams</p>
+              <p className="mt-1 text-sm text-slate-500">Liste de référence pour le multiselect des modules.</p>
             </div>
-          ) : null}
-        </div>
 
-        <div className="hidden rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:block">
-          <ModuleList
-            state={state}
-            selected={state.selectedModuleKey}
-            onSelect={(key) => {
-              setState((prev) => ({ ...prev, selectedModuleKey: key }));
-              setMobilePanel("edit");
-            }}
-            onToggle={(key, enabled) =>
-              setState((prev) => ({
-                ...prev,
-                modules: normalizeLayouts({
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    enabled,
-                    metadata: { ...prev.modules[key].metadata, enabled }
+            <div className="mt-4 flex items-center gap-2">
+              <Input
+                placeholder="Add a team"
+                value={teamDraft}
+                onChange={(event) => setTeamDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addTeam();
                   }
-                })
-              }))
-            }
-          />
-        </div>
+                }}
+              />
+              <Button variant="secondary" className="px-3" onClick={addTeam}>
+                Ajouter
+              </Button>
+            </div>
 
-        <div className="flex items-center gap-2">
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <select
-              className="h-9 rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-              value={selectedPdfTeam}
-              onChange={(event) => setSelectedPdfTeam(event.target.value)}
-            >
-              <option value="all">{t("editor.pdfAllModules")}</option>
-              {definedTeams.map((team) => (
-                <option key={team} value={team}>
-                  PDF: {team}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button variant="secondary" onClick={() => void handlePdf()} disabled={pdfButtonState === "loading"}>
-            {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
-            {pdfButtonState === "ready" ? <Check size={14} /> : null}
-            {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.ready")}
-          </Button>
-          <Button variant="secondary" onClick={() => setShareOpen(true)}>
-            <Share2 size={14} />
-            {t("editor.share")}
-          </Button>
-          <span className="ml-auto text-xs text-slate-500">
-            {saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}
-          </span>
-        </div>
-      </Card>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {definedTeams.length === 0 ? (
+                <p className="text-sm text-slate-500">No team yet.</p>
+              ) : (
+                definedTeams.map((team) => (
+                  <button key={team} type="button" className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-900/20 dark:text-brand-300" onClick={() => removeTeam(team)}>
+                    {team} x
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-4 dark:border-white/10 dark:bg-[#151515]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Module library</p>
+            <div className="mt-4 space-y-2">
+              <Input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder={i18n.language === "fr" ? "Rechercher un module..." : "Search module..."} />
+              {filteredLibraryEntries.map((key) => {
+                const enabled = state.modules[key].enabled;
+                const selected = selectedTab === key;
+
+                return (
+                  <div
+                    key={key}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => enabled && setSelectedTab(key)}
+                    onKeyDown={(event) => {
+                      if ((event.key === "Enter" || event.key === " ") && enabled) {
+                        event.preventDefault();
+                        setSelectedTab(key);
+                      }
+                    }}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 transition ${selected ? "border-brand-500 bg-brand-500/10" : enabled ? "border-brand-500/30 bg-brand-500/5" : "border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#101010]"}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#172033] dark:text-white">{getTabLabel(key, i18n.language)}</p>
+                      <p className="truncate text-xs text-slate-500">{moduleRegistry[key].description[i18n.language === "fr" ? "fr" : "en"]}</p>
+                    </div>
+                    <div onClick={(event) => event.stopPropagation()}>
+                      <Toggle checked={enabled} onChange={(value) => updateModuleEnabled(key, value)} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      </div>
+
       <SharePanel
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         briefingId={briefing.id}
         teams={teamModeEnabled ? definedTeams : []}
-        selectedTeam={teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null}
-        onExportPdf={() => {
-          window.location.assign(`/briefings/${briefing.id}/export`);
+        selectedTeam={teamModeEnabled && shareScope !== "all" ? shareScope : null}
+        onExportPdf={(team) => {
+          const query = team ? `?team=${encodeURIComponent(team)}` : "";
+          window.location.assign(`/briefings/${briefing.id}/export${query}`);
         }}
       />
     </div>
