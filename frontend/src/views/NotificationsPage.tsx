@@ -7,6 +7,7 @@ import { getBriefingsWithFallback, toApiMessage } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
 
 function toDateValue(value: string | null) {
@@ -107,13 +108,14 @@ export default function NotificationsPage() {
       </Card>
       <div className="stack-section">
         {notifications.length === 0 ? (
-          <Card className="empty-state">
-            <div>
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand-500/12 text-brand-600 dark:text-brand-300">
-                <BellRing size={22} />
-              </div>
-              <p className="font-semibold text-lg">{t("notificationsPage.empty")}</p>
-            </div>
+          <Card>
+            <EmptyState
+              icon={<BellRing size={22} />}
+              title={t("notificationsPage.empty")}
+              description="Les prochaines échéances des briefings apparaîtront ici dès qu’un événement aura une date."
+              ctaLabel="Voir les briefings"
+              onCta={() => (window.location.href = "/briefings")}
+            />
           </Card>
         ) : null}
         {notifications.map((item) => (

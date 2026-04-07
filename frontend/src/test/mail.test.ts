@@ -36,10 +36,12 @@ describe("mail service", () => {
     expect(fetchMock.mock.calls[1][1].body).toContain("Compte BriefOPS activ");
   });
 
-  it("does not send app emails for free plan", async () => {
+  it("does not send app emails when mail config is missing", async () => {
+    delete process.env.RESEND_API_KEY;
+    delete process.env.MAIL_FROM;
     const { sendCheckoutConfirmationEmails } = await import("@/lib/mail");
 
-    await sendCheckoutConfirmationEmails("client@example.com", "free", {
+    await sendCheckoutConfirmationEmails("client@example.com", "starter", {
       id: "cs_123"
     } as never);
 

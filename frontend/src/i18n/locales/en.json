@@ -1,0 +1,154 @@
+{
+  "app": {
+    "name": "BriefOps",
+    "save": "Save",
+    "loading": "Loading...",
+    "downloadPdf": "Download PDF",
+    "soon": "Coming soon"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "submitLogin": "Sign in",
+    "submitRegister": "Create account",
+    "continueRegister": "Continue",
+    "forgotPassword": "Forgot password?",
+    "offersRedirect": "Account found. Choose a plan to finish activation.",
+    "accountMissing": "Account not found. Switch to sign up to continue.",
+    "userNotFound": "User not found.",
+    "invalidPassword": "Incorrect password.",
+    "emailNotConfirmed": "Email not confirmed. Check your inbox before signing in.",
+    "logout": "Logout"
+  },
+  "nav": {
+    "briefings": "Briefings",
+    "modules": "Modules",
+    "account": "Account",
+    "billing": "Billing",
+    "settings": "Settings",
+    "onboarding": "Onboarding",
+    "plan": "Plan"
+  },
+  "onboarding": {
+    "title": "Welcome",
+    "orgName": "Organization name",
+    "submit": "Continue",
+    "fallback": "Onboarding endpoint is not available yet."
+  },
+  "documents": {
+    "kicker": "Exports & Share",
+    "title": "Documents",
+    "subtitle": "Quickly find generated PDFs and active public links for field teams.",
+    "pdfTab": "PDFs",
+    "linksTab": "Links",
+    "pdfSearchPlaceholder": "Search a PDF or briefing",
+    "linkSearchPlaceholder": "Search a shared link",
+    "pdfCount": "{{count}} PDF(s)",
+    "linkCount": "{{count}} link(s)",
+    "loadingPdfs": "Loading PDFs...",
+    "loadingLinks": "Loading links...",
+    "emptyPdfTitle": "No PDF yet",
+    "emptyPdfHint": "Generate an export from a briefing to find it here.",
+    "emptyLinkTitle": "No shared link yet",
+    "emptyLinkHint": "Create a public link from a generated PDF to find it here.",
+    "copySuccess": "Link copied",
+    "copyError": "Unable to copy",
+    "noExpiry": "No expiry",
+    "open": "Open",
+    "copy": "Copy"
+  },
+  "modulesPage": {
+    "kicker": "Workspace Building Blocks",
+    "title": "Modules",
+    "subtitle": "Enable the building blocks your teams need and prepare the base for a future marketplace without adding workflow weight.",
+    "searchPlaceholder": "Search a module",
+    "marketplace": "Marketplace",
+    "marketplaceSoon": "Marketplace soon",
+    "active": "Active",
+    "available": "Available",
+    "soon": "Soon",
+    "soonHint": "Extensions and templates are coming.",
+    "emptyTitle": "No module found",
+    "emptyHint": "Try another keyword.",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "notificationsPage": {
+    "kicker": "Operational Alerts",
+    "title": "Notifications",
+    "subtitle": "A clear view of upcoming events, with readable priorities and easy-to-dismiss alerts.",
+    "searchPlaceholder": "Search an alert",
+    "empty": "No notification for now.",
+    "locationFallback": "Location not set",
+    "priority": "Priority {{level}}",
+    "priorityHigh": "high",
+    "priorityMedium": "medium",
+    "priorityLow": "low",
+    "todayOrPast": "Today / past",
+    "inDays": "In {{count}} day(s)",
+    "loading": "Loading notifications..."
+  },
+  "routeError": {
+    "fallback": "An unexpected error occurred.",
+    "eyebrow": "Application error",
+    "title": "Unable to display this page",
+    "route": "Route: {{path}}",
+    "back": "Back",
+    "dashboard": "Go to dashboard",
+    "reload": "Reload"
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Manage team members linked to the `staff` table.",
+    "addTitle": "Add a member",
+    "selectBriefing": "Select a briefing",
+    "addButton": "Add staff",
+    "adding": "Adding...",
+    "listTitle": "Staff list",
+    "empty": "No staff member yet.",
+    "noPhone": "No phone",
+    "noEmail": "No email",
+    "messages": {
+      "added": "Staff added",
+      "required": "Briefing and name are required"
+    },
+    "placeholders": {
+      "fullName": "Full name",
+      "role": "Role",
+      "phone": "Phone",
+      "email": "Email",
+      "notes": "Notes"
+    }
+  },
+  "billing": {
+    "title": "Billing",
+    "freeLimit": "Free plan: 3 PDF exports per month",
+    "upgrade": "Upgrade to Pro"
+  },
+  "settings": {
+    "title": "Settings",
+    "languageTitle": "UI language",
+    "languageHint": "Choose the language used in the application.",
+    "appearanceTitle": "Appearance",
+    "appearanceHint": "Set light/dark mode from settings.",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "preferencesTitle": "Regional preferences",
+    "preferencesHint": "Time format, timezone and date format for display.",
+    "hourFormat": "Time format",
+    "timezone": "Timezone",
+    "dateFormat": "Date format"
+  },
+  "editor": {
+    "saved": "Saved",
+    "saveError": "Save failed",
+    "saving": "Saving...",
+    "savedShort": "Saved",
+    "savedAt": "Saved at {{time}}",
+    "pdfFailed": "PDF generation failed.",
+    "briefingLoading": "Loading briefing...",
+    "downloadReady": "Download ready PDF"
+  }
+}

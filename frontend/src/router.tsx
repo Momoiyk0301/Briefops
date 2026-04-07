@@ -9,10 +9,12 @@ import { getPostAuthRedirect } from "@/lib/authRedirect";
 import AccountPage from "@/views/AccountPage";
 import AuthConfirmedPage from "@/views/AuthConfirmedPage";
 import BriefingDetailPage from "@/views/BriefingDetailPage";
+import BriefingExportPage from "@/views/BriefingExportPage";
 import BriefingsPage from "@/views/BriefingsPage";
 import CheckEmailPage from "@/views/CheckEmailPage";
 import DocumentsPage from "@/views/DocumentsPage";
 import ForgotPasswordPage from "@/views/ForgotPasswordPage";
+import HelpPage from "@/views/HelpPage";
 import LoginPage from "@/views/LoginPage";
 import ModulesPage from "@/views/ModulesPage";
 import NotificationsPage from "@/views/NotificationsPage";
@@ -102,6 +104,7 @@ export const router = createBrowserRouter([
           { path: "/onboarding", element: <OnboardingPage /> },
           { path: "/briefings", element: <BriefingsPage /> },
           { path: "/briefings/:id", element: <BriefingDetailPage /> },
+          { path: "/briefings/:id/export", element: <BriefingExportPage /> },
           { path: "/documents", element: <DocumentsPage /> },
           { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },
@@ -109,6 +112,7 @@ export const router = createBrowserRouter([
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/help", element: <HelpPage /> },
           { path: "/settings/billing", element: <Navigate to="/account" replace /> },
           {
             element: <RequireAdmin />,

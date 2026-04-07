@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     const { data: existingMembership, error: existingMembershipError } = await client
       .from("memberships")
-      .select("id,org_id")
+      .select("id,workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
           team_size: payload.team_size ?? null,
           vat_number: payload.vat_number ?? null
         })
-        .eq("id", existingMembership.org_id)
+        .eq("id", existingMembership.workspace_id)
         .select("id,name,country,team_size,vat_number")
         .single();
 
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     if (organizationError) throw organizationError;
 
     const { error: membershipError } = await admin.from("memberships").insert({
-      org_id: organization.id,
+      workspace_id: organization.id,
       user_id: userId,
       role: "owner"
     });

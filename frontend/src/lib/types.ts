@@ -1,13 +1,35 @@
 import { ReactNode } from "react";
 import { ZodType, ZodTypeDef } from "zod";
 
-export type UserPlan = "free" | "starter" | "plus" | "pro";
+export type UserPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
 export type Locale = "fr" | "en";
 export type MembershipRole = "owner" | "admin" | "member";
 
 export type AppUser = {
   id: string;
   email: string;
+  full_name?: string | null;
+  avatar_path?: string | null;
+  initials?: string;
+};
+
+export type WorkspaceSummary = {
+  id: string;
+  name: string;
+  storage_used_bytes?: number | null;
+  briefings_count?: number | null;
+  pdf_exports_month?: number | null;
+  pdf_exports_reset_at?: string | null;
+  logo_path?: string | null;
+  initials?: string | null;
+  due_at?: string | null;
+  plan?: UserPlan | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_price_id?: string | null;
+  subscription_name?: string | null;
+  subscription_status?: string | null;
+  current_period_end?: string | null;
 };
 
 export type MeResponse = {
@@ -22,8 +44,8 @@ export type MeResponse = {
     pdf_exports_limit: number | null;
     pdf_exports_remaining: number | null;
   };
-  org: { id: string; name: string } | null;
-  workspace?: { id: string; name: string } | null;
+  org: WorkspaceSummary | null;
+  workspace?: WorkspaceSummary | null;
   has_membership?: boolean;
   onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
@@ -38,9 +60,9 @@ export type Product = {
   slug: string;
   description: string | null;
   stripe_price_id: string | null;
-  price_amount: number;
-  price_currency: string;
-  billing_interval: string;
+  price_amount: number | null;
+  price_currency: string | null;
+  billing_interval: string | null;
   features: string[];
   is_highlighted: boolean;
   sort_order: number;
@@ -48,7 +70,7 @@ export type Product = {
 
 export type StaffMember = {
   id: string;
-  org_id: string;
+  workspace_id: string;
   briefing_id: string;
   full_name: string;
   role: string;
@@ -61,8 +83,10 @@ export type StaffMember = {
 
 export type Briefing = {
   id: string;
-  org_id: string;
+  workspace_id: string;
   title: string;
+  status: "draft" | "ready" | "archived";
+  shared: boolean;
   event_date: string | null;
   location_text: string | null;
   pdf_path?: string | null;
@@ -71,12 +95,33 @@ export type Briefing = {
   updated_at: string;
 };
 
+export type BriefingExport = {
+  id: string;
+  workspace_id: string;
+  briefing_id: string;
+  version: number;
+  file_path: string;
+  status: "creating" | "generating" | "ready" | "failed";
+  error_message?: string | null;
+  created_at: string;
+  created_by: string;
+};
+
+export type BriefingExportWithBriefing = BriefingExport & {
+  briefing_title: string;
+  briefing_event_date: string | null;
+  briefing_location_text: string | null;
+};
+
 export type PublicLinkStatus = "active" | "expired" | "revoked";
+export type PublicLinkType = "staff" | "audience";
 
 export type PublicLink = {
   id: string;
   briefing_id: string;
   resource_type: string;
+  link_type: PublicLinkType;
+  audience_tag?: string | null;
   team?: string | null;
   token: string;
   created_by: string;
@@ -105,13 +150,15 @@ export type BriefingModuleRow = {
 
 export type RegistryModule = {
   id: string;
-  org_id: string;
   name: string;
   type: ModuleKey;
   version: number;
   icon: string;
   category: string;
   enabled: boolean;
+  global_enabled: boolean;
+  workspace_enabled: boolean;
+  workspace_module_id: string | null;
   default_layout: unknown;
   default_data: unknown;
   created_at: string;

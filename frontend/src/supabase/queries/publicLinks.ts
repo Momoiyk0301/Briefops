@@ -2,8 +2,9 @@ import { randomBytes } from "crypto";
 
 import { SupabaseClient } from "@supabase/supabase-js";
 
+import { PublicLinkType } from "@/lib/types";
+
 export const PUBLIC_LINK_INVALID_MESSAGE = "This link has expired. Please ask the owner for a new link.";
-const TEAM_TOKEN_PREFIX = "tm_";
 
 function computeLinkStatus(input: { expires_at: string | null; revoked_at: string | null }) {
   if (input.revoked_at) return "revoked" as const;
@@ -11,9 +12,9 @@ function computeLinkStatus(input: { expires_at: string | null; revoked_at: strin
   return "active" as const;
 }
 
-function normalizeTeamKey(team?: string | null) {
-  if (!team) return null;
-  const normalized = team
+function normalizeAudienceTag(tag?: string | null) {
+  if (!tag) return null;
+  const normalized = tag
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -21,51 +22,41 @@ function normalizeTeamKey(team?: string | null) {
   return normalized || null;
 }
 
-function extractTeamFromToken(token: string) {
-  if (!token.startsWith(TEAM_TOKEN_PREFIX)) return null;
-  const separator = token.lastIndexOf("_");
-  if (separator <= TEAM_TOKEN_PREFIX.length) return null;
-  const team = token.slice(TEAM_TOKEN_PREFIX.length, separator);
-  return team || null;
+function createToken() {
+  return randomBytes(24).toString("base64url");
 }
 
-function createToken(team?: string | null) {
-  const normalizedTeam = normalizeTeamKey(team);
-  const secureToken = randomBytes(24).toString("base64url");
-  if (!normalizedTeam) return secureToken;
-  return `${TEAM_TOKEN_PREFIX}${normalizedTeam}_${secureToken}`;
+const SELECT_PUBLIC_LINK_FIELDS =
+  "id, briefing_id, resource_type, link_type, audience_tag, token, created_by, expires_at, revoked_at, created_at";
+
+function withComputedFields<T extends { audience_tag?: string | null; expires_at: string | null; revoked_at: string | null }>(link: T) {
+  return {
+    ...link,
+    team: link.audience_tag ?? null,
+    status: computeLinkStatus(link)
+  };
 }
 
 export async function listPublicLinks(client: SupabaseClient, briefingId: string) {
   const { data, error } = await client
     .from("public_links")
-    .select("id, briefing_id, token, created_by, expires_at, revoked_at, created_at")
+    .select(SELECT_PUBLIC_LINK_FIELDS)
     .eq("briefing_id", briefingId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map((link) => ({
-    resource_type: "pdf",
-    team: extractTeamFromToken(link.token),
-    ...link,
-    status: computeLinkStatus(link)
-  }));
+  return (data ?? []).map((link) => withComputedFields(link));
 }
 
 export async function listPublicLinksForCreator(client: SupabaseClient, createdBy: string) {
   const { data, error } = await client
     .from("public_links")
-    .select("id, briefing_id, token, created_by, expires_at, revoked_at, created_at")
+    .select(SELECT_PUBLIC_LINK_FIELDS)
     .eq("created_by", createdBy)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map((link) => ({
-    resource_type: "pdf",
-    team: extractTeamFromToken(link.token),
-    ...link,
-    status: computeLinkStatus(link)
-  }));
+  return (data ?? []).map((link) => withComputedFields(link));
 }
 
 export async function createPublicLink(
@@ -73,9 +64,11 @@ export async function createPublicLink(
   briefingId: string,
   createdBy: string,
   expiresAt?: string | null,
-  team?: string | null
+  linkType: PublicLinkType = "staff",
+  audienceTag?: string | null
 ) {
-  const token = createToken(team);
+  const normalizedAudienceTag = normalizeAudienceTag(audienceTag);
+  const token = createToken();
 
   const { data, error } = await client
     .from("public_links")
@@ -83,66 +76,44 @@ export async function createPublicLink(
       briefing_id: briefingId,
       created_by: createdBy,
       token,
+      link_type: linkType,
+      audience_tag: normalizedAudienceTag,
       expires_at: expiresAt ?? null
     })
-    .select("id, briefing_id, token, created_by, expires_at, revoked_at, created_at")
+    .select(SELECT_PUBLIC_LINK_FIELDS)
     .single();
 
   if (error) throw error;
-  return {
-    resource_type: "pdf",
-    team: extractTeamFromToken(data.token),
-    ...data,
-    status: computeLinkStatus(data)
-  };
+  return withComputedFields(data);
 }
 
-export async function revokePublicLink(
-  client: SupabaseClient,
-  linkId: string,
-  createdBy: string
-) {
+export async function revokePublicLink(client: SupabaseClient, linkId: string, createdBy: string) {
   const { data, error } = await client
     .from("public_links")
     .update({ revoked_at: new Date().toISOString() })
     .eq("id", linkId)
     .eq("created_by", createdBy)
     .is("revoked_at", null)
-    .select("id, briefing_id, token, created_by, expires_at, revoked_at, created_at")
+    .select(SELECT_PUBLIC_LINK_FIELDS)
     .maybeSingle();
 
   if (error) throw error;
-  return data
-    ? {
-        resource_type: "pdf",
-        team: extractTeamFromToken(data.token),
-        ...data,
-        status: computeLinkStatus(data)
-      }
-    : null;
+  return data ? withComputedFields(data) : null;
 }
 
-export async function getBriefingByPublicToken(client: SupabaseClient, token: string) {
-  const { data: link, error: linkError } = await client
-    .from("public_links")
-    .select("briefing_id")
-    .eq("token", token)
-    .single();
-
-  if (linkError) throw linkError;
-
+async function getPublicBriefingPayload(client: SupabaseClient, briefingId: string) {
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("id, org_id, title, event_date, location_text, created_at, updated_at")
-    .eq("id", link.briefing_id)
+    .select("id, title, status, shared, event_date, location_text, created_by, created_at, updated_at")
+    .eq("id", briefingId)
     .single();
 
   if (briefingError) throw briefingError;
 
   const { data: modules, error: modulesError } = await client
     .from("briefing_modules")
-    .select("id, module_key, enabled, data_json, created_at, updated_at")
-    .eq("briefing_id", link.briefing_id)
+    .select("id, briefing_id, module_id, module_key, enabled, data_json, created_at, updated_at")
+    .eq("briefing_id", briefingId)
     .order("created_at", { ascending: true });
 
   if (modulesError) throw modulesError;
@@ -150,35 +121,33 @@ export async function getBriefingByPublicToken(client: SupabaseClient, token: st
   return { briefing, modules };
 }
 
-export async function getActivePublicLinkWithPdfPath(client: SupabaseClient, token: string) {
+async function getActivePublicLink(client: SupabaseClient, token: string) {
   const { data: link, error: linkError } = await client
     .from("public_links")
-    .select("id, briefing_id, token, expires_at, revoked_at")
+    .select(SELECT_PUBLIC_LINK_FIELDS)
     .eq("token", token)
     .maybeSingle();
+
   if (linkError) throw linkError;
   if (!link) return null;
+  const withStatus = withComputedFields(link);
+  if (withStatus.status !== "active") return null;
+  return withStatus;
+}
 
-  const status = computeLinkStatus(link);
-  if (status !== "active") return null;
+export async function resolveStaffBriefingByToken(client: SupabaseClient, token: string) {
+  const link = await getActivePublicLink(client, token);
+  if (!link || link.link_type !== "staff") return null;
+  const payload = await getPublicBriefingPayload(client, link.briefing_id);
+  return { ...payload, link, audienceTag: null as string | null, resolvedView: "staff" as const };
+}
 
-  const team = extractTeamFromToken(link.token);
-  const { data: briefing, error: briefingError } = await client
-    .from("briefings")
-    .select("id, created_by, pdf_path")
-    .eq("id", link.briefing_id)
-    .maybeSingle();
-  if (briefingError) throw briefingError;
-  if (!briefing) return null;
-
-  const resolvedPdfPath = team ? `${briefing.created_by}/${link.briefing_id}/team-${team}.pdf` : briefing.pdf_path ?? null;
-  if (!resolvedPdfPath) return null;
-
-  return {
-    linkId: link.id,
-    briefingId: briefing.id,
-    team,
-    pdfPath: resolvedPdfPath,
-    expiresAt: link.expires_at
-  };
+export async function resolveAudienceBriefingByToken(client: SupabaseClient, briefingId: string, tag: string, token: string) {
+  const normalizedTag = normalizeAudienceTag(tag);
+  const link = await getActivePublicLink(client, token);
+  if (!link || link.link_type !== "audience") return null;
+  if (link.briefing_id !== briefingId) return null;
+  if ((link.audience_tag ?? null) !== normalizedTag) return null;
+  const payload = await getPublicBriefingPayload(client, briefingId);
+  return { ...payload, link, audienceTag: normalizedTag, resolvedView: "audience" as const };
 }

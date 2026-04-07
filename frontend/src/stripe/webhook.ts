@@ -1,24 +1,20 @@
 import Stripe from "stripe";
 
+import { getInitials } from "@/lib/branding";
 import { sendCheckoutConfirmationEmails } from "@/lib/mail";
 import { createServiceRoleClient } from "@/supabase/server";
 import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
-type ProfilePatch = {
-  plan: "free" | "starter" | "plus" | "pro";
+type BillingPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
+
+type WorkspacePatch = {
+  plan?: BillingPlan;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_price_id?: string | null;
   subscription_name?: string | null;
   subscription_status?: string | null;
   current_period_end?: string | null;
-};
-
-type MembershipPatch = {
-  role: "owner" | "member";
-  plan_name?: string | null;
-  stripe_price_id?: string | null;
-  stripe_product_id?: string | null;
 };
 
 function isKnownMissingTableError(error: unknown) {
@@ -28,38 +24,31 @@ function isKnownMissingTableError(error: unknown) {
   return code === "42P01" || /relation .* does not exist/i.test(message);
 }
 
-function toPatchWithFallback(patch: ProfilePatch): ProfilePatch {
-  return {
-    plan: patch.plan,
-    stripe_customer_id: patch.stripe_customer_id ?? null
-  };
+function normalizeWebhookPlan(value: string | null | undefined): BillingPlan {
+  const plan = String(value ?? "").trim().toLowerCase();
+  if (plan === "pro" || plan === "guest" || plan === "funder" || plan === "enterprise") return plan;
+  return "starter";
 }
 
-function shouldFallbackToLegacyColumns(error: unknown) {
-  if (!error || typeof error !== "object") return false;
-  const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
-  const message = "message" in error ? String((error as { message?: string }).message ?? "") : "";
-  return code === "42703" || /column .* does not exist/i.test(message);
-}
-
-function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "starter" | "plus" | "pro" {
+function resolvePlanFromSubscription(subscription: Stripe.Subscription): BillingPlan {
   for (const item of subscription.items.data) {
     const priceId = item.price?.id;
     if (!priceId) continue;
     const plan = getPlanFromStripePriceId(priceId);
     if (plan) return plan;
   }
-  return "free";
+  return "pro";
 }
 
-function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro") {
+function toSubscriptionName(plan: BillingPlan) {
+  if (plan === "enterprise") return "Enterprise";
+  if (plan === "funder") return "Funder";
+  if (plan === "guest") return "Guest";
   if (plan === "pro") return "Pro";
-  if (plan === "plus") return "Plus";
-  if (plan === "starter") return "Starter";
-  return "Free";
+  return "Starter";
 }
 
-function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch {
+function buildSubscriptionPatch(subscription: Stripe.Subscription): WorkspacePatch {
   const priceId = subscription.items.data[0]?.price?.id ?? null;
   const plan = resolvePlanFromSubscription(subscription);
   const periodEndUnix = (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end;
@@ -74,12 +63,7 @@ function buildSubscriptionPatch(subscription: Stripe.Subscription): ProfilePatch
   };
 }
 
-function resolveStripeProductIdFromSubscription(subscription: Stripe.Subscription): string | null {
-  const product = subscription.items.data[0]?.price?.product;
-  return typeof product === "string" ? product : null;
-}
-
-function formatOrgNameFromEmail(email: string | null | undefined) {
+function formatWorkspaceName(email: string | null | undefined) {
   if (!email) return "BriefOPS Workspace";
   const local = email.split("@")[0]?.trim();
   if (!local) return "BriefOPS Workspace";
@@ -87,231 +71,165 @@ function formatOrgNameFromEmail(email: string | null | undefined) {
   return cleaned ? `${cleaned} workspace` : "BriefOPS Workspace";
 }
 
-async function ensureMembershipForProfile(
-  userId: string,
-  email?: string | null,
-  orgName?: string | null,
-  membershipPatch?: MembershipPatch,
-  workspaceId?: string | null
-) {
+async function updateWorkspaceDueAt(workspaceId: string | null | undefined) {
+  if (!workspaceId) return;
   const admin = createServiceRoleClient();
-  const { data: membership, error: membershipError } = await admin
-    .from("memberships")
-    .select("id,org_id")
-    .eq("user_id", userId)
+  const dueAt = new Date();
+  dueAt.setMonth(dueAt.getMonth() + 1);
+  const { error } = await admin.from("workspaces").update({ due_at: dueAt.toISOString() }).eq("id", workspaceId);
+  if (error) throw error;
+}
+
+async function upsertProfileIdentity(userId: string, email?: string | null) {
+  const admin = createServiceRoleClient();
+  const normalizedEmail = email?.toLowerCase().trim() || undefined;
+  if (!normalizedEmail) return;
+  const { error } = await admin.from("profiles").upsert(
+    {
+      id: userId,
+      email: normalizedEmail
+    },
+    { onConflict: "id" }
+  );
+
+  if (error) throw error;
+}
+
+async function findUserByEmail(email: string) {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id,email")
+    .eq("email", email.toLowerCase().trim())
     .maybeSingle();
 
+  if (error) throw error;
+  return data;
+}
+
+async function ensureWorkspaceForUser(
+  userId: string,
+  email?: string | null,
+  workspaceName?: string | null,
+  preferredWorkspaceId?: string | null
+) {
+  const admin = createServiceRoleClient();
+
+  const { data: membership, error: membershipError } = await admin
+    .from("memberships")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .maybeSingle();
   if (membershipError) throw membershipError;
 
-  let orgId: string | null = membership?.org_id ?? null;
-  if (workspaceId) {
-    const { data: existingWorkspace, error: existingWorkspaceError } = await admin
+  let workspaceId = membership?.workspace_id ?? null;
+
+  if (preferredWorkspaceId) {
+    const { data: preferredWorkspace, error: preferredWorkspaceError } = await admin
       .from("workspaces")
       .select("id")
-      .eq("id", workspaceId)
+      .eq("id", preferredWorkspaceId)
       .maybeSingle();
-    if (existingWorkspaceError) throw existingWorkspaceError;
-    orgId = existingWorkspace?.id ?? null;
+    if (preferredWorkspaceError) throw preferredWorkspaceError;
+    if (preferredWorkspace?.id) workspaceId = preferredWorkspace.id;
   }
 
-  if (!orgId) {
-    const { data: org, error: orgError } = await admin
+  if (!workspaceId) {
+    const { data: ownerWorkspace, error: ownerWorkspaceError } = await admin
       .from("workspaces")
       .select("id")
       .eq("owner_id", userId)
       .maybeSingle();
-
-    if (orgError) throw orgError;
-    if (org?.id) {
-      orgId = org.id;
-    }
+    if (ownerWorkspaceError) throw ownerWorkspaceError;
+    workspaceId = ownerWorkspace?.id ?? null;
   }
 
-  if (!orgId) {
-    const normalizedOrgName = typeof orgName === "string" ? orgName.trim() : "";
-    const { data: createdOrg, error: createOrgError } = await admin
+  if (!workspaceId) {
+    const name = workspaceName?.trim() || formatWorkspaceName(email);
+    const { data: createdWorkspace, error: createWorkspaceError } = await admin
       .from("workspaces")
       .insert({
         owner_id: userId,
-        name: normalizedOrgName || formatOrgNameFromEmail(email)
+        name,
+        initials: getInitials(name, "WS")
       })
       .select("id")
       .single();
-    if (createOrgError) throw createOrgError;
-    orgId = createdOrg.id;
+    if (createWorkspaceError) throw createWorkspaceError;
+    workspaceId = createdWorkspace.id;
   }
 
-  const payload = {
-    org_id: orgId,
-    user_id: userId,
-    role: membershipPatch?.role ?? "owner",
-    plan_name: membershipPatch?.plan_name ?? null,
-    stripe_price_id: membershipPatch?.stripe_price_id ?? null,
-    stripe_product_id: membershipPatch?.stripe_product_id ?? null
-  };
-  const { error: insertMembershipError } = await admin.from("memberships").upsert(payload, { onConflict: "user_id" });
-  if (insertMembershipError) {
-    if (!shouldFallbackToLegacyColumns(insertMembershipError)) throw insertMembershipError;
-    const { error: fallbackMembershipError } = await admin.from("memberships").upsert(
-      {
-        org_id: orgId,
-        user_id: userId,
-        role: membershipPatch?.role ?? "owner"
-      },
-      { onConflict: "user_id" }
-    );
-    if (fallbackMembershipError) throw fallbackMembershipError;
-  }
+  const { error: membershipUpsertError } = await admin.from("memberships").upsert(
+    {
+      workspace_id: workspaceId,
+      user_id: userId,
+      role: "owner"
+    },
+    { onConflict: "user_id" }
+  );
+  if (membershipUpsertError) throw membershipUpsertError;
+
+  return workspaceId;
 }
 
-async function upsertProfileByUserId(
-  userId: string,
-  patch: ProfilePatch,
-  email?: string | null
-): Promise<{ id?: string; email?: string } | null> {
+async function updateWorkspaceById(workspaceId: string, patch: WorkspacePatch, refreshDueAt = false) {
   const admin = createServiceRoleClient();
-  const normalizedEmail = email?.toLowerCase().trim() || undefined;
-
-  const { data, error } = await admin
-    .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        email: normalizedEmail,
-        ...patch
-      },
-      { onConflict: "id" }
-    )
-    .select("id,email")
-    .maybeSingle();
-
-  if (!error) return data;
-  if (!shouldFallbackToLegacyColumns(error)) throw error;
-
-  const { data: fallbackData, error: fallbackError } = await admin
-    .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        email: normalizedEmail,
-        ...toPatchWithFallback(patch)
-      },
-      { onConflict: "id" }
-    )
-    .select("id,email")
-    .maybeSingle();
-
-  if (fallbackError) throw fallbackError;
-  return fallbackData;
-}
-
-async function updatePlanByEmail(
-  email: string,
-  patch: ProfilePatch,
-  orgName?: string | null,
-  membershipPatch?: MembershipPatch,
-  workspaceId?: string | null
-) {
-  const admin = createServiceRoleClient();
-
-  const normalizedEmail = email.toLowerCase().trim();
-  const { data, error } = await admin
-    .from("profiles")
-    .update(patch)
-    .eq("email", normalizedEmail)
-    .select("id,email")
-    .maybeSingle();
-  let fallbackData: { id?: string; email?: string } | null = null;
-  if (error) {
-    if (!shouldFallbackToLegacyColumns(error)) {
-      throw error;
-    }
-
-    const fallback = toPatchWithFallback(patch);
-    const { data: resolvedFallbackData, error: fallbackError } = await admin
-      .from("profiles")
-      .update(fallback)
-      .eq("email", normalizedEmail)
-      .select("id,email")
-      .maybeSingle();
-    if (fallbackError) throw fallbackError;
-    fallbackData = resolvedFallbackData;
-  }
-
-  const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
-  if (resolvedUserId) {
-    await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? normalizedEmail, orgName, membershipPatch, workspaceId);
+  const { error } = await admin.from("workspaces").update(patch).eq("id", workspaceId);
+  if (error) throw error;
+  if (refreshDueAt) {
+    await updateWorkspaceDueAt(workspaceId);
   }
 }
 
-async function updatePlanByCustomerId(
-  customerId: string,
-  patch: ProfilePatch,
-  orgName?: string | null,
-  membershipPatch?: MembershipPatch,
-  workspaceId?: string | null
-): Promise<boolean> {
+async function updateWorkspaceByCustomerId(customerId: string, patch: WorkspacePatch, refreshDueAt = false): Promise<boolean> {
   const admin = createServiceRoleClient();
   const { data, error } = await admin
-    .from("profiles")
-    .update(patch)
-    .eq("stripe_customer_id", customerId)
-    .select("id,email")
-    .maybeSingle();
-  let fallbackData: { id?: string; email?: string } | null = null;
-  if (error) {
-    if (!shouldFallbackToLegacyColumns(error)) {
-      throw error;
-    }
-
-    const fallback = { plan: patch.plan };
-    const { data: resolvedFallbackData, error: fallbackError } = await admin
-      .from("profiles")
-      .update(fallback)
-      .eq("stripe_customer_id", customerId)
-      .select("id,email")
-      .maybeSingle();
-    if (fallbackError) throw fallbackError;
-    fallbackData = resolvedFallbackData;
-  }
-
-  const resolvedUserId = data?.id ?? fallbackData?.id ?? null;
-  if (!resolvedUserId) return false;
-
-  await ensureMembershipForProfile(resolvedUserId, fallbackData?.email ?? null, orgName, membershipPatch, workspaceId);
-  return true;
-}
-
-async function updatePlanByUserId(
-  userId: string,
-  patch: ProfilePatch,
-  email?: string | null,
-  orgName?: string | null,
-  membershipPatch?: MembershipPatch,
-  workspaceId?: string | null
-) {
-  const profile = await upsertProfileByUserId(userId, patch, email);
-  await ensureMembershipForProfile(userId, profile?.email ?? email ?? null, orgName, membershipPatch, workspaceId);
-}
-
-async function updateSubscriptionStatusByCustomerId(
-  customerId: string,
-  patch: Pick<ProfilePatch, "subscription_status" | "current_period_end" | "stripe_subscription_id" | "stripe_customer_id">
-): Promise<boolean> {
-  const admin = createServiceRoleClient();
-  const { data, error } = await admin
-    .from("profiles")
+    .from("workspaces")
     .update(patch)
     .eq("stripe_customer_id", customerId)
     .select("id")
     .maybeSingle();
 
   if (error) throw error;
-  return Boolean(data?.id);
+  if (!data?.id) return false;
+  if (refreshDueAt) {
+    await updateWorkspaceDueAt(data.id);
+  }
+  return true;
 }
 
-async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
-  if (!session.id) return "free";
+async function updateWorkspaceByUserId(
+  userId: string,
+  patch: WorkspacePatch,
+  email?: string | null,
+  workspaceName?: string | null,
+  preferredWorkspaceId?: string | null,
+  refreshDueAt = false
+) {
+  await upsertProfileIdentity(userId, email);
+  const workspaceId = await ensureWorkspaceForUser(userId, email, workspaceName, preferredWorkspaceId);
+  await updateWorkspaceById(workspaceId, patch, refreshDueAt);
+}
+
+async function updateWorkspaceByEmail(
+  email: string,
+  patch: WorkspacePatch,
+  workspaceName?: string | null,
+  preferredWorkspaceId?: string | null,
+  refreshDueAt = false
+): Promise<boolean> {
+  const profile = await findUserByEmail(email);
+  if (!profile?.id) return false;
+  await updateWorkspaceByUserId(profile.id, patch, profile.email ?? email, workspaceName, preferredWorkspaceId, refreshDueAt);
+  return true;
+}
+
+async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<BillingPlan> {
+  const metadataPlan = typeof session.metadata?.plan_slug === "string" ? session.metadata.plan_slug : session.metadata?.plan;
+  if (typeof metadataPlan === "string" && metadataPlan.trim()) {
+    return normalizeWebhookPlan(metadataPlan);
+  }
+  if (!session.id) return "starter";
 
   const lineItems = await getStripe().checkout.sessions.listLineItems(session.id, { limit: 100 });
   for (const item of lineItems.data) {
@@ -320,7 +238,7 @@ async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise
     const plan = getPlanFromStripePriceId(priceId);
     if (plan) return plan;
   }
-  return "free";
+  return "pro";
 }
 
 async function markWebhookEventAsProcessing(event: Stripe.Event): Promise<boolean> {
@@ -334,18 +252,15 @@ async function markWebhookEventAsProcessing(event: Stripe.Event): Promise<boolea
     });
 
     if (!error) return true;
-
     const code = "code" in error ? String((error as { code?: string }).code ?? "") : "";
     if (code === "23505") {
       if (isDev) console.info("[stripe] duplicate event ignored");
       return false;
     }
-
     if (isKnownMissingTableError(error)) {
       if (isDev) console.warn("[stripe] stripe_webhook_events table missing, duplicate protection disabled");
       return true;
     }
-
     throw error;
   } catch (error) {
     if (isKnownMissingTableError(error)) {
@@ -376,16 +291,11 @@ async function applySubscriptionPatchFromSubscription(subscription: Stripe.Subsc
   const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
   if (!customerId) return;
 
-  const patch = {
+  const patch: WorkspacePatch = {
     ...buildSubscriptionPatch(subscription),
     stripe_customer_id: customerId
   };
-  const updated = await updatePlanByCustomerId(customerId, patch, null, {
-    role: "owner",
-    plan_name: toSubscriptionName(resolvePlanFromSubscription(subscription)),
-    stripe_price_id: patch.stripe_price_id ?? null,
-    stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
-  });
+  const updated = await updateWorkspaceByCustomerId(customerId, patch, true);
 
   if (!updated && isDev) {
     console.warn("[stripe] subscription event ignored for unknown customer", { customerId, subscriptionId: subscription.id });
@@ -394,18 +304,13 @@ async function applySubscriptionPatchFromSubscription(subscription: Stripe.Subsc
 
 function resolveInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   const parentSubscription = invoice.parent?.subscription_details?.subscription;
-  if (typeof parentSubscription === "string") {
-    return parentSubscription;
-  }
+  if (typeof parentSubscription === "string") return parentSubscription;
 
   const legacySubscription = (invoice as Stripe.Invoice & { subscription?: unknown }).subscription;
   return typeof legacySubscription === "string" ? legacySubscription : null;
 }
 
-async function applyInvoiceStatus(
-  invoice: Stripe.Invoice,
-  fallbackStatus: string
-) {
+async function applyInvoiceStatus(invoice: Stripe.Invoice, fallbackStatus: string) {
   const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
   if (!customerId) return;
 
@@ -426,10 +331,14 @@ async function applyInvoiceStatus(
     }
   }
 
-  const updated = await updateSubscriptionStatusByCustomerId(customerId, {
-    stripe_customer_id: customerId,
-    subscription_status: fallbackStatus
-  });
+  const updated = await updateWorkspaceByCustomerId(
+    customerId,
+    {
+      stripe_customer_id: customerId,
+      subscription_status: fallbackStatus
+    },
+    fallbackStatus === "active"
+  );
 
   if (!updated && isDev) {
     console.warn("[stripe] invoice event ignored for unknown customer", { customerId, invoiceId: invoice.id });
@@ -438,9 +347,7 @@ async function applyInvoiceStatus(
 
 export async function handleStripeWebhookEvent(event: Stripe.Event) {
   const shouldProcess = await markWebhookEventAsProcessing(event);
-  if (!shouldProcess) {
-    return;
-  }
+  if (!shouldProcess) return;
 
   try {
     switch (event.type) {
@@ -448,57 +355,55 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         const session = event.data.object as Stripe.Checkout.Session;
         const email = session.customer_details?.email ?? session.customer_email;
         const customerId = typeof session.customer === "string" ? session.customer : null;
-        const workspaceNameFromMetadata = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
-        const workspaceIdFromMetadata = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
+        const workspaceName = typeof session.metadata?.workspace_name === "string" ? session.metadata.workspace_name : null;
+        const workspaceId = typeof session.metadata?.workspace_id === "string" && session.metadata.workspace_id.trim()
           ? session.metadata.workspace_id
           : null;
-        const userIdFromMetadata = typeof session.metadata?.user_id === "string" ? session.metadata.user_id : null;
+        const userId = typeof session.metadata?.user_id === "string" ? session.metadata.user_id : null;
 
         const checkoutPlan = await resolvePlanFromSession(session);
-        let patch: ProfilePatch = {
+        let patch: WorkspacePatch = {
           plan: checkoutPlan,
-          stripe_customer_id: customerId
-        };
-        let membershipPatch: MembershipPatch = {
-          role: "owner",
-          plan_name: toSubscriptionName(checkoutPlan),
-          stripe_price_id: null,
-          stripe_product_id: null
+          stripe_customer_id: customerId,
+          subscription_name: toSubscriptionName(checkoutPlan)
         };
 
         if (typeof session.subscription === "string") {
           const subscription = await getStripe().subscriptions.retrieve(session.subscription);
           patch = {
             ...patch,
-            ...buildSubscriptionPatch(subscription)
+            ...buildSubscriptionPatch(subscription),
+            plan: checkoutPlan
           };
-          membershipPatch = {
-            role: "owner",
-            plan_name: toSubscriptionName(checkoutPlan),
-            stripe_price_id: patch.stripe_price_id ?? null,
-            stripe_product_id: resolveStripeProductIdFromSubscription(subscription)
-          };
-        } else {
-          patch.subscription_name = toSubscriptionName(checkoutPlan);
         }
 
-        if (userIdFromMetadata) {
-          await updatePlanByUserId(userIdFromMetadata, patch, email ?? null, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
-          if (email) {
-            await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+        if (userId) {
+          await updateWorkspaceByUserId(userId, patch, email ?? null, workspaceName, workspaceId, true);
+          if (email) await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
+          break;
+        }
+
+        if (email) {
+          const updated = await updateWorkspaceByEmail(email, patch, workspaceName, workspaceId, true);
+          if (!updated && customerId) {
+            const applied = await updateWorkspaceByCustomerId(customerId, patch, true);
+            if (!applied && isDev) {
+              console.warn("[stripe] checkout session ignored for unknown email and customer", { email, customerId, sessionId: session.id });
+            }
           }
-        } else if (email) {
-          await updatePlanByEmail(email, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
           await sendCheckoutConfirmationEmails(email, checkoutPlan, session);
-        } else if (customerId) {
-          const updated = await updatePlanByCustomerId(customerId, patch, workspaceNameFromMetadata, membershipPatch, workspaceIdFromMetadata);
+          break;
+        }
+
+        if (customerId) {
+          const updated = await updateWorkspaceByCustomerId(customerId, patch, true);
           if (!updated && isDev) {
             console.warn("[stripe] checkout session ignored for unknown customer without resolvable email", { customerId, sessionId: session.id });
           }
-        } else {
-          throw new Error("Missing identifiers in checkout.session.completed webhook");
+          break;
         }
-        break;
+
+        throw new Error("Missing identifiers in checkout.session.completed webhook");
       }
 
       case "customer.subscription.created":
@@ -513,12 +418,12 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
         const customerId = typeof subscription.customer === "string" ? subscription.customer : null;
         if (!customerId) break;
 
-        const updated = await updatePlanByCustomerId(customerId, {
-          plan: "free",
+        const updated = await updateWorkspaceByCustomerId(customerId, {
+          plan: "starter",
           stripe_customer_id: customerId,
           stripe_subscription_id: null,
           stripe_price_id: null,
-          subscription_name: "Free",
+          subscription_name: "Starter",
           subscription_status: "canceled",
           current_period_end: null
         });
@@ -530,21 +435,17 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
       }
 
       case "invoice.paid": {
-        const invoice = event.data.object as Stripe.Invoice;
-        await applyInvoiceStatus(invoice, "active");
+        await applyInvoiceStatus(event.data.object as Stripe.Invoice, "active");
         break;
       }
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        await applyInvoiceStatus(invoice, "past_due");
+        await applyInvoiceStatus(event.data.object as Stripe.Invoice, "past_due");
         break;
       }
 
       default: {
-        if (isDev) {
-          console.info(`[stripe] ignored event type=${event.type}`);
-        }
+        if (isDev) console.info(`[stripe] ignored event type=${event.type}`);
         break;
       }
     }

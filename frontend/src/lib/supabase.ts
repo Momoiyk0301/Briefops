@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, Session, SupportedStorage } from "@supabase/supabase-js";
 
 const rawSupabaseUrl = String(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
 const supabaseAnonKey = String(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
@@ -52,4 +52,81 @@ function resolveSupabaseUrl(): string {
   );
 }
 
-export const supabase = createClient(resolveSupabaseUrl(), supabaseAnonKey);
+const resolvedSupabaseUrl = resolveSupabaseUrl();
+const REMEMBER_ME_KEY = "briefops:remember_me";
+
+function getProjectRef() {
+  try {
+    return new URL(resolvedSupabaseUrl).hostname.split(".")[0] ?? "briefops";
+  } catch {
+    return "briefops";
+  }
+}
+
+export const SUPABASE_AUTH_STORAGE_KEY = `sb-${getProjectRef()}-auth-token`;
+
+function getStorageTarget() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REMEMBER_ME_KEY) === "false" ? window.sessionStorage : window.localStorage;
+}
+
+function createAuthStorage(): SupportedStorage {
+  return {
+    getItem(key) {
+      if (typeof window === "undefined") return null;
+      return getStorageTarget()?.getItem(key) ?? null;
+    },
+    setItem(key, value) {
+      if (typeof window === "undefined") return;
+      getStorageTarget()?.setItem(key, value);
+    },
+    removeItem(key) {
+      if (typeof window === "undefined") return;
+      window.localStorage.removeItem(key);
+      window.sessionStorage.removeItem(key);
+    }
+  };
+}
+
+export function getRememberMePreference() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(REMEMBER_ME_KEY) !== "false";
+}
+
+export function setRememberMePreference(rememberMe: boolean) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(REMEMBER_ME_KEY, String(rememberMe));
+}
+
+function clearStoredSession(target: Storage) {
+  target.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+}
+
+function writeStoredSession(target: Storage, session: Session) {
+  target.setItem(SUPABASE_AUTH_STORAGE_KEY, JSON.stringify(session));
+}
+
+export function syncStoredSessionPersistence(session: Session | null, rememberMe = getRememberMePreference()) {
+  if (typeof window === "undefined") return;
+
+  const preferredStorage = rememberMe ? window.localStorage : window.sessionStorage;
+  const otherStorage = rememberMe ? window.sessionStorage : window.localStorage;
+
+  clearStoredSession(otherStorage);
+  if (!session) {
+    clearStoredSession(preferredStorage);
+    return;
+  }
+
+  writeStoredSession(preferredStorage, session);
+}
+
+export const supabase = createClient(resolvedSupabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: createAuthStorage(),
+    storageKey: SUPABASE_AUTH_STORAGE_KEY,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});

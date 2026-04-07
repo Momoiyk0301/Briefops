@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { getInitials } from "@/lib/branding";
 import { createServiceRoleClient, requireAuthContext } from "@/supabase/server";
 
 const updateStepSchema = z.object({
@@ -24,6 +25,7 @@ type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 function resolveWorkspacePayload(input: CreateWorkspaceInput) {
   return {
     name: input.workspace_name ?? "",
+    initials: getInitials(input.workspace_name ?? "", "WS"),
     country: input.country ?? "Belgium",
     team_size: input.team_size ?? null,
     vat_number: input.vat_number ?? null
@@ -146,6 +148,7 @@ export async function POST(request: Request) {
       .insert({
         owner_id: userId,
         name: workspacePayload.name,
+        initials: workspacePayload.initials,
         country: workspacePayload.country,
         team_size: workspacePayload.team_size,
         vat_number: workspacePayload.vat_number
@@ -156,7 +159,7 @@ export async function POST(request: Request) {
     if (workspaceError) throw workspaceError;
 
     const { error: membershipError } = await admin.from("memberships").insert({
-      org_id: workspace.id,
+      workspace_id: workspace.id,
       user_id: userId,
       role: "owner"
     });

@@ -2,12 +2,14 @@ type Props = {
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
+  ariaLabel?: string;
 };
 
-export function Toggle({ checked, onChange, disabled }: Props) {
+export function Toggle({ checked, onChange, disabled, ariaLabel }: Props) {
   return (
     <button
       type="button"
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-12 rounded-full border transition ${

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { deleteBriefing, getBriefingById, updateBriefing } from "@/supabase/queries/briefings";
-import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
+import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
@@ -10,6 +10,7 @@ const idSchema = z.string().uuid();
 
 const updateSchema = z.object({
   title: z.string().trim().min(1).optional(),
+  status: z.enum(["draft", "ready", "archived"]).optional(),
   event_date: z.string().date().nullable().optional(),
   location_text: z.string().trim().nullable().optional()
 });
@@ -17,11 +18,11 @@ const updateSchema = z.object({
 type Params = { params: Promise<{ id: string }> };
 
 async function assertBriefingAccess(client: Awaited<ReturnType<typeof requireUser>>["client"], userId: string, briefingId: string) {
-  const [briefing, orgId] = await Promise.all([
+  const [briefing, workspaceId] = await Promise.all([
     getBriefingById(client, briefingId),
-    getUserOrgId(client, userId)
+    getUserWorkspaceId(client, userId)
   ]);
-  if (!orgId || briefing.org_id !== orgId) {
+  if (!workspaceId || briefing.workspace_id !== workspaceId) {
     throw new HttpError(403, "Forbidden");
   }
   return briefing;

@@ -33,7 +33,11 @@ export function ProductsStep({ products, isLoading, submittingProductId, onBack,
           >
             <h3 className="text-lg font-semibold">{product.name}</h3>
             <p className="mt-1 text-sm text-[#70758d]">{product.description ?? "Built for event teams."}</p>
-            <p className="mt-3 text-xl font-bold">{formatPrice(product.price_amount, product.price_currency, product.billing_interval)}</p>
+            <p className="mt-3 text-xl font-bold">
+              {product.slug === "enterprise" || product.price_amount == null || !product.price_currency || !product.billing_interval
+                ? "Sur mesure"
+                : formatPrice(product.price_amount, product.price_currency, product.billing_interval)}
+            </p>
             <ul className="mt-3 space-y-1 text-sm text-[#3a3f56]">
               {product.features.slice(0, 3).map((feature, index) => (
                 <li key={`${product.id}-${index}`}>• {feature}</li>
@@ -44,7 +48,7 @@ export function ProductsStep({ products, isLoading, submittingProductId, onBack,
               disabled={Boolean(submittingProductId)}
               onClick={() => void onSelect(product)}
             >
-              {submittingProductId === product.id ? "Redirecting..." : "Subscribe"}
+              {submittingProductId === product.id ? "Redirecting..." : product.slug === "enterprise" ? "Contact us" : "Subscribe"}
             </Button>
           </article>
           ) : null

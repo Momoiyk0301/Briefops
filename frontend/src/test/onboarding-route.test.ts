@@ -76,7 +76,7 @@ describe("frontend /api/onboarding", () => {
 
     expect(response.status).toBe(201);
     expect(membershipsInsert).toHaveBeenCalledWith({
-      org_id: "ws-1",
+      workspace_id: "ws-1",
       user_id: "u1",
       role: "owner"
     });
