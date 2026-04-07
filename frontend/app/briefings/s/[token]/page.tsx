@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 
+import { PublicBriefingErrorBoundary } from "@/components/briefing/PublicBriefingErrorBoundary";
 import { PublicLinkFallback } from "@/components/briefing/PublicLinkFallback";
 import { PublicBriefingView } from "@/components/briefing/PublicBriefingView";
 import { buildPublicBriefingHeader, buildPublicBriefingSections } from "@/lib/publicBriefings";
@@ -21,10 +22,15 @@ export default async function StaffBriefingPage({ params }: Props) {
     const header = buildPublicBriefingHeader(resolved.briefing);
     const sections = buildPublicBriefingSections(resolved.modules);
 
-    return <PublicBriefingView title={header.title} date={header.date} location={header.location} sections={sections} />;
+    return (
+      <PublicBriefingErrorBoundary area="public-briefing" tokenPresent={Boolean(token)}>
+        <PublicBriefingView title={header.title} date={header.date} location={header.location} sections={sections} />
+      </PublicBriefingErrorBoundary>
+    );
   } catch (error) {
     Sentry.captureException(error, {
-      tags: { area: "public-briefing", view: "staff" }
+      tags: { area: "public-briefing", view: "staff" },
+      extra: { tokenPresent: true, pathTemplate: "/briefings/s/[token]" }
     });
     return <PublicLinkFallback />;
   }

@@ -9,9 +9,10 @@ import toast from "react-hot-toast";
 import i18n from "@/i18n";
 import LoginPage from "@/views/LoginPage";
 
-const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
+const { signInWithPassword, signUpWithPassword, resendSignupConfirmation } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
-  signUpWithPassword: vi.fn()
+  signUpWithPassword: vi.fn(),
+  resendSignupConfirmation: vi.fn()
 }));
 
 const apiMocks = vi.hoisted(() => ({
@@ -24,7 +25,23 @@ const routerMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   signInWithPassword,
-  signUpWithPassword
+  signUpWithPassword,
+  resendSignupConfirmation,
+  getRememberMePreference: vi.fn(() => true),
+  getAuthErrorKind: vi.fn((error: unknown) => {
+    const message = String(error instanceof Error ? error.message : error);
+    if (/email not confirmed/i.test(message)) return "email_not_confirmed";
+    if (/user not found/i.test(message)) return "user_not_found";
+    if (/invalid login credentials/i.test(message)) return "invalid_credentials";
+    return "unexpected";
+  }),
+  getAuthErrorMessage: vi.fn((error: unknown) => {
+    const message = String(error instanceof Error ? error.message : error);
+    if (/email not confirmed/i.test(message)) return "Ton email n’est pas encore confirmé.";
+    if (/user not found/i.test(message)) return "Aucun compte n’a été trouvé avec cette adresse email.";
+    if (/invalid login credentials/i.test(message)) return "Email ou mot de passe incorrect.";
+    return message;
+  })
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -126,7 +143,7 @@ describe("LoginPage", () => {
     expect(toast).toHaveBeenCalledWith("Compte trouvé. Choisis une offre pour terminer l'activation.");
   });
 
-  it("switches to register mode when login targets a missing account", async () => {
+  it("keeps login mode and shows a clear message when credentials are invalid", async () => {
     signInWithPassword.mockRejectedValueOnce(new Error("Invalid login credentials"));
     renderPage();
 
@@ -134,12 +151,37 @@ describe("LoginPage", () => {
     await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
     await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
 
-    expect(toast.error).toHaveBeenCalledWith("Compte introuvable. Passe en création de compte pour continuer.");
-    await waitFor(() => {
-      const submitButton = screen.getByRole("button", { name: /Continuer/i });
-      expect(submitButton).toHaveAttribute("type", "submit");
-    });
+    expect(toast.error).toHaveBeenCalledWith("Email ou mot de passe incorrect.");
+    expect(screen.getByText(/Connexion refusée/i)).toBeInTheDocument();
     expect(routerMocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("does not switch to signup when email is not confirmed and offers resend", async () => {
+    signInWithPassword.mockRejectedValueOnce(new Error("Email not confirmed"));
+    renderPage();
+
+    await userEvent.type(screen.getByPlaceholderText(/email/i), "pending@example.com");
+    await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
+    await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
+
+    expect(toast.error).toHaveBeenCalledWith("Ton email n’est pas encore confirmé.");
+    expect(screen.getByText(/Ton email n’est pas encore confirmé/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Renvoyer l’email/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continuer/i })).not.toBeInTheDocument();
+  });
+
+  it("resends the confirmation email from the login page", async () => {
+    signInWithPassword.mockRejectedValueOnce(new Error("Email not confirmed"));
+    resendSignupConfirmation.mockResolvedValueOnce(undefined);
+    renderPage();
+
+    await userEvent.type(screen.getByPlaceholderText(/email/i), "pending@example.com");
+    await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
+    await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
+    await userEvent.click(screen.getByRole("button", { name: /Renvoyer l’email/i }));
+
+    expect(resendSignupConfirmation).toHaveBeenCalledWith("pending@example.com");
+    expect(toast.success).toHaveBeenCalledWith("Email envoyé");
   });
 
   it("links to dedicated forgot password page", async () => {
@@ -160,7 +202,7 @@ describe("LoginPage", () => {
     await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
     await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
 
-    expect(signUpWithPassword).toHaveBeenCalledWith("new@example.com", "secret12");
+    expect(signUpWithPassword).toHaveBeenCalledWith("new@example.com", "secret12", true);
     expect(routerMocks.navigate).toHaveBeenCalledWith("/auth/check-email?email=new%40example.com");
   });
 

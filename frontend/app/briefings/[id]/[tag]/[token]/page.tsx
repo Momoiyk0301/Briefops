@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 
+import { PublicBriefingErrorBoundary } from "@/components/briefing/PublicBriefingErrorBoundary";
 import { PublicLinkFallback } from "@/components/briefing/PublicLinkFallback";
 import { PublicBriefingView } from "@/components/briefing/PublicBriefingView";
 import { buildPublicBriefingHeader, buildPublicBriefingSections } from "@/lib/publicBriefings";
@@ -11,8 +12,10 @@ type Props = {
 };
 
 export default async function AudienceBriefingPage({ params }: Props) {
+  const resolvedParams = await params;
+
   try {
-    const { id, tag, token } = await params;
+    const { id, tag, token } = resolvedParams;
     const service = createServiceRoleClient();
     const resolved = await resolveAudienceBriefingByToken(service, id, tag, token);
 
@@ -22,17 +25,25 @@ export default async function AudienceBriefingPage({ params }: Props) {
     const sections = buildPublicBriefingSections(resolved.modules, resolved.audienceTag);
 
     return (
-      <PublicBriefingView
-        title={header.title}
-        date={header.date}
-        location={header.location}
-        audienceLabel={resolved.audienceTag}
-        sections={sections}
-      />
+      <PublicBriefingErrorBoundary area="public-briefing" tokenPresent={Boolean(token)}>
+        <PublicBriefingView
+          title={header.title}
+          date={header.date}
+          location={header.location}
+          audienceLabel={resolved.audienceTag}
+          sections={sections}
+        />
+      </PublicBriefingErrorBoundary>
     );
   } catch (error) {
     Sentry.captureException(error, {
-      tags: { area: "public-briefing", view: "audience" }
+      tags: { area: "public-briefing", view: "audience" },
+      extra: {
+        tokenPresent: Boolean(resolvedParams.token),
+        briefingId: resolvedParams.id,
+        audienceTag: resolvedParams.tag,
+        pathTemplate: "/briefings/[id]/[tag]/[token]"
+      }
     });
     return <PublicLinkFallback />;
   }

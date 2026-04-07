@@ -7,6 +7,7 @@ import { syncBriefingSharedState } from "@/supabase/queries/briefings";
 import { createPublicLink, listPublicLinks, revokePublicLink } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 const idSchema = z.string().uuid();
@@ -85,8 +86,8 @@ export async function GET(request: Request, { params }: Params) {
         ...link,
         url:
           link.link_type === "audience" && link.audience_tag
-            ? `${baseUrl}/briefings/${briefingId}/${link.audience_tag}/${link.token}`
-            : `${baseUrl}/briefings/s/${link.token}`
+            ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+            : buildStaffBriefingUrl(baseUrl, link.token)
       }))
     });
   } catch (error) {
@@ -126,8 +127,8 @@ export async function POST(request: Request, { params }: Params) {
           ...link,
           url:
             link.link_type === "audience" && link.audience_tag
-              ? `${baseUrl}/briefings/${briefingId}/${link.audience_tag}/${link.token}`
-              : `${baseUrl}/briefings/s/${link.token}`
+              ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+              : buildStaffBriefingUrl(baseUrl, link.token)
         }
       },
       { status: 201 }

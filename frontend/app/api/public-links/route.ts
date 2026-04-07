@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { env } from "@/env";
 import { createRequestContext, toErrorResponse } from "@/http";
+import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { listPublicLinksForCreator } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 
@@ -28,8 +29,8 @@ export async function GET(request: Request) {
           ...link,
           url:
             link.link_type === "audience" && link.audience_tag
-              ? `${baseUrl}/briefings/${link.briefing_id}/${link.audience_tag}/${link.token}`
-              : `${baseUrl}/briefings/s/${link.token}`,
+              ? buildAudienceBriefingUrl(baseUrl, link.briefing_id, link.audience_tag, link.token)
+              : buildStaffBriefingUrl(baseUrl, link.token),
           briefing_title: briefing?.title ?? "Untitled briefing",
           pdf_path: briefing?.pdf_path ?? null
         };

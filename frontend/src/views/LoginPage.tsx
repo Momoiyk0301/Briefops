@@ -5,10 +5,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
+import { CheckCircle2, LogIn, MailCheck, ShieldCheck } from "lucide-react";
 
 import { getMe, toApiMessage } from "@/lib/api";
 import { getPostAuthRedirect } from "@/lib/authRedirect";
-import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
+import {
+  getAuthErrorKind,
+  getAuthErrorMessage,
+  getRememberMePreference,
+  resendSignupConfirmation,
+  signInWithPassword,
+  signUpWithPassword
+} from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -21,24 +29,33 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
-function isMissingAccountLoginError(error: unknown) {
-  const message = toApiMessage(error);
-  return /invalid login credentials|user not found|email not confirmed/i.test(message);
-}
-
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(() => getRememberMePreference());
+  const [lastAuthError, setLastAuthError] = useState<{ kind: ReturnType<typeof getAuthErrorKind>; email: string } | null>(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
   const watchedEmail = form.watch("email");
 
+  const handleResendConfirmation = async (email: string) => {
+    setResendingEmail(true);
+    try {
+      await resendSignupConfirmation(email);
+      toast.success("Email envoyé");
+    } catch (error) {
+      toast.error(toApiMessage(error));
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const onSubmit = form.handleSubmit(async (values) => {
     try {
+      setLastAuthError(null);
       if (mode === "login") {
-        localStorage.setItem("briefops:remember_me", String(rememberMe));
-        await signInWithPassword(values.email, values.password);
+        await signInWithPassword(values.email, values.password, rememberMe);
         const me = await getMe();
         const nextRoute = getPostAuthRedirect(me);
         if (nextRoute === "/onboarding?step=products") {
@@ -46,7 +63,7 @@ export default function LoginPage() {
         }
         navigate(nextRoute);
       } else {
-        const signUpResult = await signUpWithPassword(values.email, values.password);
+        const signUpResult = await signUpWithPassword(values.email, values.password, true);
         if (!signUpResult.session) {
           navigate(`/auth/check-email?email=${encodeURIComponent(values.email)}`);
           return;
@@ -54,11 +71,13 @@ export default function LoginPage() {
         navigate("/onboarding");
       }
     } catch (error) {
-      if (mode === "login" && isMissingAccountLoginError(error)) {
-        toast.error(t("auth.accountMissing"));
-        setMode("register");
+      if (mode === "login") {
+        const kind = getAuthErrorKind(error);
+        setLastAuthError({ kind, email: values.email });
+        toast.error(getAuthErrorMessage(error));
         return;
       }
+
       toast.error(toApiMessage(error));
     }
   });
@@ -97,8 +116,13 @@ export default function LoginPage() {
       <section className="flex min-h-[50vh] items-center justify-center px-6 py-10 lg:min-h-screen lg:px-10">
         <Card className="w-full max-w-xl rounded-[32px] border-white/70 p-8 shadow-[0_30px_80px_rgba(20,30,60,0.12)]">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-brand-500 text-xl font-bold text-white shadow-panel">
-              B
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[26px] border border-brand-200/60 bg-[radial-gradient(circle_at_top,_#66b4ff_0%,_#2d74ff_58%,_#143f9e_100%)] text-white shadow-[0_24px_55px_rgba(29,78,216,0.28)]">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/25 bg-white/10 backdrop-blur">
+                <ShieldCheck size={20} />
+                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm">
+                  <MailCheck size={12} />
+                </span>
+              </div>
             </div>
             <h2 className="text-3xl font-semibold tracking-tight text-[#111827] dark:text-white">Connexion</h2>
             <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
@@ -142,6 +166,55 @@ export default function LoginPage() {
               </Button>
             </form>
           </Tabs>
+
+          {mode === "login" && lastAuthError ? (
+            <div className="mt-4 rounded-[24px] border border-[#dbe4f3] bg-[#f7fafe] p-4 text-sm text-[#284165] dark:border-white/10 dark:bg-[#121826] dark:text-[#d9e7ff]">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-full bg-brand-500/10 p-2 text-brand-600 dark:text-brand-300">
+                  {lastAuthError.kind === "email_not_confirmed" ? <MailCheck size={16} /> : <LogIn size={16} />}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold">
+                    {lastAuthError.kind === "email_not_confirmed"
+                      ? "Ton email n’est pas encore confirmé"
+                      : lastAuthError.kind === "user_not_found"
+                        ? "Compte introuvable"
+                        : lastAuthError.kind === "invalid_credentials"
+                          ? "Connexion refusée"
+                          : "Connexion impossible"}
+                  </p>
+                  <p className="mt-1 text-[#52607a] dark:text-[#b7c6e6]">
+                    {lastAuthError.kind === "email_not_confirmed"
+                      ? "Ouvre l’email de confirmation reçu puis reviens ici. Si besoin, renvoie un nouvel email."
+                      : lastAuthError.kind === "user_not_found"
+                        ? "Vérifie l’adresse saisie ou passe en création de compte si tu n’as pas encore de compte."
+                        : lastAuthError.kind === "invalid_credentials"
+                          ? "Vérifie ton mot de passe et réessaie. Si besoin, tu peux aussi demander un nouveau mot de passe."
+                          : "Réessaie dans quelques instants ou contacte le support si le problème persiste."}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {lastAuthError.kind === "email_not_confirmed" ? (
+                      <Button
+                        variant="secondary"
+                        className="h-10 px-4"
+                        onClick={() => void handleResendConfirmation(lastAuthError.email)}
+                        disabled={resendingEmail}
+                      >
+                        <MailCheck size={14} />
+                        {resendingEmail ? "Envoi..." : "Renvoyer l’email"}
+                      </Button>
+                    ) : null}
+                    {lastAuthError.kind === "user_not_found" ? (
+                      <Button variant="secondary" className="h-10 px-4" onClick={() => setMode("register")}>
+                        <CheckCircle2 size={14} />
+                        Créer un compte
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </Card>
       </section>
     </div>

@@ -8,6 +8,7 @@ const publicLinkMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@sentry/nextjs", () => sentryMocks);
+vi.mock("next/navigation", () => ({ usePathname: () => "/briefings/s/test-token" }));
 vi.mock("@/supabase/server", () => ({ createServiceRoleClient: vi.fn(() => ({ })) }));
 vi.mock("@/supabase/queries/publicLinks", () => ({
   PUBLIC_LINK_INVALID_MESSAGE: "This link has expired. Please ask the owner for a new link.",

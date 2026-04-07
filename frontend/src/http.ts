@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -145,6 +146,14 @@ export function toErrorResponse(error: unknown, requestId: string) {
     status,
     ...describeError(error)
   });
+
+  if (status >= 500) {
+    const normalized = error instanceof Error ? error : new Error(message);
+    Sentry.captureException(normalized, {
+      tags: { area: "api", status: String(status) },
+      extra: { requestId, ...describeError(error) }
+    });
+  }
 
   const body: Record<string, unknown> = { error: message, request_id: requestId };
   if (details !== undefined) {

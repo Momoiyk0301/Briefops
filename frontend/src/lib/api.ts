@@ -20,11 +20,15 @@ const isDev = process.env.NODE_ENV === "development";
 
 export class ApiError extends Error {
   status: number;
+  method: string;
+  path: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, method: string, path: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.method = method;
+    this.path = path;
   }
 }
 
@@ -57,7 +61,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   const session = await getSession();
   const token = session?.access_token;
   if (!token) {
-    throw new ApiError(401, "Unauthorized");
+    throw new ApiError(401, "Unauthorized", "AUTH", "session");
   }
   return { Authorization: `Bearer ${token}` };
 }
@@ -82,7 +86,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     const message = error instanceof Error ? error.message : "Network failure";
     logApiError(method, path, "NETWORK", message, startedAt);
     captureClientError(error, { method, path, stage: "network" });
-    throw new ApiError(0, `Failed to fetch backend (${message})`);
+    throw new ApiError(0, `Failed to fetch backend for ${method} ${path} (${message})`, method, path);
   }
 
   let payload: unknown = null;
@@ -106,7 +110,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     }
     logApiError(method, path, response.status, message, startedAt);
     captureClientError(new Error(message), { method, path, status: response.status, stage: "response" });
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, `${method} ${path}: ${message}`, method, path);
   }
 
   logApiSuccess(method, path, response.status, startedAt);

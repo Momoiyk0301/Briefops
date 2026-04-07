@@ -1,4 +1,4 @@
-import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PencilLine, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,17 @@ const EDITOR_MODULE_KEYS = ["access", "staff", "equipment", "delivery", "vehicle
 type EditorModuleKey = (typeof EDITOR_MODULE_KEYS)[number];
 type EditorTabKey = "general" | EditorModuleKey;
 type TeamScope = "all" | string;
+type SaveRequest = {
+  manual: boolean;
+  snapshot: string;
+  core: EditorState["core"];
+  payload: Array<{
+    module_id: string | null;
+    module_key: ModuleKey;
+    enabled: boolean;
+    data_json: ReturnType<typeof toCanonicalModuleJson>;
+  }>;
+};
 
 function rectTouchesOrOverlaps(a: GridRect, b: GridRect) {
   if ((a.page ?? 0) !== (b.page ?? 0)) return false;
@@ -209,22 +220,8 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
   const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
   const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const lastSaved = useRef("");
-
-  useEffect(() => {
-    const snapshot = JSON.stringify(state);
-    if (!lastSaved.current) {
-      lastSaved.current = snapshot;
-      return;
-    }
-    if (snapshot === lastSaved.current) return;
-
-    const id = window.setTimeout(() => {
-      setSaveIndicator("saving");
-      void handleSave(false);
-    }, 800);
-
-    return () => window.clearTimeout(id);
-  }, [state]);
+  const saveInFlight = useRef(false);
+  const queuedSave = useRef<SaveRequest | null>(null);
 
   const definedTeams = state.modules.metadata.data.teams;
   const teamModeEnabled = state.modules.metadata.data.team_mode;
@@ -279,26 +276,67 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
     [state.modules]
   );
 
-  const handleSave = async (manual = true) => {
+  const createSaveRequest = useCallback((manual: boolean): SaveRequest => ({
+    manual,
+    snapshot: JSON.stringify(state),
+    core: {
+      title: state.core.title,
+      event_date: state.core.event_date,
+      location_text: state.core.location_text
+    },
+    payload
+  }), [payload, state]);
+
+  useEffect(() => {
+    const snapshot = JSON.stringify(state);
+    if (!lastSaved.current) {
+      lastSaved.current = snapshot;
+      return;
+    }
+    if (snapshot === lastSaved.current) return;
+
+    const id = window.setTimeout(() => {
+      setSaveIndicator("saving");
+      void handleSave(createSaveRequest(false));
+    }, 800);
+
+    return () => window.clearTimeout(id);
+  }, [createSaveRequest, state]);
+
+  const runSave = async (request: SaveRequest) => {
+    saveInFlight.current = true;
     try {
-      await patchBriefing(briefing.id, {
-        title: state.core.title,
-        event_date: state.core.event_date,
-        location_text: state.core.location_text
-      });
-      await upsertBriefingModules(briefing.id, payload);
-      lastSaved.current = JSON.stringify(state);
-      if (manual) toast.success(t("editor.saved"));
-      if (!manual) setSaveIndicator("saved");
+      await patchBriefing(briefing.id, request.core);
+      await upsertBriefingModules(briefing.id, request.payload);
+      lastSaved.current = request.snapshot;
+      if (request.manual) toast.success(t("editor.saved"));
+      if (!request.manual) setSaveIndicator("saved");
     } catch (error) {
       toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
+    } finally {
+      saveInFlight.current = false;
+      const nextQueuedSave = queuedSave.current;
+      queuedSave.current = null;
+      if (nextQueuedSave && nextQueuedSave.snapshot !== lastSaved.current) {
+        if (!nextQueuedSave.manual) setSaveIndicator("saving");
+        void handleSave(nextQueuedSave);
+      }
     }
+  };
+
+  const handleSave = async (request = createSaveRequest(true)) => {
+    if (saveInFlight.current) {
+      queuedSave.current = request;
+      return;
+    }
+
+    await runSave(request);
   };
 
   useEffect(() => {
     if (!saveNonce) return;
-    void handleSave(true);
-  }, [saveNonce]);
+    void handleSave(createSaveRequest(true));
+  }, [createSaveRequest, saveNonce]);
 
   const updateModuleData = <K extends ModuleKey>(key: K, data: ModuleDataMap[K]) => {
     setState((prev) => ({
@@ -607,7 +645,11 @@ export function BriefingEditor({ briefing, modules, registryModules = [], saveNo
                         key={tab}
                         type="button"
                         onClick={() => setSelectedTab(tab)}
-                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${active ? "bg-[#dde6f7] text-[#172033] dark:bg-white/10 dark:text-white" : "bg-transparent text-slate-500 hover:bg-[#f5f7fb] dark:text-slate-300 dark:hover:bg-white/5"}`}
+                        className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
+                          active
+                            ? "bg-[linear-gradient(135deg,#1954c9_0%,#2870ff_55%,#55a4ff_100%)] text-white shadow-[0_14px_32px_rgba(32,78,185,0.24)]"
+                            : "bg-transparent text-slate-500 hover:bg-[#f5f7fb] dark:text-slate-300 dark:hover:bg-white/5"
+                        }`}
                       >
                         {getTabLabel(tab, i18n.language)}
                       </button>
