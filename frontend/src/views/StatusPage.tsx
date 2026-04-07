@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
-
-const API_URL = String(process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/$/, "");
+import { buildApiUrl } from "@/lib/apiBase";
 
 type BackendStatus = {
   service: string;
@@ -19,7 +18,7 @@ export default function StatusPage() {
 
     const run = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/status`);
+        const response = await fetch(buildApiUrl("/api/status"));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = (await response.json()) as BackendStatus;
         if (mounted) {

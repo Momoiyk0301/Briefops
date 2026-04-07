@@ -6,6 +6,10 @@ const setSessionMock = vi.fn();
 const getSessionMock = vi.fn();
 const signOutMock = vi.fn();
 const resetPasswordForEmailMock = vi.fn();
+const refreshSessionMock = vi.fn();
+const setRememberMePreferenceMock = vi.fn();
+const getRememberMePreferenceMock = vi.fn(() => true);
+const syncStoredSessionPersistenceMock = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
@@ -14,10 +18,14 @@ vi.mock("@/lib/supabase", () => ({
       signUp: signUpMock,
       setSession: setSessionMock,
       getSession: getSessionMock,
+      refreshSession: refreshSessionMock,
       signOut: signOutMock,
       resetPasswordForEmail: resetPasswordForEmailMock
     }
-  }
+  },
+  getRememberMePreference: getRememberMePreferenceMock,
+  setRememberMePreference: setRememberMePreferenceMock,
+  syncStoredSessionPersistence: syncStoredSessionPersistenceMock
 }));
 
 describe("auth helpers", () => {
@@ -39,7 +47,9 @@ describe("auth helpers", () => {
     const { signInWithPassword } = await import("@/lib/auth");
     await signInWithPassword("test@example.com", "secret12");
 
+    expect(setRememberMePreferenceMock).toHaveBeenCalledWith(true);
     expect(setSessionMock).toHaveBeenCalledWith({ access_token: "token", refresh_token: "refresh" });
+    expect(syncStoredSessionPersistenceMock).toHaveBeenCalledWith({ access_token: "token", refresh_token: "refresh" }, true);
   });
 
   it("persists returned session after signup when Supabase signs in immediately", async () => {
@@ -55,6 +65,7 @@ describe("auth helpers", () => {
     await signUpWithPassword("new@example.com", "secret12");
 
     expect(setSessionMock).toHaveBeenCalledWith({ access_token: "token", refresh_token: "refresh" });
+    expect(syncStoredSessionPersistenceMock).toHaveBeenCalledWith({ access_token: "token", refresh_token: "refresh" }, true);
   });
 
   it("returns null and clears local auth when refresh token is invalid", async () => {
@@ -69,6 +80,7 @@ describe("auth helpers", () => {
 
     expect(session).toBeNull();
     expect(signOutMock).toHaveBeenCalledWith({ scope: "local" });
+    expect(syncStoredSessionPersistenceMock).toHaveBeenCalledWith(null);
   });
 
   it("ignores invalid refresh token during signOut", async () => {
@@ -78,6 +90,7 @@ describe("auth helpers", () => {
 
     const { signOut } = await import("@/lib/auth");
     await expect(signOut()).resolves.toBeUndefined();
+    expect(syncStoredSessionPersistenceMock).toHaveBeenCalledWith(null);
   });
 
   it("uses the reset password route as redirect target", async () => {
@@ -92,10 +105,10 @@ describe("auth helpers", () => {
     });
   });
 
-  it("classifies login errors for clearer UI messages", async () => {
-    const { classifyLoginError } = await import("@/lib/auth");
+  it("classifies unconfirmed email errors distinctly", async () => {
+    const { getAuthErrorKind, getAuthErrorMessage } = await import("@/lib/auth");
 
-    expect(classifyLoginError(new Error("Email not confirmed"))).toBe("email_not_confirmed");
-    expect(classifyLoginError(new Error("Invalid login credentials"))).toBe("invalid_credentials");
+    expect(getAuthErrorKind(new Error("Email not confirmed"))).toBe("email_not_confirmed");
+    expect(getAuthErrorMessage(new Error("Email not confirmed"))).toBe("Ton email n’est pas encore confirmé.");
   });
 });

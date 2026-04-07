@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireUser = vi.fn();
 const listBriefings = vi.fn();
 const createBriefing = vi.fn();
-const countBriefingsByOrg = vi.fn();
+const countBriefingsByWorkspace = vi.fn();
 const getUserPlan = vi.fn();
 
 vi.mock("@/supabase/server", () => ({
@@ -13,7 +13,7 @@ vi.mock("@/supabase/server", () => ({
 vi.mock("@/supabase/queries/briefings", () => ({
   listBriefings,
   createBriefing,
-  countBriefingsByOrg
+  countBriefingsByWorkspace
 }));
 
 vi.mock("@/supabase/queries/profiles", () => ({
@@ -36,14 +36,14 @@ describe("/api/briefings route", () => {
   it("creates briefing when payload is valid", async () => {
     requireUser.mockResolvedValueOnce({ client: {}, userId: "user-1" });
     getUserPlan.mockResolvedValueOnce("free");
-    countBriefingsByOrg.mockResolvedValueOnce(0);
+    countBriefingsByWorkspace.mockResolvedValueOnce(0);
     createBriefing.mockResolvedValueOnce({ id: "b1" });
 
     const mod = await import("../app/api/briefings/route");
     const response = await mod.POST(
       new Request("http://localhost/api/briefings", {
         method: "POST",
-        body: JSON.stringify({ org_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
+        body: JSON.stringify({ workspace_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
         headers: { "content-type": "application/json", authorization: "Bearer token" }
       })
     );
@@ -55,13 +55,13 @@ describe("/api/briefings route", () => {
   it("returns 402 when free plan limit is reached", async () => {
     requireUser.mockResolvedValueOnce({ client: {}, userId: "user-1" });
     getUserPlan.mockResolvedValueOnce("free");
-    countBriefingsByOrg.mockResolvedValueOnce(1);
+    countBriefingsByWorkspace.mockResolvedValueOnce(1);
 
     const mod = await import("../app/api/briefings/route");
     const response = await mod.POST(
       new Request("http://localhost/api/briefings", {
         method: "POST",
-        body: JSON.stringify({ org_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
+        body: JSON.stringify({ workspace_id: "11111111-1111-1111-1111-111111111111", title: "test" }),
         headers: { "content-type": "application/json", authorization: "Bearer token" }
       })
     );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { requireAuthContext } from "@/supabase/server";
 
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await client
       .from("profiles")
-      .select("plan,subscription_name,subscription_status,stripe_price_id,current_period_end,onboarding_step")
+      .select("full_name,avatar_path,plan,subscription_name,subscription_status,stripe_price_id,current_period_end,onboarding_step")
       .eq("id", userId)
       .maybeSingle();
 
@@ -26,11 +27,11 @@ export async function GET(request: Request) {
 
     if (membershipError) throw membershipError;
 
-    let workspace: { id: string; name: string } | null = null;
+    let workspace: { id: string; name: string; initials?: string | null; logo_path?: string | null } | null = null;
     if (membership?.workspace_id) {
       const { data: resolvedWorkspace, error: organizationError } = await client
         .from("workspaces")
-        .select("id,name")
+        .select("id,name,initials,logo_path")
         .eq("id", membership.workspace_id)
         .maybeSingle();
 
@@ -57,7 +58,13 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({
-      user: { id: userId, email: email ?? "" },
+      user: {
+        id: userId,
+        email: email ?? "",
+        full_name: profile?.full_name ?? null,
+        avatar_path: profile?.avatar_path ?? null,
+        initials: null
+      },
       plan,
       subscription_name: profile?.subscription_name ?? null,
       subscription_status: profile?.subscription_status ?? null,
@@ -79,6 +86,37 @@ export async function GET(request: Request) {
     ctx.captureException("failed to resolve me", error, {
       origin: "server",
       step: "load-me"
+    });
+    return toErrorResponse(error, ctx.requestId);
+  }
+}
+
+const patchSchema = z.object({
+  avatar_path: z.string().trim().min(1).nullable().optional()
+});
+
+export async function PATCH(request: Request) {
+  const ctx = createRequestContext("PATCH /api/me", request);
+
+  try {
+    const { client, userId } = await requireAuthContext(request);
+    const payload = patchSchema.parse(await request.json());
+
+    const { data, error } = await client
+      .from("profiles")
+      .update({ avatar_path: payload.avatar_path ?? null })
+      .eq("id", userId)
+      .select("id,avatar_path")
+      .single();
+
+    if (error) throw error;
+    if (!data) throw new HttpError(404, "Profile not found");
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    ctx.captureException("failed to update me", error, {
+      origin: "server",
+      step: "update-me"
     });
     return toErrorResponse(error, ctx.requestId);
   }

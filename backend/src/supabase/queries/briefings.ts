@@ -2,7 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const createBriefingSchema = z.object({
-  org_id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
   title: z.string().min(1),
   event_date: z.string().date().optional(),
   location_text: z.string().optional()
@@ -17,12 +17,10 @@ const updateBriefingSchema = z.object({
 export type CreateBriefingInput = z.infer<typeof createBriefingSchema>;
 export type UpdateBriefingInput = z.infer<typeof updateBriefingSchema>;
 
-export async function listBriefings(client: SupabaseClient) {
-  const { data, error } = await client
-    .from("briefings")
-    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
-    .order("created_at", { ascending: false });
+const SELECT_BRIEFING_FIELDS = "id, workspace_id, title, status, shared, event_date, location_text, pdf_path, created_by, created_at, updated_at";
 
+export async function listBriefings(client: SupabaseClient) {
+  const { data, error } = await client.from("briefings").select(SELECT_BRIEFING_FIELDS).order("created_at", { ascending: false });
   if (error) throw error;
   return data;
 }
@@ -31,44 +29,29 @@ export async function createBriefing(client: SupabaseClient, userId: string, inp
   const payload = createBriefingSchema.parse(input);
   const { data, error } = await client
     .from("briefings")
-    .insert({ ...payload, created_by: userId })
-    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
+    .insert({ ...payload, status: "draft", created_by: userId })
+    .select(SELECT_BRIEFING_FIELDS)
     .single();
 
   if (error) throw error;
   return data;
 }
 
-export async function countBriefingsByOrg(client: SupabaseClient, orgId: string) {
-  const { count, error } = await client
-    .from("briefings")
-    .select("id", { count: "exact", head: true })
-    .eq("org_id", orgId);
-
+export async function countBriefingsByWorkspace(client: SupabaseClient, workspaceId: string) {
+  const { count, error } = await client.from("briefings").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId);
   if (error) throw error;
   return Number(count ?? 0);
 }
 
 export async function getBriefingById(client: SupabaseClient, id: string) {
-  const { data, error } = await client
-    .from("briefings")
-    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
-    .eq("id", id)
-    .single();
-
+  const { data, error } = await client.from("briefings").select(SELECT_BRIEFING_FIELDS).eq("id", id).single();
   if (error) throw error;
   return data;
 }
 
 export async function updateBriefing(client: SupabaseClient, id: string, patch: UpdateBriefingInput) {
   const payload = updateBriefingSchema.parse(patch);
-  const { data, error } = await client
-    .from("briefings")
-    .update(payload)
-    .eq("id", id)
-    .select("id, org_id, title, event_date, location_text, pdf_path, created_by, created_at, updated_at")
-    .single();
-
+  const { data, error } = await client.from("briefings").update(payload).eq("id", id).select(SELECT_BRIEFING_FIELDS).single();
   if (error) throw error;
   return data;
 }

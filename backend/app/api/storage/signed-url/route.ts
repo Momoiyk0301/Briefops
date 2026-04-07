@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createRequestContext, toErrorResponse } from "@/http";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 
 export const runtime = "nodejs";
@@ -16,13 +16,18 @@ export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/storage/signed-url");
 
   try {
-    await requireUser(request);
+    const { userId } = await requireUser(request);
     const url = new URL(request.url);
     const params = querySchema.parse({
       bucket: url.searchParams.get("bucket"),
       path: url.searchParams.get("path"),
       expires_in: url.searchParams.get("expires_in") ?? "3600"
     });
+    const expectedPrefix = `${userId}/`;
+
+    if (!params.path.startsWith(expectedPrefix)) {
+      throw new HttpError(403, "Forbidden");
+    }
 
     const service = createServiceRoleClient();
     const { data, error } = await service.storage

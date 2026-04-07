@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     if (briefing.org_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
 
     const data = await createStaff(client, membership.workspace_id, body);
-    if (!data.org_id || data.org_id !== membership.workspace_id) {
+    if (!data.workspace_id || data.workspace_id !== membership.workspace_id) {
       throw new HttpError(500, "Invalid staff workspace");
     }
     return NextResponse.json({ data }, { status: 201 });

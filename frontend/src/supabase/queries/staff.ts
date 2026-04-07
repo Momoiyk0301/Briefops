@@ -21,18 +21,20 @@ const updateStaffSchema = z.object({
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
 
-const SELECT_STAFF_FIELDS = "id, org_id, briefing_id, full_name, role, phone, email, notes, created_at, updated_at";
+const SELECT_STAFF_FIELDS = "id, workspace_id, briefing_id, full_name, role, phone, email, notes, created_at, updated_at";
 
-export async function listStaffByOrg(client: SupabaseClient, orgId: string) {
+export async function listStaffByWorkspace(client: SupabaseClient, workspaceId: string) {
   const { data, error } = await client
     .from("staff")
     .select(SELECT_STAFF_FIELDS)
-    .eq("org_id", orgId)
+    .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data;
 }
+
+export const listStaffByOrg = listStaffByWorkspace;
 
 export async function getStaffById(client: SupabaseClient, id: string) {
   const { data, error } = await client
@@ -45,12 +47,12 @@ export async function getStaffById(client: SupabaseClient, id: string) {
   return data;
 }
 
-export async function createStaff(client: SupabaseClient, orgId: string, input: CreateStaffInput) {
+export async function createStaff(client: SupabaseClient, workspaceId: string, input: CreateStaffInput) {
   const payload = createStaffSchema.parse(input);
   const { data, error } = await client
     .from("staff")
     .insert({
-      org_id: orgId,
+      workspace_id: workspaceId,
       briefing_id: payload.briefing_id,
       full_name: payload.full_name,
       role: payload.role,

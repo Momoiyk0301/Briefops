@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { env } from "@/env";
+import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { createPublicLink, listPublicLinks, revokePublicLink } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
@@ -85,7 +86,10 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({
       data: links.map((link) => ({
         ...link,
-        url: `${baseUrl}/share/${link.token}`
+        url:
+          link.link_type === "audience" && link.audience_tag
+            ? buildAudienceBriefingUrl(baseUrl, link.briefing_id, link.audience_tag, link.token)
+            : buildStaffBriefingUrl(baseUrl, link.token)
       }))
     });
   } catch (error) {
@@ -127,14 +131,24 @@ export async function POST(request: Request, { params }: Params) {
       throw new HttpError(409, "Generate a PDF before sharing");
     }
 
-    const link = await createPublicLink(admin, briefingId, userId, resolveExpiration(body.duration), normalizedTeam);
+    const link = await createPublicLink(
+      admin,
+      briefingId,
+      userId,
+      resolveExpiration(body.duration),
+      normalizedTeam ? "audience" : "staff",
+      normalizedTeam
+    );
     const baseUrl = env.APP_URL.replace(/\/$/, "");
 
     return NextResponse.json(
       {
         data: {
           ...link,
-          url: `${baseUrl}/share/${link.token}`
+          url:
+            link.link_type === "audience" && link.audience_tag
+              ? buildAudienceBriefingUrl(baseUrl, link.briefing_id, link.audience_tag, link.token)
+              : buildStaffBriefingUrl(baseUrl, link.token)
         }
       },
       { status: 201 }

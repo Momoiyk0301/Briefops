@@ -201,6 +201,8 @@ export async function getUserOrgId(client: SupabaseClient, userId: string) {
   return data?.workspace_id ?? null;
 }
 
+export const getUserWorkspaceId = getUserOrgId;
+
 export async function listRegistryModules(client: SupabaseClient, orgId: string) {
   const { data, error } = await client
     .from("modules")
@@ -211,6 +213,8 @@ export async function listRegistryModules(client: SupabaseClient, orgId: string)
   if (error) throw error;
   return data;
 }
+
+export const listWorkspaceModules = listRegistryModules;
 
 export async function ensureRegistryModules(client: SupabaseClient, orgId: string) {
   const existing = await listRegistryModules(client, orgId);
@@ -248,3 +252,5 @@ export async function updateRegistryModuleEnabled(
   if (error) throw error;
   return data;
 }
+
+export const updateWorkspaceModuleEnabled = updateRegistryModuleEnabled;

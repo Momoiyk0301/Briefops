@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/supabase/server";
 import { getPlanFromStripePriceId, getStripe, isDev } from "@/stripe/stripe";
 
 type ProfilePatch = {
-  plan: "free" | "starter" | "plus" | "pro";
+  plan: "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise";
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_price_id?: string | null;
@@ -42,7 +42,7 @@ function shouldFallbackToLegacyColumns(error: unknown) {
   return code === "42703" || /column .* does not exist/i.test(message);
 }
 
-function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "starter" | "plus" | "pro" {
+function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise" {
   for (const item of subscription.items.data) {
     const priceId = item.price?.id;
     if (!priceId) continue;
@@ -52,7 +52,10 @@ function resolvePlanFromSubscription(subscription: Stripe.Subscription): "free" 
   return "free";
 }
 
-function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro") {
+function toSubscriptionName(plan: "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise") {
+  if (plan === "enterprise") return "Enterprise";
+  if (plan === "guest") return "Guest";
+  if (plan === "funder") return "Funder";
   if (plan === "pro") return "Pro";
   if (plan === "plus") return "Plus";
   if (plan === "starter") return "Starter";
@@ -310,7 +313,9 @@ async function updateSubscriptionStatusByCustomerId(
   return Boolean(data?.id);
 }
 
-async function resolvePlanFromSession(session: Stripe.Checkout.Session): Promise<"free" | "starter" | "plus" | "pro"> {
+async function resolvePlanFromSession(
+  session: Stripe.Checkout.Session
+): Promise<"free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise"> {
   if (!session.id) return "free";
 
   const lineItems = await getStripe().checkout.sessions.listLineItems(session.id, { limit: 100 });

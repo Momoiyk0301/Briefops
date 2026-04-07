@@ -20,19 +20,29 @@ export async function POST(request: Request) {
     const { client, userId } = await requireAuthContext(request);
     const appUrl = resolveAppUrl(request);
 
-    const { data: profile, error: profileError } = await client
-      .from("profiles")
-      .select("id,stripe_customer_id")
-      .eq("id", userId)
-      .single();
-    if (profileError) throw profileError;
+    const { data: membership, error: membershipError } = await client
+      .from("memberships")
+      .select("workspace_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (membershipError) throw membershipError;
+    if (!membership?.workspace_id) {
+      throw new HttpError(409, "Aucun workspace actif trouve pour ce compte.");
+    }
 
-    if (!profile?.stripe_customer_id) {
+    const { data: workspace, error: workspaceError } = await client
+      .from("workspaces")
+      .select("id,stripe_customer_id")
+      .eq("id", membership.workspace_id)
+      .maybeSingle();
+    if (workspaceError) throw workspaceError;
+
+    if (!workspace?.stripe_customer_id) {
       throw new HttpError(409, "Aucune facturation Stripe active pour ce compte. Choisis une offre pour commencer.");
     }
 
     const session = await getStripe().billingPortal.sessions.create({
-      customer: profile.stripe_customer_id,
+      customer: workspace.stripe_customer_id,
       return_url: `${appUrl}/account?billing=returned`
     });
 

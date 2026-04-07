@@ -3,16 +3,24 @@ import { SupabaseClient } from "@supabase/supabase-js";
 export async function getUserPlan(
   client: SupabaseClient,
   userId: string
-): Promise<"free" | "starter" | "plus" | "pro"> {
+): Promise<"starter" | "pro" | "guest" | "funder" | "enterprise"> {
+  const { data: membership, error: membershipError } = await client
+    .from("memberships")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipError) throw membershipError;
+  if (!membership?.workspace_id) return "starter";
+
   const { data, error } = await client
-    .from("profiles")
+    .from("workspaces")
     .select("plan")
-    .eq("id", userId)
-    .single();
+    .eq("id", membership.workspace_id)
+    .maybeSingle();
 
   if (error) throw error;
-  const plan = String(data?.plan ?? "free").toLowerCase();
-  if (plan === "start") return "starter";
-  if (plan === "starter" || plan === "plus" || plan === "pro") return plan;
-  return "free";
+  const plan = String(data?.plan ?? "starter").toLowerCase();
+  if (plan === "pro" || plan === "guest" || plan === "funder" || plan === "enterprise") return plan;
+  return "starter";
 }

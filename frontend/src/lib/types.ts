@@ -1,13 +1,16 @@
 import { ComponentType, ReactNode } from "react";
 import { ZodType, ZodTypeDef } from "zod";
 
-export type UserPlan = "free" | "starter" | "plus" | "pro";
+export type UserPlan = "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise";
 export type Locale = "fr" | "en";
 export type MembershipRole = "owner" | "admin" | "member";
 
 export type AppUser = {
   id: string;
   email: string;
+  full_name?: string | null;
+  avatar_path?: string | null;
+  initials?: string | null;
 };
 
 export type MeResponse = {
@@ -22,8 +25,26 @@ export type MeResponse = {
     pdf_exports_limit: number | null;
     pdf_exports_remaining: number | null;
   };
-  org: { id: string; name: string } | null;
-  workspace?: { id: string; name: string } | null;
+  org: {
+    id: string;
+    name: string;
+    initials?: string | null;
+    logo_path?: string | null;
+    briefings_count?: number | null;
+    storage_used_bytes?: number | null;
+    pdf_exports_month?: number | null;
+    due_at?: string | null;
+  } | null;
+  workspace?: {
+    id: string;
+    name: string;
+    initials?: string | null;
+    logo_path?: string | null;
+    briefings_count?: number | null;
+    storage_used_bytes?: number | null;
+    pdf_exports_month?: number | null;
+    due_at?: string | null;
+  } | null;
   has_membership?: boolean;
   onboarding_step?: "workspace" | "products" | "demo" | "done" | null;
   role: MembershipRole | null;
@@ -48,7 +69,8 @@ export type Product = {
 
 export type StaffMember = {
   id: string;
-  org_id: string;
+  org_id?: string;
+  workspace_id?: string;
   briefing_id: string;
   full_name: string;
   role: string;
@@ -63,6 +85,8 @@ export type Briefing = {
   id: string;
   org_id: string;
   title: string;
+  status?: "draft" | "ready" | "archived" | string;
+  shared?: boolean;
   event_date: string | null;
   location_text: string | null;
   pdf_path?: string | null;
@@ -72,11 +96,14 @@ export type Briefing = {
 };
 
 export type PublicLinkStatus = "active" | "expired" | "revoked";
+export type PublicLinkType = "staff" | "audience";
 
 export type PublicLink = {
   id: string;
   briefing_id: string;
   resource_type: string;
+  link_type: PublicLinkType;
+  audience_tag?: string | null;
   team?: string | null;
   token: string;
   created_by: string;

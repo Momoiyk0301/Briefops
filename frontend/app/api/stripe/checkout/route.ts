@@ -8,14 +8,14 @@ import { env } from "@/env";
 
 export const runtime = "nodejs";
 const bodySchema = z.object({
-  plan: z.enum(["starter", "plus", "pro"]).optional(),
+  plan: z.enum(["starter", "pro", "guest", "funder", "enterprise"]).optional(),
   stripe_price_id: z.string().trim().min(1).optional(),
   workspace_id: z.string().uuid().optional(),
   workspace_name: z.string().trim().min(2).max(120).optional()
     .or(z.literal("")),
   source: z.enum(["billing", "onboarding"]).optional()
 });
-const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, plus: 2, pro: 3 };
+const planRank: Record<string, number> = { free: 0, start: 1, starter: 1, pro: 2, guest: 2, funder: 2, enterprise: 3 };
 
 function resolveAppUrl(request: Request): string {
   const origin = request.headers.get("origin");

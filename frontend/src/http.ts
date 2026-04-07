@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 
 export class HttpError extends Error {
   status: number;
@@ -12,54 +12,35 @@ export class HttpError extends Error {
   }
 }
 
-type RequestContextExtra = Record<string, unknown>;
-
-function sanitize(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitize);
-  if (!value || typeof value !== "object") return value;
-
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
-      if (/token|authorization|signature|secret|password|email|stripe|api[-_]?key/i.test(key)) {
-        return [key, "[redacted]"];
-      }
-      return [key, sanitize(entry)];
-    })
-  );
-}
-
-function sanitizeObject(value?: RequestContextExtra): RequestContextExtra {
-  if (!value) return {};
-  return sanitize(value) as RequestContextExtra;
-}
-
-export function createRequestContext(route: string, request?: Request, baseExtra?: RequestContextExtra) {
+export function createRequestContext(route: string, _request?: Request) {
   const requestId = randomUUID();
-  const requestDetails = request
-    ? {
-        method: request.method,
-        url: (() => {
-          try {
-            return new URL(request.url).pathname;
-          } catch {
-            return request.url;
-          }
-        })()
-      }
-    : {};
 
-  const buildPayload = (extra?: RequestContextExtra) => {
-    return {
-      requestId,
-      route,
-      ...requestDetails,
-      ...sanitizeObject(baseExtra),
-      ...sanitizeObject(extra)
-    };
+  const sanitize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sanitize);
+    if (!value || typeof value !== "object") return value;
+
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
+        if (/token|authorization|signature|secret|password|email|stripe|api[-_]?key/i.test(key)) {
+          return [key, "[redacted]"];
+        }
+        return [key, sanitize(entry)];
+      })
+    );
   };
 
-  const log = (level: "info" | "warn" | "error", message: string, extra?: RequestContextExtra) => {
-    const payload = buildPayload(extra);
+  const sanitizeObject = (value?: Record<string, unknown>): Record<string, unknown> => {
+    if (!value) return {};
+    return sanitize(value) as Record<string, unknown>;
+  };
+
+  const log = (level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) => {
+    const payload = {
+      requestId,
+      route,
+      ...sanitizeObject(extra)
+    };
+
     if (level === "info") {
       console.info(`[api] ${message}`, payload);
       return;
@@ -73,61 +54,120 @@ export function createRequestContext(route: string, request?: Request, baseExtra
     console.error(`[api] ${message}`, payload);
   };
 
-  const captureException = (message: string, error: unknown, extra?: RequestContextExtra) => {
-    const payload = buildPayload(extra);
-    Sentry.withScope((scope) => {
-      scope.setTag("request_id", requestId);
-      scope.setTag("route", route);
-      if (typeof payload.method === "string") {
-        scope.setTag("method", payload.method);
-      }
-      if ("userId" in payload && typeof payload.userId === "string") {
-        scope.setUser({ id: payload.userId });
-      }
-      scope.setContext("request", payload);
-      scope.setExtras(payload);
-      Sentry.captureException(error instanceof Error ? error : new Error(String(error)));
-    });
-    log("error", message, {
-      ...payload,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  };
-
   return {
     requestId,
     info: (message: string, extra?: Record<string, unknown>) => log("info", message, extra),
     warn: (message: string, extra?: Record<string, unknown>) => log("warn", message, extra),
     error: (message: string, extra?: Record<string, unknown>) => log("error", message, extra),
-    captureException
+    captureException: (message: string, error: unknown, extra?: Record<string, unknown>) => {
+      const details = describeError(error);
+      log("error", message, { ...extra, ...details });
+      const normalized = error instanceof Error ? error : new Error(details.message ? String(details.message) : "Unknown error");
+      Sentry.captureException(normalized, {
+        tags: { area: "api", route },
+        extra: { requestId, ...extra, ...details }
+      });
+    }
   };
 }
 
-export function toErrorResponse(error: unknown, requestId: string) {
-  if (error instanceof HttpError) {
-    return NextResponse.json({ error: error.message, request_id: requestId }, { status: error.status });
-  }
-
+export function describeError(error: unknown): Record<string, unknown> {
   if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      {
-        error: "Validation failed",
-        details: error.flatten(),
-        request_id: requestId
-      },
-      { status: 400 }
-    );
+    return {
+      type: "ZodError",
+      message: error.message,
+      issues: error.issues,
+      details: error.flatten()
+    };
   }
 
-  if (error instanceof Error && error.message === "Unauthorized") {
-    return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
+  if (error instanceof Error) {
+    const extra = error as Error & {
+      status?: number;
+      code?: string;
+      details?: unknown;
+      hint?: string;
+      cause?: unknown;
+    };
+
+    return {
+      type: error.name || "Error",
+      message: error.message,
+      status: extra.status,
+      code: extra.code,
+      details: extra.details,
+      hint: extra.hint,
+      cause:
+        extra.cause instanceof Error
+          ? { type: extra.cause.name, message: extra.cause.message }
+          : extra.cause,
+      stack: error.stack
+    };
   }
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message?: unknown }).message ?? "Internal server error")
-        : "Internal server error";
-  return NextResponse.json({ error: message, request_id: requestId }, { status: 500 });
+  if (typeof error === "object" && error !== null) {
+    return {
+      type: "Object",
+      ...sanitizeUnknownErrorObject(error)
+    };
+  }
+
+  return {
+    type: typeof error,
+    message: String(error)
+  };
+}
+
+function sanitizeUnknownErrorObject(error: object): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(error).map(([key, value]) => {
+      if (value instanceof Error) {
+        return [key, { type: value.name, message: value.message, stack: value.stack }];
+      }
+      return [key, value];
+    })
+  );
+}
+
+export function toErrorResponse(error: unknown, requestId: string) {
+  let status = 500;
+  let message = "Internal server error";
+  let details: unknown = undefined;
+
+  if (error instanceof HttpError) {
+    status = error.status;
+    message = error.message;
+  } else if (error instanceof z.ZodError) {
+    status = 400;
+    message = "Validation failed";
+    details = error.flatten();
+  } else if (error instanceof Error && error.message === "Unauthorized") {
+    status = 401;
+    message = "Unauthorized";
+  } else if (error instanceof Error) {
+    message = error.message;
+  } else if (typeof error === "object" && error !== null && "message" in error) {
+    message = String((error as { message?: unknown }).message ?? "Internal server error");
+  }
+
+  console.error("[api] response error", {
+    requestId,
+    status,
+    ...describeError(error)
+  });
+
+  if (status >= 500) {
+    const normalized = error instanceof Error ? error : new Error(message);
+    Sentry.captureException(normalized, {
+      tags: { area: "api", status: String(status) },
+      extra: { requestId, ...describeError(error) }
+    });
+  }
+
+  const body: Record<string, unknown> = { error: message, request_id: requestId };
+  if (details !== undefined) {
+    body.details = details;
+  }
+
+  return NextResponse.json(body, { status });
 }

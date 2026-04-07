@@ -14,7 +14,7 @@ type SendMailInput = {
   html: string;
 };
 
-export type BillingPlan = "free" | "starter" | "plus" | "pro";
+export type BillingPlan = "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise";
 
 export const EMAIL_FLOW_MAP = {
   stripe: ["invoices", "receipts", "financial billing emails"],
@@ -86,8 +86,6 @@ function renderMailShell(title: string, content: string, ctaLabel?: string, ctaH
 }
 
 export async function sendCheckoutConfirmationEmails(email: string, plan: BillingPlan, session: Stripe.Checkout.Session) {
-  if (plan === "free") return;
-
   const appUrl = env.APP_URL.replace(/\/$/, "");
   const sessionId = session.id ?? "n/a";
   const amount = typeof session.amount_total === "number" ? (session.amount_total / 100).toFixed(2) : null;

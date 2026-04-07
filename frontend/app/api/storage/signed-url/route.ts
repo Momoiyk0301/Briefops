@@ -7,7 +7,7 @@ import { createServiceRoleClient, requireUser } from "@/supabase/server";
 export const runtime = "nodejs";
 
 const querySchema = z.object({
-  bucket: z.enum(["logos", "assets", "exports"]),
+  bucket: z.enum(["logos", "avatars", "assets", "exports"]),
   path: z.string().min(1),
   expires_in: z.coerce.number().int().min(60).max(86400).default(3600)
 });

@@ -330,10 +330,22 @@ export async function getBriefingsWithFallback(): Promise<{ data: Briefing[]; de
   }
 }
 
-export async function createBriefing(input: { org_id: string; title: string; event_date?: string; location_text?: string }) {
+export async function createBriefing(input: {
+  org_id?: string;
+  workspace_id?: string;
+  title: string;
+  event_date?: string;
+  location_text?: string;
+}) {
+  const orgId = input.org_id ?? input.workspace_id;
   const response = await requestJson<{ data: Briefing }>("/api/briefings", {
     method: "POST",
-    body: input
+    body: {
+      org_id: orgId,
+      title: input.title,
+      event_date: input.event_date,
+      location_text: input.location_text
+    }
   });
   return response.data;
 }
@@ -400,8 +412,11 @@ export async function updateRegistryModuleEnabled(id: string, enabled: boolean) 
   return response.data;
 }
 
-export async function downloadPdf(id: string): Promise<Blob> {
-  const path = `/api/pdf/${id}`;
+export const updateWorkspaceModuleEnabled = updateRegistryModuleEnabled;
+
+export async function downloadPdf(id: string, team?: string | null): Promise<{ blob: Blob; filename: string | null }> {
+  const query = team ? `?team=${encodeURIComponent(team)}` : "";
+  const path = `/api/pdf/${id}${query}`;
   const startedAt = logApiStart("GET", path);
   let response: Response;
 
@@ -456,7 +471,11 @@ export async function downloadPdf(id: string): Promise<Blob> {
   }
 
   logApiSuccess("GET", path, response.status, startedAt);
-  return response.blob();
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename\*?=(?:UTF-8''|")?([^\";]+)/i);
+  const filename = filenameMatch ? decodeURIComponent(filenameMatch[1].replace(/"$/, "")) : null;
+  return { blob, filename };
 }
 
 export async function generateBriefingPdf(
@@ -469,11 +488,60 @@ export async function generateBriefingPdf(
   );
 }
 
-export async function getStorageSignedUrl(bucket: "logos" | "assets" | "exports", path: string, expiresIn = 3600) {
+export async function getStorageSignedUrl(bucket: "logos" | "avatars" | "assets" | "exports", path: string, expiresIn = 3600) {
   const response = await requestJson<{ url: string }>(
     `/api/storage/signed-url?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}&expires_in=${expiresIn}`
   );
   return response.url;
+}
+
+export async function uploadStorageFile(
+  bucket: "logos" | "avatars" | "assets" | "exports",
+  file: File
+): Promise<{ bucket: string; path: string }> {
+  const path = "/api/storage/upload";
+  const startedAt = logApiStart("POST", path);
+  const headers = await getAuthHeader();
+  const formData = new FormData();
+  formData.append("bucket", bucket);
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: formData
+  });
+
+  const payload = (await response.json()) as { bucket?: string; path?: string; error?: string; request_id?: string };
+  if (!response.ok) {
+    const message = payload.error ?? `HTTP ${response.status}`;
+    logApiError("POST", path, response.status, message, startedAt);
+    throw toApiClientError({
+      status: response.status,
+      message,
+      method: "POST",
+      path,
+      requestId: payload.request_id ?? null,
+      safeDetails: { origin: "client", step: "upload", response_status: response.status }
+    });
+  }
+
+  logApiSuccess("POST", path, response.status, startedAt);
+  return { bucket: payload.bucket ?? bucket, path: payload.path ?? "" };
+}
+
+export async function updateMyAvatar(avatarPath: string) {
+  return requestJson<{ data: { id: string; avatar_path: string | null } }>("/api/me", {
+    method: "PATCH",
+    body: { avatar_path: avatarPath }
+  });
+}
+
+export async function updateWorkspaceLogo(logoPath: string) {
+  return requestJson<{ data: { id: string; logo_path: string | null } }>("/api/workspace", {
+    method: "PATCH",
+    body: { logo_path: logoPath }
+  });
 }
 
 export async function listBriefingShareLinks(briefingId: string): Promise<PublicLink[]> {
@@ -505,6 +573,78 @@ export async function listPublicLinks(): Promise<PublicLinkWithBriefing[]> {
   return response.data;
 }
 
+export async function listBriefingExports(): Promise<
+  Array<{
+    id: string;
+    workspace_id: string;
+    briefing_id: string;
+    version: number;
+    file_path: string;
+    status: string;
+    error_message: string | null;
+    created_at: string;
+    created_by: string;
+    briefing_title: string;
+    briefing_event_date: string | null;
+    briefing_location_text: string | null;
+  }>
+> {
+  const response = await requestJson<{ data: Array<{
+    id: string;
+    workspace_id: string;
+    briefing_id: string;
+    version: number;
+    file_path: string;
+    status: string;
+    error_message: string | null;
+    created_at: string;
+    created_by: string;
+    briefing_title: string;
+    briefing_event_date: string | null;
+    briefing_location_text: string | null;
+  }> }>("/api/briefing-exports");
+  return response.data;
+}
+
+export async function downloadBriefingExport(exportId: string): Promise<{ blob: Blob; filename: string | null }> {
+  const path = `/api/briefing-exports/${exportId}/download`;
+  const startedAt = logApiStart("GET", path);
+  const headers = await getAuthHeader();
+  const response = await fetch(`${API_URL}${path}`, { method: "GET", headers });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `HTTP ${response.status}`;
+    let requestId: string | null = null;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as ApiResponseErrorPayload;
+        if (parsed.error) message = parsed.error;
+        requestId = parsed.request_id ?? null;
+      } catch {
+        message = text;
+      }
+    }
+    logApiError("GET", path, response.status, message, startedAt);
+    throw toApiClientError({
+      status: response.status,
+      message,
+      method: "GET",
+      path,
+      requestId,
+      safeDetails: { origin: "client", step: "download-export", response_status: response.status }
+    });
+  }
+
+  logApiSuccess("GET", path, response.status, startedAt);
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filenameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+  return {
+    blob: await response.blob(),
+    filename: filenameMatch?.[1] ?? null
+  };
+}
+
 export async function createStripeCheckoutSession(
   plan: "starter" | "plus" | "pro",
   workspace_name?: string
@@ -512,6 +652,23 @@ export async function createStripeCheckoutSession(
   return requestJson<{ url: string }>("/api/stripe/checkout", {
     method: "POST",
     body: { plan, workspace_name }
+  });
+}
+
+export async function createStripeCheckoutSessionByPrice(input: {
+  stripe_price_id: string;
+  plan?: "starter" | "pro" | "guest" | "funder";
+  workspace_id?: string;
+  workspace_name?: string;
+}): Promise<{ url: string }> {
+  return requestJson<{ url: string }>("/api/stripe/checkout", {
+    method: "POST",
+    body: {
+      stripe_price_id: input.stripe_price_id,
+      plan: input.plan,
+      workspace_id: input.workspace_id,
+      workspace_name: input.workspace_name ?? ""
+    }
   });
 }
 

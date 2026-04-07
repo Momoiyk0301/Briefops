@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { ensureRegistryModules, getUserOrgId, updateRegistryModuleEnabled } from "@/supabase/queries/modulesRegistry";
+import { getUserWorkspaceId, listWorkspaceModules, updateWorkspaceModuleEnabled } from "@/supabase/queries/modulesRegistry";
 import { requireUser } from "@/supabase/server";
 
 export const runtime = "nodejs";
@@ -18,10 +18,10 @@ export async function GET(request: Request) {
 
   try {
     const { client, userId } = await requireUser(request);
-    const orgId = await getUserOrgId(client, userId);
-    if (!orgId) throw new HttpError(404, "Workspace not found");
+    const workspaceId = await getUserWorkspaceId(client, userId);
+    if (!workspaceId) throw new HttpError(404, "Workspace not found");
 
-    const data = await ensureRegistryModules(client, orgId);
+    const data = await listWorkspaceModules(client, workspaceId);
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
@@ -34,11 +34,11 @@ export async function PUT(request: Request) {
 
   try {
     const { client, userId } = await requireUser(request);
-    const orgId = await getUserOrgId(client, userId);
-    if (!orgId) throw new HttpError(404, "Workspace not found");
+    const workspaceId = await getUserWorkspaceId(client, userId);
+    if (!workspaceId) throw new HttpError(404, "Workspace not found");
 
     const input = updateSchema.parse(await request.json());
-    const data = await updateRegistryModuleEnabled(client, orgId, input.id, input.enabled);
+    const data = await updateWorkspaceModuleEnabled(client, workspaceId, input.id, input.enabled);
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

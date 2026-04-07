@@ -1,0 +1,154 @@
+{
+  "app": {
+    "name": "BriefOps",
+    "save": "Enregistrer",
+    "loading": "Chargement...",
+    "downloadPdf": "Télécharger PDF",
+    "soon": "Bientôt disponible"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "register": "Créer un compte",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submitLogin": "Se connecter",
+    "submitRegister": "Créer un compte",
+    "continueRegister": "Continuer",
+    "forgotPassword": "Mot de passe oublié ?",
+    "offersRedirect": "Compte trouvé. Choisis une offre pour terminer l'activation.",
+    "accountMissing": "Compte introuvable. Passe en création de compte pour continuer.",
+    "userNotFound": "Utilisateur introuvable.",
+    "invalidPassword": "Mot de passe incorrect.",
+    "emailNotConfirmed": "Email non confirmé. Vérifie ta boîte mail avant de te connecter.",
+    "logout": "Se déconnecter"
+  },
+  "nav": {
+    "briefings": "Briefings",
+    "modules": "Modules",
+    "account": "Compte",
+    "billing": "Facturation",
+    "settings": "Paramètres",
+    "onboarding": "Onboarding",
+    "plan": "Plan"
+  },
+  "onboarding": {
+    "title": "Bienvenue",
+    "orgName": "Nom de l'organisation",
+    "submit": "Continuer",
+    "fallback": "L'endpoint onboarding n'est pas encore disponible."
+  },
+  "documents": {
+    "kicker": "Exports & Share",
+    "title": "Documents",
+    "subtitle": "Retrouve rapidement les PDF générés et les liens publics actifs pour les équipes terrain.",
+    "pdfTab": "PDFs",
+    "linksTab": "Liens",
+    "pdfSearchPlaceholder": "Rechercher un PDF ou un briefing",
+    "linkSearchPlaceholder": "Rechercher un lien partagé",
+    "pdfCount": "{{count}} PDF(s)",
+    "linkCount": "{{count}} lien(s)",
+    "loadingPdfs": "Chargement des PDFs...",
+    "loadingLinks": "Chargement des liens...",
+    "emptyPdfTitle": "Aucun PDF pour le moment",
+    "emptyPdfHint": "Génère un export depuis un briefing pour le retrouver ici.",
+    "emptyLinkTitle": "Aucun lien partagé",
+    "emptyLinkHint": "Crée un lien public depuis un PDF généré pour le retrouver ici.",
+    "copySuccess": "Lien copié",
+    "copyError": "Impossible de copier",
+    "noExpiry": "Aucune expiration",
+    "open": "Ouvrir",
+    "copy": "Copier"
+  },
+  "modulesPage": {
+    "kicker": "Workspace Building Blocks",
+    "title": "Modules",
+    "subtitle": "Active les briques utiles à tes équipes et prépare le socle d’un futur marketplace sans alourdir le workflow actuel.",
+    "searchPlaceholder": "Rechercher un module",
+    "marketplace": "Marketplace",
+    "marketplaceSoon": "Marketplace bientot",
+    "active": "Actifs",
+    "available": "Disponibles",
+    "soon": "Soon",
+    "soonHint": "Extensions et templates à venir.",
+    "emptyTitle": "Aucun module trouvé",
+    "emptyHint": "Essaie un autre mot-clé.",
+    "enabled": "Activé",
+    "disabled": "Désactivé"
+  },
+  "notificationsPage": {
+    "kicker": "Operational Alerts",
+    "title": "Notifications",
+    "subtitle": "Vue claire sur les événements qui approchent, avec un niveau de priorité lisible et des alertes faciles à purger.",
+    "searchPlaceholder": "Rechercher une alerte",
+    "empty": "Aucune notification pour le moment.",
+    "locationFallback": "Lieu non défini",
+    "priority": "Priorité {{level}}",
+    "priorityHigh": "haute",
+    "priorityMedium": "moyenne",
+    "priorityLow": "basse",
+    "todayOrPast": "Aujourd'hui / passé",
+    "inDays": "Dans {{count}} jour(s)",
+    "loading": "Chargement des notifications..."
+  },
+  "routeError": {
+    "fallback": "Une erreur inattendue est survenue.",
+    "eyebrow": "Erreur application",
+    "title": "Impossible d'afficher cette page",
+    "route": "Route: {{path}}",
+    "back": "Retour",
+    "dashboard": "Aller au dashboard",
+    "reload": "Recharger"
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Gestion des membres d'équipe reliés à la table `staff`.",
+    "addTitle": "Ajouter un membre",
+    "selectBriefing": "Choisir un briefing",
+    "addButton": "Ajouter staff",
+    "adding": "Ajout...",
+    "listTitle": "Liste staff",
+    "empty": "Aucun membre staff.",
+    "noPhone": "Sans téléphone",
+    "noEmail": "Sans email",
+    "messages": {
+      "added": "Staff ajouté",
+      "required": "Briefing et nom requis"
+    },
+    "placeholders": {
+      "fullName": "Nom complet",
+      "role": "Rôle",
+      "phone": "Téléphone",
+      "email": "Email",
+      "notes": "Notes"
+    }
+  },
+  "billing": {
+    "title": "Facturation",
+    "freeLimit": "Plan Free : 3 exports PDF par mois",
+    "upgrade": "Passer Pro"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "languageTitle": "Langue de l'interface",
+    "languageHint": "Choisis la langue utilisée dans l'application.",
+    "appearanceTitle": "Apparence",
+    "appearanceHint": "Réglez le mode jour/nuit depuis les paramètres.",
+    "themeLight": "Jour",
+    "themeDark": "Nuit",
+    "preferencesTitle": "Préférences régionales",
+    "preferencesHint": "Format heure, fuseau et format date pour l'affichage.",
+    "hourFormat": "Format heure",
+    "timezone": "Fuseau",
+    "dateFormat": "Format date"
+  },
+  "editor": {
+    "saved": "Enregistré",
+    "saveError": "Échec de l'enregistrement",
+    "saving": "Enregistrement...",
+    "savedShort": "Enregistré",
+    "savedAt": "Sauvegardé à {{time}}",
+    "pdfFailed": "La génération PDF a échoué.",
+    "briefingLoading": "Chargement du briefing...",
+    "downloadReady": "Télécharger le PDF prêt"
+  }
+}
