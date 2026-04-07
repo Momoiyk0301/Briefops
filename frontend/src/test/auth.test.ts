@@ -111,4 +111,11 @@ describe("auth helpers", () => {
     expect(getAuthErrorKind(new Error("Email not confirmed"))).toBe("email_not_confirmed");
     expect(getAuthErrorMessage(new Error("Email not confirmed"))).toBe("Ton email n’est pas encore confirmé.");
   });
+
+  it("classifies login errors for clearer UI messages", async () => {
+    const { classifyLoginError } = await import("@/lib/auth");
+
+    expect(classifyLoginError(new Error("Email not confirmed"))).toBe("email_not_confirmed");
+    expect(classifyLoginError(new Error("Invalid login credentials"))).toBe("invalid_credentials");
+  });
 });

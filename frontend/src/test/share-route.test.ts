@@ -114,7 +114,8 @@ describe("frontend /api/briefings/:id/share", () => {
     expect(postRes.status).toBe(201);
     expect(createPublicLink).toHaveBeenCalledTimes(1);
     expect(createPublicLink.mock.calls[0][3]).toBeTruthy();
-    expect(createPublicLink.mock.calls[0][4]).toBeNull();
+    expect(createPublicLink.mock.calls[0][4]).toBe("staff");
+    expect(createPublicLink.mock.calls[0][5]).toBeNull();
     expect(getBody.data[0].url).toContain("/briefings/s/");
     expect(getBody.data[1].url).toContain("/briefings/b1/sound/");
   });

@@ -646,7 +646,7 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
 }
 
 export async function createStripeCheckoutSession(
-  plan: "starter" | "plus" | "pro",
+  plan: "starter" | "pro" | "guest" | "funder" | "enterprise",
   workspace_name?: string
 ): Promise<{ url: string }> {
   return requestJson<{ url: string }>("/api/stripe/checkout", {

@@ -106,3 +106,8 @@ Never rewrite the entire project unless explicitly requested.
 If something is unclear, make the simplest assumption and proceed.
 
 don't delete SQL file
+
+## Points d’attention
+- architecture hybride Next App Router + SPA React Router
+- duplication encore présente avec `backend/`
+- vocabulaire parfois mixte `org` / `workspace`
