@@ -53,6 +53,13 @@ create table if not exists public.workspaces (
   team_size integer,
   vat_number text,
   owner_id uuid not null unique references public.profiles(id) on delete restrict,
+  plan text not null default 'starter' check (plan in ('starter', 'pro', 'guest', 'funder', 'enterprise')),
+  stripe_customer_id text unique,
+  stripe_subscription_id text unique,
+  stripe_price_id text,
+  subscription_name text,
+  subscription_status text,
+  current_period_end timestamptz,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -63,20 +70,17 @@ alter table public.workspaces
 
 create table if not exists public.memberships (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.workspaces(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner', 'admin', 'member')),
-  plan_name text,
-  stripe_price_id text,
-  stripe_product_id text,
   created_at timestamptz not null default timezone('utc', now()),
-  unique (org_id, user_id),
+  unique (workspace_id, user_id),
   unique (user_id)
 );
 
 create table if not exists public.briefings (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.workspaces(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   title text not null,
   status text not null default 'draft' check (status in ('draft', 'ready', 'archived')),
   shared boolean not null default false,
@@ -90,7 +94,6 @@ create table if not exists public.briefings (
 
 create table if not exists public.modules (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.workspaces(id) on delete cascade,
   name text not null,
   type text not null,
   version integer not null default 1,
@@ -101,7 +104,17 @@ create table if not exists public.modules (
   default_data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  unique (org_id, type)
+  unique (type)
+);
+
+create table if not exists public.workspace_modules (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  module_id uuid not null references public.modules(id) on delete cascade,
+  enabled boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (workspace_id, module_id)
 );
 
 create table if not exists public.briefing_modules (
@@ -118,7 +131,7 @@ create table if not exists public.briefing_modules (
 
 create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.workspaces(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   briefing_id uuid not null references public.briefings(id) on delete cascade,
   full_name text not null,
   role text not null default 'staff',
@@ -127,6 +140,20 @@ create table if not exists public.staff (
   notes text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.briefing_exports (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  briefing_id uuid not null references public.briefings(id) on delete cascade,
+  version integer not null check (version > 0),
+  file_path text not null,
+  status text not null default 'ready' check (status in ('creating', 'generating', 'ready', 'failed')),
+  error_message text,
+  created_at timestamptz not null default timezone('utc', now()),
+  created_by uuid not null references public.profiles(id) on delete restrict,
+  unique (briefing_id, version),
+  unique (file_path)
 );
 
 create table if not exists public.public_links (
@@ -152,21 +179,25 @@ create table if not exists public.usage_counters (
   unique (user_id, month_start)
 );
 
-create index if not exists idx_memberships_org_id on public.memberships(org_id);
+create index if not exists idx_memberships_workspace_id on public.memberships(workspace_id);
 create index if not exists idx_memberships_user_id on public.memberships(user_id);
-create index if not exists idx_memberships_org_role on public.memberships(org_id, role);
+create index if not exists idx_memberships_workspace_role on public.memberships(workspace_id, role);
 
-create index if not exists idx_briefings_org_id on public.briefings(org_id);
-create index if not exists idx_briefings_org_event_date on public.briefings(org_id, event_date);
-create index if not exists idx_modules_registry_org_id on public.modules(org_id);
+create index if not exists idx_briefings_workspace_id on public.briefings(workspace_id);
+create index if not exists idx_briefings_workspace_event_date on public.briefings(workspace_id, event_date);
 create index if not exists idx_modules_registry_type on public.modules(type);
 create index if not exists idx_modules_registry_enabled on public.modules(enabled);
+create index if not exists idx_workspace_modules_workspace_id on public.workspace_modules(workspace_id);
+create index if not exists idx_workspace_modules_module_id on public.workspace_modules(module_id);
 
 create index if not exists idx_modules_briefing_id on public.briefing_modules(briefing_id);
 create index if not exists idx_modules_briefing_module_id on public.briefing_modules(module_id);
 create index if not exists idx_modules_data_json_gin on public.briefing_modules using gin (data_json);
-create index if not exists idx_staff_org_id on public.staff(org_id);
+create index if not exists idx_staff_workspace_id on public.staff(workspace_id);
 create index if not exists idx_staff_briefing_id on public.staff(briefing_id);
+create index if not exists idx_briefing_exports_workspace_id on public.briefing_exports(workspace_id);
+create index if not exists idx_briefing_exports_briefing_id on public.briefing_exports(briefing_id);
+create index if not exists idx_briefing_exports_created_at on public.briefing_exports(created_at desc);
 
 create index if not exists idx_public_links_token on public.public_links(token);
 create index if not exists idx_public_links_briefing_id on public.public_links(briefing_id);
@@ -177,7 +208,7 @@ create index if not exists idx_public_links_created_by on public.public_links(cr
 
 create index if not exists idx_usage_user_month on public.usage_counters(user_id, month_start);
 
-create or replace function public.is_org_member(p_org_id uuid)
+create or replace function public.is_workspace_member(p_workspace_id uuid)
 returns boolean
 language sql
 stable
@@ -187,12 +218,12 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = p_org_id
+    where m.workspace_id = p_workspace_id
       and m.user_id = auth.uid()
   );
 $$;
 
-create or replace function public.has_org_role(p_org_id uuid, p_roles text[])
+create or replace function public.has_workspace_role(p_workspace_id uuid, p_roles text[])
 returns boolean
 language sql
 stable
@@ -202,13 +233,13 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = p_org_id
+    where m.workspace_id = p_workspace_id
       and m.user_id = auth.uid()
       and m.role = any (p_roles)
   );
 $$;
 
-create or replace function public.shares_org_with_user(p_user_id uuid)
+create or replace function public.shares_workspace_with_user(p_user_id uuid)
 returns boolean
 language sql
 stable
@@ -219,7 +250,7 @@ as $$
     select 1
     from public.memberships me
     join public.memberships other
-      on other.org_id = me.org_id
+      on other.workspace_id = me.workspace_id
     where me.user_id = auth.uid()
       and other.user_id = p_user_id
   );
@@ -298,17 +329,17 @@ begin
 end;
 $$;
 
-create or replace function public.sync_staff_org_id()
+create or replace function public.sync_staff_workspace_id()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
 begin
-  select b.org_id into new.org_id
+  select b.workspace_id into new.workspace_id
   from public.briefings b
   where b.id = new.briefing_id;
 
-  if new.org_id is null then
+  if new.workspace_id is null then
     raise exception 'invalid briefing_id for staff';
   end if;
 
@@ -348,10 +379,11 @@ for each row
 execute function public.set_updated_at();
 
 drop trigger if exists trg_staff_sync_org_id on public.staff;
-create trigger trg_staff_sync_org_id
+drop trigger if exists trg_staff_sync_workspace_id on public.staff;
+create trigger trg_staff_sync_workspace_id
 before insert or update of briefing_id on public.staff
 for each row
-execute function public.sync_staff_org_id();
+execute function public.sync_staff_workspace_id();
 
 drop trigger if exists trg_usage_counters_updated_at on public.usage_counters;
 create trigger trg_usage_counters_updated_at
@@ -368,9 +400,11 @@ grant select on public.public_links to anon;
 grant select, insert, update, delete on public.workspaces to authenticated;
 grant select, insert, update, delete on public.memberships to authenticated;
 grant select, insert, update, delete on public.briefings to authenticated;
-grant select, insert, update, delete on public.modules to authenticated;
+grant select on public.modules to authenticated;
+grant select, insert, update, delete on public.workspace_modules to authenticated;
 grant select, insert, update, delete on public.briefing_modules to authenticated;
 grant select, insert, update, delete on public.staff to authenticated;
+grant select, insert on public.briefing_exports to authenticated;
 grant select, insert, update, delete on public.public_links to authenticated;
 grant select on public.usage_counters to authenticated;
 grant execute on function public.consume_pdf_export(uuid, integer) to authenticated;
@@ -380,8 +414,10 @@ alter table public.workspaces enable row level security;
 alter table public.memberships enable row level security;
 alter table public.briefings enable row level security;
 alter table public.modules enable row level security;
+alter table public.workspace_modules enable row level security;
 alter table public.briefing_modules enable row level security;
 alter table public.staff enable row level security;
+alter table public.briefing_exports enable row level security;
 alter table public.public_links enable row level security;
 alter table public.usage_counters enable row level security;
 
@@ -390,8 +426,10 @@ alter table public.workspaces force row level security;
 alter table public.memberships force row level security;
 alter table public.briefings force row level security;
 alter table public.modules force row level security;
+alter table public.workspace_modules force row level security;
 alter table public.briefing_modules force row level security;
 alter table public.staff force row level security;
+alter table public.briefing_exports force row level security;
 alter table public.public_links force row level security;
 alter table public.usage_counters force row level security;
 
@@ -420,6 +458,11 @@ drop policy if exists modules_registry_insert on public.modules;
 drop policy if exists modules_registry_update on public.modules;
 drop policy if exists modules_registry_delete on public.modules;
 
+drop policy if exists workspace_modules_select on public.workspace_modules;
+drop policy if exists workspace_modules_insert on public.workspace_modules;
+drop policy if exists workspace_modules_update on public.workspace_modules;
+drop policy if exists workspace_modules_delete on public.workspace_modules;
+
 drop policy if exists modules_select on public.briefing_modules;
 drop policy if exists modules_select_invite on public.briefing_modules;
 drop policy if exists modules_insert on public.briefing_modules;
@@ -430,6 +473,9 @@ drop policy if exists staff_select on public.staff;
 drop policy if exists staff_insert on public.staff;
 drop policy if exists staff_update on public.staff;
 drop policy if exists staff_delete on public.staff;
+
+drop policy if exists briefing_exports_select on public.briefing_exports;
+drop policy if exists briefing_exports_insert on public.briefing_exports;
 
 drop policy if exists public_links_select_token_only on public.public_links;
 drop policy if exists public_links_insert_own on public.public_links;
@@ -444,7 +490,7 @@ on public.profiles
 for select
 to authenticated
 using (
-  id = auth.uid() or public.shares_org_with_user(id)
+  id = auth.uid() or public.shares_workspace_with_user(id)
 );
 
 create policy profiles_insert
@@ -464,7 +510,7 @@ create policy orgs_select
 on public.workspaces
 for select
 to authenticated
-using (public.is_org_member(id));
+using (public.is_workspace_member(id));
 
 create policy orgs_insert
 on public.workspaces
@@ -476,46 +522,46 @@ create policy orgs_update
 on public.workspaces
 for update
 to authenticated
-using (public.has_org_role(id, array['owner','admin']))
-with check (public.has_org_role(id, array['owner','admin']));
+using (public.has_workspace_role(id, array['owner','admin']))
+with check (public.has_workspace_role(id, array['owner','admin']));
 
 create policy orgs_delete
 on public.workspaces
 for delete
 to authenticated
-using (public.has_org_role(id, array['owner','admin']));
+using (public.has_workspace_role(id, array['owner','admin']));
 
 create policy memberships_select
 on public.memberships
 for select
 to authenticated
-using (public.is_org_member(org_id));
+using (public.is_workspace_member(workspace_id));
 
 create policy memberships_insert
 on public.memberships
 for insert
 to authenticated
-with check (public.has_org_role(org_id, array['owner','admin']));
+with check (public.has_workspace_role(workspace_id, array['owner','admin']));
 
 create policy memberships_update
 on public.memberships
 for update
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin']))
-with check (public.has_org_role(org_id, array['owner','admin']));
+using (public.has_workspace_role(workspace_id, array['owner','admin']))
+with check (public.has_workspace_role(workspace_id, array['owner','admin']));
 
 create policy memberships_delete
 on public.memberships
 for delete
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin']));
+using (public.has_workspace_role(workspace_id, array['owner','admin']));
 
 create policy briefings_select
 on public.briefings
 for select
 to authenticated
 using (
-  public.is_org_member(org_id)
+  public.is_workspace_member(workspace_id)
 );
 
 create policy briefings_select_invite
@@ -532,46 +578,52 @@ for insert
 to authenticated
 with check (
   created_by = auth.uid()
-  and public.has_org_role(org_id, array['owner','admin'])
+  and public.has_workspace_role(workspace_id, array['owner','admin'])
 );
 
 create policy briefings_update
 on public.briefings
 for update
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin','member']))
-with check (public.has_org_role(org_id, array['owner','admin','member']));
+using (public.has_workspace_role(workspace_id, array['owner','admin','member']))
+with check (public.has_workspace_role(workspace_id, array['owner','admin','member']));
 
 create policy briefings_delete
 on public.briefings
 for delete
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin']));
+using (public.has_workspace_role(workspace_id, array['owner','admin']));
 
 create policy modules_registry_select
 on public.modules
 for select
 to authenticated
-using (public.is_org_member(org_id));
+using (true);
 
-create policy modules_registry_insert
-on public.modules
+create policy workspace_modules_select
+on public.workspace_modules
+for select
+to authenticated
+using (public.is_workspace_member(workspace_id));
+
+create policy workspace_modules_insert
+on public.workspace_modules
 for insert
 to authenticated
-with check (public.has_org_role(org_id, array['owner','admin']));
+with check (public.has_workspace_role(workspace_id, array['owner','admin']));
 
-create policy modules_registry_update
-on public.modules
+create policy workspace_modules_update
+on public.workspace_modules
 for update
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin']))
-with check (public.has_org_role(org_id, array['owner','admin']));
+using (public.has_workspace_role(workspace_id, array['owner','admin']))
+with check (public.has_workspace_role(workspace_id, array['owner','admin']));
 
-create policy modules_registry_delete
-on public.modules
+create policy workspace_modules_delete
+on public.workspace_modules
 for delete
 to authenticated
-using (public.has_org_role(org_id, array['owner','admin']));
+using (public.has_workspace_role(workspace_id, array['owner','admin']));
 
 create policy modules_select
 on public.briefing_modules
@@ -582,7 +634,7 @@ using (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and public.is_org_member(b.org_id)
+      and public.is_workspace_member(b.workspace_id)
   )
 );
 
@@ -603,7 +655,7 @@ with check (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin'])
   )
 );
 
@@ -616,7 +668,7 @@ using (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin','member'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin','member'])
   )
 )
 with check (
@@ -624,7 +676,7 @@ with check (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin','member'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin','member'])
   )
 );
 
@@ -637,7 +689,7 @@ using (
     select 1
     from public.briefings b
     where b.id = briefing_modules.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin'])
   )
 );
 
@@ -650,7 +702,7 @@ using (
     select 1
     from public.briefings b
     where b.id = staff.briefing_id
-      and public.is_org_member(b.org_id)
+      and public.is_workspace_member(b.workspace_id)
   )
 );
 
@@ -663,7 +715,7 @@ with check (
     select 1
     from public.briefings b
     where b.id = staff.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin'])
   )
 );
 
@@ -676,7 +728,7 @@ using (
     select 1
     from public.briefings b
     where b.id = staff.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin','member'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin','member'])
   )
 )
 with check (
@@ -684,7 +736,7 @@ with check (
     select 1
     from public.briefings b
     where b.id = staff.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin','member'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin','member'])
   )
 );
 
@@ -697,8 +749,23 @@ using (
     select 1
     from public.briefings b
     where b.id = staff.briefing_id
-      and public.has_org_role(b.org_id, array['owner','admin'])
+      and public.has_workspace_role(b.workspace_id, array['owner','admin'])
   )
+);
+
+create policy briefing_exports_select
+on public.briefing_exports
+for select
+to authenticated
+using (public.is_workspace_member(workspace_id));
+
+create policy briefing_exports_insert
+on public.briefing_exports
+for insert
+to authenticated
+with check (
+  created_by = auth.uid()
+  and public.has_workspace_role(workspace_id, array['owner','admin','member'])
 );
 
 create policy public_links_select_token_only

@@ -37,7 +37,7 @@ export function PublicBriefingView({ title, date, location, sections, audienceLa
             <div className="mt-3 space-y-1 text-sm text-[#52607a] dark:text-[#c7d2ea]">
               <p>{date}</p>
               <p>{location}</p>
-              {audienceLabel ? <p>Audience: {audienceLabel}</p> : null}
+              {audienceLabel ? <p>Team: {audienceLabel}</p> : null}
             </div>
           </div>
           <button

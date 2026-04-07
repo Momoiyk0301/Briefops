@@ -7,6 +7,7 @@ import { syncBriefingSharedState } from "@/supabase/queries/briefings";
 import { createPublicLink, listPublicLinks, revokePublicLink } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 const idSchema = z.string().uuid();
@@ -23,7 +24,7 @@ type Params = { params: Promise<{ id: string }> };
 async function assertCanManagePublicLinks(briefingId: string, userId: string, client: SupabaseClient) {
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("org_id")
+    .select("workspace_id")
     .eq("id", briefingId)
     .single();
 
@@ -34,7 +35,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
   const { data: membership, error: membershipError } = await client
     .from("memberships")
     .select("role")
-    .eq("org_id", briefing.org_id)
+    .eq("workspace_id", briefing.workspace_id)
     .eq("user_id", userId)
     .in("role", ["owner", "admin"])
     .maybeSingle();
@@ -85,8 +86,8 @@ export async function GET(request: Request, { params }: Params) {
         ...link,
         url:
           link.link_type === "audience" && link.audience_tag
-            ? `${baseUrl}/briefings/${briefingId}/${link.audience_tag}/${link.token}`
-            : `${baseUrl}/briefings/s/${link.token}`
+            ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+            : buildStaffBriefingUrl(baseUrl, link.token)
       }))
     });
   } catch (error) {
@@ -126,8 +127,8 @@ export async function POST(request: Request, { params }: Params) {
           ...link,
           url:
             link.link_type === "audience" && link.audience_tag
-              ? `${baseUrl}/briefings/${briefingId}/${link.audience_tag}/${link.token}`
-              : `${baseUrl}/briefings/s/${link.token}`
+              ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+              : buildStaffBriefingUrl(baseUrl, link.token)
         }
       },
       { status: 201 }

@@ -136,4 +136,44 @@ describe("OnboardingPage", () => {
     expect(apiMocks.createOnboardingCheckoutSession).not.toHaveBeenCalled();
     expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding?step=demo");
   });
+
+  it("redirects enterprise selection to help flow", async () => {
+    apiMocks.getMe.mockResolvedValue({
+      user: { id: "u1", email: "u1@test.com" },
+      plan: null,
+      org: { id: "ws-1", name: "Team OPS" },
+      workspace: { id: "ws-1", name: "Team OPS" },
+      has_membership: true,
+      onboarding_step: "products",
+      role: "owner",
+      is_admin: false,
+      degraded: false
+    });
+    apiMocks.getProducts.mockResolvedValue([
+      {
+        id: "p2",
+        name: "Enterprise",
+        slug: "enterprise",
+        description: "Enterprise plan",
+        stripe_price_id: null,
+        price_amount: null,
+        price_currency: null,
+        billing_interval: null,
+        features: ["Custom modules"],
+        is_highlighted: false,
+        sort_order: 2
+      }
+    ]);
+    apiMocks.updateOnboardingStep.mockResolvedValue({ ok: true, onboarding_step: "products" });
+
+    renderPage();
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(apiMocks.getProducts).toHaveBeenCalled();
+    });
+
+    await user.click(await screen.findByRole("button", { name: /Contact us/i }));
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/help?subject=enterprise");
+  });
 });

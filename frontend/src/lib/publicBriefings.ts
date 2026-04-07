@@ -129,7 +129,9 @@ export function buildTerrainModeSections(sections: PublicSection[]) {
   return sections.filter((section) => ["access", "schedule", "mission", "contacts"].includes(section.id));
 }
 
-export function buildPublicBriefingHeader(briefing: Briefing) {
+export function buildPublicBriefingHeader(
+  briefing: Pick<Briefing, "title" | "event_date" | "location_text">
+) {
   return {
     title: briefing.title,
     date: briefing.event_date

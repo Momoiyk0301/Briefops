@@ -42,7 +42,7 @@ function createClient(input: {
               filters.get("id") === input.briefingId
                 ? {
                     id: input.briefingId,
-                    org_id: "org-1",
+                    workspace_id: "org-1",
                     title: "Festival",
                     status: "ready",
                     shared: true,

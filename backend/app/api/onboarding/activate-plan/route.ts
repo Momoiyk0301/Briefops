@@ -18,12 +18,12 @@ export async function POST(request: Request) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id,role")
+      .select("workspace_id,role")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) {
+    if (!membership?.workspace_id) {
       throw new HttpError(409, "Workspace missing. Complete onboarding first.");
     }
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       .eq("user_id", userId);
     if (membershipUpdateError) throw membershipUpdateError;
 
-    ctx.info("activated onboarding plan", { userId, plan, workspaceId: membership.org_id });
+    ctx.info("activated onboarding plan", { userId, plan, workspaceId: membership.workspace_id });
     return NextResponse.json({ ok: true, plan, onboarding_step: "demo" });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

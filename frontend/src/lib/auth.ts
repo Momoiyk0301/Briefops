@@ -1,7 +1,8 @@
 import { PropsWithChildren, createContext, createElement, useContext, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 
-import { supabase } from "@/lib/supabase";
+import { captureClientError } from "@/lib/monitoring";
+import { getRememberMePreference, setRememberMePreference, supabase, syncStoredSessionPersistence } from "@/lib/supabase";
 
 const isE2eMockAuth = process.env.NEXT_PUBLIC_E2E_MOCK_AUTH === "true";
 
@@ -9,6 +10,12 @@ type AuthContextType = {
   session: Session | null;
   loading: boolean;
 };
+
+export type AuthErrorKind =
+  | "email_not_confirmed"
+  | "user_not_found"
+  | "invalid_credentials"
+  | "unexpected";
 
 const AuthContext = createContext<AuthContextType>({ session: null, loading: true });
 
@@ -23,6 +30,8 @@ async function clearInvalidSession() {
   if (error && !isInvalidRefreshTokenError(error)) {
     throw error;
   }
+
+  syncStoredSessionPersistence(null);
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -60,11 +69,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setLoading(false);
           return;
         }
+        captureClientError(error, { area: "auth", action: "bootstrap-session" });
         setSession(null);
         setLoading(false);
       });
 
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      syncStoredSessionPersistence(nextSession);
       setSession(nextSession);
       setLoading(false);
     });
@@ -128,6 +139,7 @@ export async function completeAuthRedirectSession(): Promise<Session | null> {
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
+    syncStoredSessionPersistence(data.session ?? null);
     url.searchParams.delete("code");
     url.searchParams.delete("type");
     url.searchParams.delete("error");
@@ -140,6 +152,7 @@ export async function completeAuthRedirectSession(): Promise<Session | null> {
   if (hashSession) {
     const { data, error } = await supabase.auth.setSession(hashSession);
     if (error) throw error;
+    syncStoredSessionPersistence(data.session ?? null);
     window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
     return data.session;
   }
@@ -147,25 +160,28 @@ export async function completeAuthRedirectSession(): Promise<Session | null> {
   return getSession();
 }
 
-export async function signInWithPassword(email: string, password: string) {
+export async function signInWithPassword(email: string, password: string, rememberMe = getRememberMePreference()) {
   if (isE2eMockAuth) {
     localStorage.setItem("briefops:e2e-auth", "1");
     return { user: { email } };
   }
+  setRememberMePreference(rememberMe);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   if (data.session) {
     const { error: setSessionError } = await supabase.auth.setSession(data.session);
     if (setSessionError) throw setSessionError;
+    syncStoredSessionPersistence(data.session, rememberMe);
   }
   return data;
 }
 
-export async function signUpWithPassword(email: string, password: string) {
+export async function signUpWithPassword(email: string, password: string, rememberMe = true) {
   if (isE2eMockAuth) {
     localStorage.setItem("briefops:e2e-auth", "1");
     return { user: { email }, session: null };
   }
+  setRememberMePreference(rememberMe);
   const emailRedirectTo = buildBrowserRedirectUrl("/auth/confirmed");
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -178,6 +194,7 @@ export async function signUpWithPassword(email: string, password: string) {
   if (data.session) {
     const { error: setSessionError } = await supabase.auth.setSession(data.session);
     if (setSessionError) throw setSessionError;
+    syncStoredSessionPersistence(data.session, rememberMe);
   }
   return data;
 }
@@ -218,6 +235,62 @@ export async function updatePassword(password: string) {
   if (error) throw error;
 }
 
+export function getAuthErrorKind(error: unknown): AuthErrorKind {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+
+  if (/email not confirmed|email_not_confirmed/.test(normalized)) {
+    return "email_not_confirmed";
+  }
+
+  if (/user not found|account does not exist|no user found/.test(normalized)) {
+    return "user_not_found";
+  }
+
+  if (/invalid login credentials|invalid credentials|wrong password|invalid password/.test(normalized)) {
+    return "invalid_credentials";
+  }
+
+  return "unexpected";
+}
+
+export function getAuthErrorMessage(error: unknown) {
+  const kind = getAuthErrorKind(error);
+
+  if (kind === "email_not_confirmed") {
+    return "Ton email n’est pas encore confirmé.";
+  }
+
+  if (kind === "user_not_found") {
+    return "Aucun compte n’a été trouvé avec cette adresse email.";
+  }
+
+  if (kind === "invalid_credentials") {
+    return "Email ou mot de passe incorrect.";
+  }
+
+  return error instanceof Error ? error.message : "Une erreur inattendue est survenue.";
+}
+
+export { getRememberMePreference };
+
+export async function revalidateCurrentSession() {
+  try {
+    const session = await completeAuthRedirectSession();
+    if (session) return session;
+
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error && !isInvalidRefreshTokenError(error)) throw error;
+    if (data.session) {
+      syncStoredSessionPersistence(data.session);
+    }
+    return data.session ?? null;
+  } catch (error) {
+    captureClientError(error, { area: "auth", action: "revalidate-session" });
+    throw error;
+  }
+}
+
 export function hasAuthCallbackParams() {
   if (typeof window === "undefined") return false;
 
@@ -253,4 +326,5 @@ export async function signOut() {
   }
   const { error } = await supabase.auth.signOut();
   if (error && !isInvalidRefreshTokenError(error)) throw error;
+  syncStoredSessionPersistence(null);
 }

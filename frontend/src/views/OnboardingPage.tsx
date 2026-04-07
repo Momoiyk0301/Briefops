@@ -121,7 +121,11 @@ export default function OnboardingPage() {
     team_size: number | null;
     vat_number: string | null;
   }) => {
-    await createWorkspaceMutation.mutateAsync(input);
+    try {
+      await createWorkspaceMutation.mutateAsync(input);
+    } catch {
+      // Error feedback is handled by the mutation's onError callback.
+    }
   };
 
   const handleProductSelect = async (product: Product) => {
@@ -134,6 +138,10 @@ export default function OnboardingPage() {
     try {
       await saveStepMutation.mutateAsync("products");
       updateCachedOnboardingStep("products");
+      if (product.slug === "enterprise") {
+        navigate("/help?subject=enterprise");
+        return;
+      }
       if (product.slug === "starter") {
         await activateOnboardingPlan("starter");
         updateCachedOnboardingStep("demo");
@@ -159,9 +167,13 @@ export default function OnboardingPage() {
   };
 
   const handleBackToWorkspace = async () => {
-    await saveStepMutation.mutateAsync("workspace");
-    updateCachedOnboardingStep("workspace");
-    await queryClient.invalidateQueries({ queryKey: ["me"] });
+    try {
+      await saveStepMutation.mutateAsync("workspace");
+      updateCachedOnboardingStep("workspace");
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+    } catch (error) {
+      toast.error(toApiMessage(error));
+    }
   };
 
   const handleDemoPrev = () => {
@@ -173,7 +185,11 @@ export default function OnboardingPage() {
   };
 
   const handleDemoFinish = async () => {
-    await finishDemoMutation.mutateAsync();
+    try {
+      await finishDemoMutation.mutateAsync();
+    } catch {
+      // Error feedback is handled by the mutation's onError callback.
+    }
   };
 
   return (

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { deleteModule, listModules, upsertModule } from "@/supabase/queries/modules";
-import { ensureRegistryModules, getUserOrgId } from "@/supabase/queries/modulesRegistry";
+import { getUserWorkspaceId, listWorkspaceModules } from "@/supabase/queries/modulesRegistry";
 import { requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
@@ -77,10 +77,10 @@ function buildCanonicalModuleJson(module: {
 }
 
 async function ensureBriefingModulesAreSeeded(client: Awaited<ReturnType<typeof requireUser>>["client"], userId: string, briefingId: string) {
-  const orgId = await getUserOrgId(client, userId);
-  if (!orgId) throw new HttpError(404, "Workspace not found");
+  const workspaceId = await getUserWorkspaceId(client, userId);
+  if (!workspaceId) throw new HttpError(404, "Workspace not found");
 
-  const registry = await ensureRegistryModules(client, orgId);
+  const registry = await listWorkspaceModules(client, workspaceId);
   const existing = await listModules(client, briefingId);
   const byKey = new Map(existing.map((item) => [item.module_key, item]));
 
