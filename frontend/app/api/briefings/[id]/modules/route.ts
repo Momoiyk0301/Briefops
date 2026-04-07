@@ -15,6 +15,8 @@ const upsertSchema = z.object({
   module_id: z.string().uuid().nullable().optional(),
   module_key: z.string().trim().min(1),
   enabled: z.boolean().optional(),
+  settings: z.record(z.unknown()).default({}),
+  values: z.record(z.unknown()).default({}),
   data_json: z.union([z.record(z.unknown()), z.array(z.unknown())]).default({})
 });
 
@@ -52,6 +54,9 @@ function buildCanonicalModuleJson(module: {
   icon: string;
   category: string;
   enabled: boolean;
+  settings_schema?: unknown;
+  field_schema?: unknown;
+  default_settings?: unknown;
   default_layout: unknown;
   default_data: unknown;
 }) {
@@ -72,6 +77,7 @@ function buildCanonicalModuleJson(module: {
     },
     audience: DEFAULT_AUDIENCE,
     layout: (module.default_layout && typeof module.default_layout === "object") ? module.default_layout : DEFAULT_LAYOUT,
+    settings: (module.default_settings && typeof module.default_settings === "object") ? module.default_settings : {},
     data: (module.default_data && typeof module.default_data === "object") ? module.default_data : {}
   };
 }
@@ -92,6 +98,8 @@ async function ensureBriefingModulesAreSeeded(client: Awaited<ReturnType<typeof 
           module_id: module.id,
           module_key: module.type,
           enabled: module.enabled,
+          settings: (module.default_settings && typeof module.default_settings === "object") ? module.default_settings as Record<string, unknown> : {},
+          values: (module.default_data && typeof module.default_data === "object") ? module.default_data as Record<string, unknown> : {},
           data_json: buildCanonicalModuleJson(module)
         });
         return;
@@ -102,6 +110,18 @@ async function ensureBriefingModulesAreSeeded(client: Awaited<ReturnType<typeof 
           module_id: module.id,
           module_key: module.type,
           enabled: current.enabled,
+          settings: current.settings && typeof current.settings === "object" && !Array.isArray(current.settings)
+            ? current.settings as Record<string, unknown>
+            : (module.default_settings && typeof module.default_settings === "object")
+              ? module.default_settings as Record<string, unknown>
+              : {},
+          values: current.values && typeof current.values === "object" && !Array.isArray(current.values)
+            ? current.values as Record<string, unknown>
+            : current.data_json && typeof current.data_json === "object" && !Array.isArray(current.data_json)
+              ? current.data_json as Record<string, unknown>
+              : (module.default_data && typeof module.default_data === "object")
+                ? module.default_data as Record<string, unknown>
+                : {},
           data_json: isCanonical(current.data_json)
             ? current.data_json
             : {

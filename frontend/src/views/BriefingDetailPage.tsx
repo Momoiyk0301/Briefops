@@ -31,6 +31,8 @@ export default function BriefingDetailPage() {
       module_id: mod.id,
       module_key: mod.type,
       enabled: mod.enabled,
+      settings: mod.default_settings ?? {},
+      values: mod.default_data,
       data_json: {
         id: `${mod.type}_${mod.version}`,
         metadata: {
@@ -47,6 +49,7 @@ export default function BriefingDetailPage() {
         },
         audience: { mode: "all", teams: [], visibility: "visible" },
         layout: mod.default_layout,
+        settings: mod.default_settings ?? {},
         data: mod.default_data
       },
       created_at: now,

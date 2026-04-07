@@ -84,6 +84,7 @@ export function buildInitialState(
           metadata: parsed.metadata,
           audience: parsed.audience,
           layout: parsed.layout,
+          settings: parsed.settings,
           data: parsed.data
         }
       ];
@@ -289,12 +290,15 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         module_id: state.modules[key].module_id ?? null,
         module_key: key,
         enabled: state.modules[key].enabled,
+        settings: state.modules[key].settings,
+        values: state.modules[key].data as Record<string, unknown>,
         data_json: toCanonicalModuleJson({
           key,
           moduleId: state.modules[key].module_id ?? null,
           metadata: { ...state.modules[key].metadata, enabled: state.modules[key].enabled },
           audience: state.modules[key].audience,
           layout: state.modules[key].layout,
+          settings: state.modules[key].settings,
           data: state.modules[key].data
         })
       })),
@@ -795,14 +799,15 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
           <ModulePanel
             state={state}
             selected={state.selectedModuleKey}
-            onChange={(key, data) =>
+            onChange={(key, patch) =>
               setState((prev) => ({
                 ...prev,
                 modules: {
                   ...prev.modules,
                   [key]: {
                     ...prev.modules[key],
-                    data: data as ModuleDataMap[typeof key]
+                    settings: patch.settings ?? prev.modules[key].settings,
+                    data: (patch.data ?? prev.modules[key].data) as ModuleDataMap[typeof key]
                   }
                 }
               }))
@@ -886,14 +891,15 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             <ModulePanel
               state={state}
               selected={state.selectedModuleKey}
-              onChange={(key, data) =>
+              onChange={(key, patch) =>
                 setState((prev) => ({
                   ...prev,
                   modules: {
                     ...prev.modules,
                     [key]: {
                       ...prev.modules[key],
-                      data: data as ModuleDataMap[typeof key]
+                      settings: patch.settings ?? prev.modules[key].settings,
+                      data: (patch.data ?? prev.modules[key].data) as ModuleDataMap[typeof key]
                     }
                   }
                 }))

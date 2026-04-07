@@ -15,6 +15,9 @@ const DEFAULT_MODULES: Array<{
   icon: string;
   category: string;
   enabled: boolean;
+  settings_schema: unknown[];
+  field_schema: unknown[];
+  default_settings: Record<string, unknown>;
   default_layout: typeof DEFAULT_LAYOUT;
   default_data: Record<string, unknown>;
 }> = [
@@ -25,6 +28,9 @@ const DEFAULT_MODULES: Array<{
     icon: "file-text",
     category: "general",
     enabled: true,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { main_contact_name: "", main_contact_phone: "", global_notes: "", team_mode: false, teams: [] }
   },
@@ -35,6 +41,9 @@ const DEFAULT_MODULES: Array<{
     icon: "map-pin",
     category: "operations",
     enabled: true,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { address: "", parking: "", entrance: "", on_site_contact: "" }
   },
@@ -45,6 +54,69 @@ const DEFAULT_MODULES: Array<{
     icon: "truck",
     category: "logistics",
     enabled: false,
+    settings_schema: [
+      {
+        key: "enable_depot_tag",
+        type: "boolean",
+        label: "Activer le tag depot",
+        description: "Permet de tagger une livraison comme depot"
+      },
+      {
+        key: "enable_retour_tag",
+        type: "boolean",
+        label: "Activer le tag retour",
+        description: "Permet de tagger une livraison comme retour"
+      },
+      {
+        key: "allow_custom_tag",
+        type: "boolean",
+        label: "Autoriser un tag personnalisé",
+        description: "Permet de saisir un tag libre"
+      }
+    ],
+    field_schema: [
+      { key: "time", type: "time", label: "Time", placeholder: "Time" },
+      { key: "place", type: "text", label: "Place", placeholder: "Place" },
+      { key: "contact", type: "text", label: "Contact", placeholder: "Contact" },
+      {
+        key: "tag_mode",
+        type: "select",
+        label: "Tag",
+        placeholder: "Select a tag",
+        visibilityMode: "any",
+        visibleWhen: [
+          { source: "settings", path: "enable_depot_tag", truthy: true },
+          { source: "settings", path: "enable_retour_tag", truthy: true },
+          { source: "settings", path: "allow_custom_tag", truthy: true }
+        ],
+        options: [
+          {
+            value: "depot",
+            label: "Depot",
+            visibleWhen: [{ source: "settings", path: "enable_depot_tag", truthy: true }]
+          },
+          {
+            value: "retour",
+            label: "Retour",
+            visibleWhen: [{ source: "settings", path: "enable_retour_tag", truthy: true }]
+          },
+          {
+            value: "custom",
+            label: "Custom",
+            visibleWhen: [{ source: "settings", path: "allow_custom_tag", truthy: true }]
+          }
+        ]
+      },
+      {
+        key: "custom_tag",
+        type: "text",
+        label: "Custom tag",
+        placeholder: "Type a custom tag",
+        visibleWhen: [{ source: "values", path: "tag_mode", equals: "custom" }]
+      },
+      { key: "notes", type: "textarea", label: "Notes", placeholder: "Notes" }
+    ],
+    default_settings: { enable_depot_tag: true, enable_retour_tag: true, allow_custom_tag: true },
     default_layout: DEFAULT_LAYOUT,
     default_data: { deliveries: [] }
   },
@@ -55,6 +127,9 @@ const DEFAULT_MODULES: Array<{
     icon: "car",
     category: "logistics",
     enabled: false,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { vehicles: [] }
   },
@@ -65,6 +140,9 @@ const DEFAULT_MODULES: Array<{
     icon: "wrench",
     category: "operations",
     enabled: false,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { items_text: "" }
   },
@@ -75,6 +153,9 @@ const DEFAULT_MODULES: Array<{
     icon: "users",
     category: "team",
     enabled: false,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { roles: [] }
   },
@@ -85,6 +166,9 @@ const DEFAULT_MODULES: Array<{
     icon: "sticky-note",
     category: "general",
     enabled: true,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { text: "" }
   },
@@ -95,13 +179,16 @@ const DEFAULT_MODULES: Array<{
     icon: "phone",
     category: "team",
     enabled: false,
+    settings_schema: [],
+    field_schema: [],
+    default_settings: {},
     default_layout: DEFAULT_LAYOUT,
     default_data: { people: [] }
   }
 ];
 
 const SELECT_REGISTRY_FIELDS =
-  "id, org_id, name, type, version, icon, category, enabled, default_layout, default_data, created_at, updated_at";
+  "id, org_id, name, type, version, icon, category, enabled, settings_schema, field_schema, default_settings, default_layout, default_data, created_at, updated_at";
 
 export async function getUserOrgId(client: SupabaseClient, userId: string) {
   const { data, error } = await client

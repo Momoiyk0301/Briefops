@@ -106,10 +106,14 @@ export function parseModuleRow<K extends ModuleKey>(params: {
   metadata: ModuleMetadata;
   audience: ModuleAudience;
   layout: ModuleLayout;
+  settings: Record<string, unknown>;
   data: ModuleDataMap[K];
 } {
   const { key, row, entry, registryModule } = params;
   const baseData = entry.schema.parse(registryModule?.default_data ?? entry.defaultData);
+  const baseSettings = entry.settingsSchema
+    ? entry.settingsSchema.parse(registryModule?.default_settings ?? entry.defaultSettings ?? {})
+    : {};
   const baseMetadata = buildDefaultMetadata(key, entry, registryModule);
   const baseLayout = parseLayout(registryModule?.default_layout);
 
@@ -120,6 +124,7 @@ export function parseModuleRow<K extends ModuleKey>(params: {
       metadata: baseMetadata,
       audience: DEFAULT_AUDIENCE,
       layout: baseLayout,
+      settings: baseSettings,
       data: baseData
     };
   }
@@ -142,6 +147,7 @@ export function parseModuleRow<K extends ModuleKey>(params: {
       metadata,
       audience: parseAudience(raw.audience),
       layout: parseLayout(raw.layout),
+      settings: entry.settingsSchema ? entry.settingsSchema.parse(raw.settings ?? row.settings ?? baseSettings) : {},
       data: entry.schema.parse(raw.data ?? baseData)
     };
   }
@@ -152,7 +158,8 @@ export function parseModuleRow<K extends ModuleKey>(params: {
     metadata: { ...baseMetadata, enabled: row.enabled, updated_at: row.updated_at },
     audience: DEFAULT_AUDIENCE,
     layout: baseLayout,
-    data: entry.schema.parse(raw ?? baseData)
+    settings: entry.settingsSchema ? entry.settingsSchema.parse(row.settings ?? baseSettings) : {},
+    data: entry.schema.parse(row.values ?? raw ?? baseData)
   };
 }
 
@@ -162,6 +169,7 @@ export function toCanonicalModuleJson<K extends ModuleKey>(params: {
   metadata: ModuleMetadata;
   audience: ModuleAudience;
   layout: ModuleLayout;
+  settings: Record<string, unknown>;
   data: ModuleDataMap[K];
 }) {
   const now = new Date().toISOString();
@@ -174,6 +182,7 @@ export function toCanonicalModuleJson<K extends ModuleKey>(params: {
     },
     audience: params.audience,
     layout: params.layout,
+    settings: params.settings,
     data: params.data
   };
 }

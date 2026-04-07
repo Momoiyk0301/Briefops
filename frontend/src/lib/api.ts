@@ -367,7 +367,14 @@ export async function getBriefingModules(id: string) {
 
 export async function upsertBriefingModules(
   id: string,
-  modules: Array<{ module_id?: string | null; module_key: ModuleKey; enabled: boolean; data_json: ModuleDataMap[ModuleKey] | Record<string, unknown> }>
+  modules: Array<{
+    module_id?: string | null;
+    module_key: ModuleKey;
+    enabled: boolean;
+    settings?: Record<string, unknown>;
+    values?: Record<string, unknown>;
+    data_json: ModuleDataMap[ModuleKey] | Record<string, unknown>;
+  }>
 ) {
   const responses = await Promise.all(
     modules.map((mod) =>

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ComponentType, ReactNode } from "react";
 import { ZodType, ZodTypeDef } from "zod";
 
 export type UserPlan = "free" | "starter" | "plus" | "pro";
@@ -98,6 +98,8 @@ export type BriefingModuleRow = {
   module_id?: string | null;
   module_key: ModuleKey;
   enabled: boolean;
+  settings?: unknown;
+  values?: unknown;
   data_json: unknown;
   created_at: string;
   updated_at: string;
@@ -112,6 +114,9 @@ export type RegistryModule = {
   icon: string;
   category: string;
   enabled: boolean;
+  settings_schema?: unknown;
+  field_schema?: unknown;
+  default_settings?: unknown;
   default_layout: unknown;
   default_data: unknown;
   created_at: string;
@@ -156,11 +161,19 @@ export type DeliveryItem = {
   time: string;
   place: string;
   contact: string;
+  tag_mode?: "" | "depot" | "retour" | "custom";
+  custom_tag?: string;
   notes: string;
 };
 
 export type DeliveryData = {
   deliveries: DeliveryItem[];
+};
+
+export type DeliverySettings = {
+  enable_depot_tag: boolean;
+  enable_retour_tag: boolean;
+  allow_custom_tag: boolean;
 };
 
 export type VehicleItem = {
@@ -223,6 +236,7 @@ export type ModuleState<K extends ModuleKey> = {
   metadata: ModuleMetadata;
   audience: ModuleAudience;
   layout: ModuleLayout;
+  settings: Record<string, unknown>;
   data: ModuleDataMap[K];
 };
 
@@ -276,6 +290,39 @@ export type ModuleRegistryEntry<K extends ModuleKey> = {
   isMandatory?: boolean;
   schema: ZodType<ModuleDataMap[K], ZodTypeDef, unknown>;
   defaultData: ModuleDataMap[K];
-  FormComponent: (props: ModuleFormProps<ModuleDataMap[K]>) => ReactNode;
-  PreviewComponent: (props: ModulePreviewProps<ModuleDataMap[K]>) => ReactNode;
+  settingsSchema?: ZodType<Record<string, unknown>, ZodTypeDef, unknown>;
+  defaultSettings?: Record<string, unknown>;
+  FormComponent: ComponentType<any>;
+  PreviewComponent: ComponentType<any>;
+};
+
+export type ModuleVisibilityRule = {
+  source: "settings" | "values";
+  path: string;
+  equals?: string | boolean | number;
+  notEquals?: string | boolean | number;
+  truthy?: boolean;
+};
+
+export type ModuleFieldOption = {
+  value: string;
+  label: string;
+  visibleWhen?: ModuleVisibilityRule[];
+};
+
+export type ModuleFieldDefinition = {
+  key: string;
+  type: "text" | "textarea" | "time" | "select";
+  label: string;
+  placeholder?: string;
+  options?: ModuleFieldOption[];
+  visibleWhen?: ModuleVisibilityRule[];
+  visibilityMode?: "all" | "any";
+};
+
+export type ModuleSettingDefinition = {
+  key: string;
+  type: "boolean";
+  label: string;
+  description?: string;
 };
