@@ -25,14 +25,14 @@ export async function GET(request: Request) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id")
+      .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
+    if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
-    const data = await listStaffByOrg(client, membership.org_id);
+    const data = await listStaffByOrg(client, membership.workspace_id);
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
@@ -49,12 +49,12 @@ export async function POST(request: Request) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id")
+      .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
+    if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
     const { data: briefing, error: briefingError } = await client
       .from("briefings")
@@ -64,10 +64,10 @@ export async function POST(request: Request) {
 
     if (briefingError) throw briefingError;
     if (!briefing) throw new HttpError(404, "Briefing not found");
-    if (briefing.org_id !== membership.org_id) throw new HttpError(403, "Forbidden");
+    if (briefing.org_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
 
-    const data = await createStaff(client, membership.org_id, body);
-    if (!data.org_id || data.org_id !== membership.org_id) {
+    const data = await createStaff(client, membership.workspace_id, body);
+    if (!data.org_id || data.org_id !== membership.workspace_id) {
       throw new HttpError(500, "Invalid staff workspace");
     }
     return NextResponse.json({ data }, { status: 201 });

@@ -34,10 +34,10 @@ begin
     select id into v_org_id from public.workspaces where owner_id = v_user_id;
   end if;
 
-  insert into public.memberships (org_id, user_id, role)
+  insert into public.memberships (workspace_id, user_id, role)
   values (v_org_id, v_user_id, 'owner')
-  on conflict (org_id, user_id) do update
-    set role = excluded.role;
+  on conflict (workspace_id, user_id) do update
+  set role = excluded.role;
 
   insert into public.briefings (org_id, title, event_date, location_text, created_by)
   values (v_org_id, 'Demo Briefing', current_date + 7, 'Brussels Expo', v_user_id)

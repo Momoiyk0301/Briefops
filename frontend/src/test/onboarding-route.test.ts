@@ -76,7 +76,7 @@ describe("frontend /api/onboarding", () => {
 
     expect(response.status).toBe(201);
     expect(membershipsInsert).toHaveBeenCalledWith({
-      org_id: "ws-1",
+      workspace_id: "ws-1",
       user_id: "u1",
       role: "owner"
     });
@@ -114,7 +114,7 @@ describe("frontend /api/onboarding", () => {
 
   it("reuses the existing workspace instead of failing when membership already exists", async () => {
     const membershipMaybeSingle = vi.fn().mockResolvedValue({
-      data: { id: "m1", org_id: "ws-1" },
+      data: { id: "m1", workspace_id: "ws-1" },
       error: null
     });
     const client = {

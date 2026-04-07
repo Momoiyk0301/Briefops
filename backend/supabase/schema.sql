@@ -63,14 +63,14 @@ alter table public.workspaces
 
 create table if not exists public.memberships (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references public.workspaces(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner', 'admin', 'member')),
   plan_name text,
   stripe_price_id text,
   stripe_product_id text,
   created_at timestamptz not null default timezone('utc', now()),
-  unique (org_id, user_id),
+  unique (workspace_id, user_id),
   unique (user_id)
 );
 
@@ -153,9 +153,9 @@ create table if not exists public.usage_counters (
   unique (user_id, month_start)
 );
 
-create index if not exists idx_memberships_org_id on public.memberships(org_id);
+create index if not exists idx_memberships_workspace_id on public.memberships(workspace_id);
 create index if not exists idx_memberships_user_id on public.memberships(user_id);
-create index if not exists idx_memberships_org_role on public.memberships(org_id, role);
+create index if not exists idx_memberships_workspace_role on public.memberships(workspace_id, role);
 
 create index if not exists idx_briefings_org_id on public.briefings(org_id);
 create index if not exists idx_briefings_org_event_date on public.briefings(org_id, event_date);
@@ -188,7 +188,7 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = p_org_id
+    where m.workspace_id = p_org_id
       and m.user_id = auth.uid()
   );
 $$;
@@ -203,7 +203,7 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = p_org_id
+    where m.workspace_id = p_org_id
       and m.user_id = auth.uid()
       and m.role = any (p_roles)
   );
@@ -220,7 +220,7 @@ as $$
     select 1
     from public.memberships me
     join public.memberships other
-      on other.org_id = me.org_id
+      on other.workspace_id = me.workspace_id
     where me.user_id = auth.uid()
       and other.user_id = p_user_id
   );

@@ -32,7 +32,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
   const { data: membership, error: membershipError } = await client
     .from("memberships")
     .select("role")
-    .eq("org_id", briefing.org_id)
+    .eq("workspace_id", briefing.org_id)
     .eq("user_id", userId)
     .in("role", ["owner", "admin"])
     .maybeSingle();

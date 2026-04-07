@@ -29,19 +29,19 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id")
+      .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
+    if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
     const existing = await getStaffById(client, staffId);
     if (!existing) throw new HttpError(404, "Staff not found");
-    if (!existing.org_id || existing.org_id !== membership.org_id) throw new HttpError(403, "Forbidden");
+    if (!existing.org_id || existing.org_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
 
     const data = await updateStaff(client, staffId, body);
-    if (!data.org_id || data.org_id !== membership.org_id) throw new HttpError(500, "Invalid staff workspace");
+    if (!data.org_id || data.org_id !== membership.workspace_id) throw new HttpError(500, "Invalid staff workspace");
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
@@ -59,16 +59,16 @@ export async function DELETE(request: Request, { params }: Params) {
 
     const { data: membership, error: membershipError } = await client
       .from("memberships")
-      .select("org_id")
+      .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (membershipError) throw membershipError;
-    if (!membership?.org_id) throw new HttpError(404, "Workspace not found");
+    if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
     const existing = await getStaffById(client, staffId);
     if (!existing) throw new HttpError(404, "Staff not found");
-    if (!existing.org_id || existing.org_id !== membership.org_id) throw new HttpError(403, "Forbidden");
+    if (!existing.org_id || existing.org_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
 
     await deleteStaff(client, staffId);
     return NextResponse.json({ ok: true });

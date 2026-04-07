@@ -97,13 +97,13 @@ async function ensureMembershipForProfile(
   const admin = createServiceRoleClient();
   const { data: membership, error: membershipError } = await admin
     .from("memberships")
-    .select("id,org_id")
+    .select("id,workspace_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (membershipError) throw membershipError;
 
-  let orgId: string | null = membership?.org_id ?? null;
+  let orgId: string | null = membership?.workspace_id ?? null;
   if (workspaceId) {
     const { data: existingWorkspace, error: existingWorkspaceError } = await admin
       .from("workspaces")
@@ -142,7 +142,7 @@ async function ensureMembershipForProfile(
   }
 
   const payload = {
-    org_id: orgId,
+    workspace_id: orgId,
     user_id: userId,
     role: membershipPatch?.role ?? "owner",
     plan_name: membershipPatch?.plan_name ?? null,
@@ -154,7 +154,7 @@ async function ensureMembershipForProfile(
     if (!shouldFallbackToLegacyColumns(insertMembershipError)) throw insertMembershipError;
     const { error: fallbackMembershipError } = await admin.from("memberships").upsert(
       {
-        org_id: orgId,
+        workspace_id: orgId,
         user_id: userId,
         role: membershipPatch?.role ?? "owner"
       },

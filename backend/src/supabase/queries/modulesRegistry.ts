@@ -106,12 +106,12 @@ const SELECT_REGISTRY_FIELDS =
 export async function getUserOrgId(client: SupabaseClient, userId: string) {
   const { data, error } = await client
     .from("memberships")
-    .select("org_id")
+    .select("workspace_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  return data?.org_id ?? null;
+  return data?.workspace_id ?? null;
 }
 
 export async function listRegistryModules(client: SupabaseClient, orgId: string) {
