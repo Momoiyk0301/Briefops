@@ -12,6 +12,10 @@ export function getPostAuthRedirect(me: MeResponse): string {
     return "/onboarding";
   }
 
+  if (workspace?.id && !hasPaidPlan(me.plan)) {
+    return "/onboarding?step=products";
+  }
+
   if (me.onboarding_step === "done") {
     return "/briefings";
   }
@@ -20,8 +24,12 @@ export function getPostAuthRedirect(me: MeResponse): string {
     return "/onboarding?step=demo";
   }
 
-  if (workspace?.id && (!hasPaidPlan(me.plan) || me.onboarding_step === "products")) {
+  if (workspace?.id && me.onboarding_step === "products") {
     return "/onboarding?step=products";
+  }
+
+  if (workspace?.id) {
+    return "/briefings";
   }
 
   return "/onboarding";

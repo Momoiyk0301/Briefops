@@ -89,13 +89,41 @@ export async function POST(request: Request) {
 
     const { data: existingMembership, error: existingMembershipError } = await client
       .from("memberships")
-      .select("id")
+      .select("id,org_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (existingMembershipError) throw existingMembershipError;
     if (existingMembership) {
-      throw new HttpError(409, "User already has a workspace");
+      const admin = createServiceRoleClient();
+      const { data: existingWorkspace, error: existingWorkspaceError } = await admin
+        .from("workspaces")
+        .select("id,name,country,team_size,vat_number")
+        .eq("id", existingMembership.org_id)
+        .maybeSingle();
+
+      if (existingWorkspaceError) throw existingWorkspaceError;
+
+      const { error: profileUpdateError } = await admin
+        .from("profiles")
+        .update({ onboarding_step: "products" })
+        .eq("id", userId);
+      if (profileUpdateError) throw profileUpdateError;
+
+      ctx.warn("workspace creation skipped because membership already exists", {
+        userId,
+        workspaceId: existingMembership.org_id
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          workspace: existingWorkspace ?? null,
+          onboarding_step: "products",
+          reused_existing_workspace: true
+        },
+        { status: 200 }
+      );
     }
 
     const admin = createServiceRoleClient();
