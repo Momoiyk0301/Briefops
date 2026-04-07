@@ -51,6 +51,7 @@ export type MeResponse = {
   role: MembershipRole | null;
   is_admin: boolean;
   degraded: boolean;
+  degraded_reason?: string;
 };
 
 export type Product = {

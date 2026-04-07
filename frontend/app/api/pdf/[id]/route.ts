@@ -3,21 +3,46 @@ import { z } from "zod";
 
 import { renderBriefingPdf } from "@/pdf/renderBriefingPdf";
 import { getBriefingById } from "@/supabase/queries/briefings";
-import { createBriefingExport, getNextBriefingExportVersion } from "@/supabase/queries/briefingExports";
 import { listModules } from "@/supabase/queries/modules";
-import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
+import { getUserOrgId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
+import { consumePdfExport, getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
-import { checkQuota, getPlanLimits } from "@/lib/quotas";
-import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);
 const teamSchema = z.string().trim().min(1).max(64).optional();
 
+const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
+  free: 3,
+  starter: 100,
+  plus: 300,
+  pro: Number.POSITIVE_INFINITY
+};
+
 type Params = { params: Promise<{ id: string }> };
+
+function slugifySegment(value: string | null | undefined, fallback: string) {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || fallback;
+}
+
+function buildPdfFileName(title: string | null | undefined, generatedAt: Date) {
+  const eventName = slugifySegment(title, "event");
+  const yyyy = generatedAt.getFullYear();
+  const mm = String(generatedAt.getMonth() + 1).padStart(2, "0");
+  const dd = String(generatedAt.getDate()).padStart(2, "0");
+  const hh = String(generatedAt.getHours()).padStart(2, "0");
+  const min = String(generatedAt.getMinutes()).padStart(2, "0");
+  return `briefing-${eventName}-v${yyyy}${mm}${dd}${hh}${min}-${yyyy}${mm}${dd}.pdf`;
+}
 
 function normalizeTeamKey(team?: string | null) {
   if (!team) return null;
@@ -51,7 +76,7 @@ function isModuleVisibleForTeam(
 }
 
 export async function GET(request: Request, { params }: Params) {
-  const ctx = createRequestContext("GET /api/pdf/:id");
+  const ctx = createRequestContext("GET /api/pdf/:id", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -64,43 +89,34 @@ export async function GET(request: Request, { params }: Params) {
     const requestUrl = new URL(request.url);
     const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
     const selectedTeam = normalizeTeamKey(teamSchema.parse(requestUrl.searchParams.get("team") ?? undefined));
+    const generatedAt = new Date();
 
-    const [briefing, workspaceId] = await Promise.all([
+    const [briefing, orgId] = await Promise.all([
       getBriefingById(client, briefingId),
-      getUserWorkspaceId(client, userId)
+      getUserOrgId(client, userId)
     ]);
-    if (!workspaceId || briefing.workspace_id !== workspaceId) {
+    if (!orgId || briefing.org_id !== orgId) {
       throw new HttpError(403, "Forbidden");
     }
     const modules = await listModules(client, briefingId);
 
     const plan = await getUserPlan(client, userId);
-    const workspace = await getWorkspaceById(client, workspaceId);
-    const quota = checkQuota({ ...workspace, plan }, "export_pdf");
-    if (!quota.allowed) {
-      ctx.warn("pdf limit reached", { userId, plan, used: quota.current, limit: quota.limit });
-      return NextResponse.json(
-        {
-          error: quota.message ?? `Monthly PDF export limit reached for ${plan} plan`,
-          used: quota.current,
-          limit: quota.limit,
-          request_id: ctx.requestId
-        },
-        { status: 402 }
-      );
-    }
-
-    const service = createServiceRoleClient();
-    const { error: quotaUpdateError } = await service
-      .from("workspaces")
-      .update({
-        pdf_exports_month: Number(quota.org.pdf_exports_month ?? workspace.pdf_exports_month ?? 0) + 1,
-        pdf_exports_reset_at: quota.org.pdf_exports_reset_at
-      })
-      .eq("id", workspace.id);
-
-    if (quotaUpdateError) {
-      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
+    const limit = PDF_LIMITS[plan];
+    if (Number.isFinite(limit)) {
+      const usageResult = await consumePdfExport(client, userId, limit);
+      if (!usageResult.allowed) {
+        const usage = await getCurrentMonthUsage(client, userId);
+        ctx.warn("pdf limit reached", { userId, plan, used: usage?.pdf_exports ?? usageResult.used, limit });
+        return NextResponse.json(
+          {
+            error: `Monthly PDF export limit reached for ${plan} plan`,
+            used: usage?.pdf_exports ?? usageResult.used,
+            limit,
+            request_id: ctx.requestId
+          },
+          { status: 402 }
+        );
+      }
     }
 
     const bytes = await renderBriefingPdf({
@@ -109,7 +125,6 @@ export async function GET(request: Request, { params }: Params) {
       event_date: briefing.event_date,
       location_text: briefing.location_text,
       team: selectedTeam,
-      watermark: getPlanLimits(plan).watermark,
       modules: modules.map((mod) => ({
         module_key: mod.module_key,
         enabled: mod.enabled,
@@ -117,27 +132,22 @@ export async function GET(request: Request, { params }: Params) {
       })).filter((mod) => isModuleVisibleForTeam(mod, selectedTeam))
     });
 
-    const version = await getNextBriefingExportVersion(service, briefing.id);
-    const storagePath = `briefings/${briefing.id}/exports/v${version}.pdf`;
+    const service = createServiceRoleClient();
+    const filename = buildPdfFileName(briefing.title, generatedAt);
+    const storagePath = selectedTeam
+      ? `${userId}/${briefing.id}/team-${selectedTeam}.pdf`
+      : `${userId}/${briefing.id}/${filename}`;
 
     const { error: uploadError } = await service.storage
       .from("exports")
       .upload(storagePath, bytes, {
         contentType: "application/pdf",
-        upsert: false
+        upsert: true
       });
 
     if (uploadError) {
       throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
     }
-
-    const exportRow = await createBriefingExport(service, {
-      workspace_id: briefing.workspace_id,
-      briefing_id: briefing.id,
-      version,
-      file_path: storagePath,
-      created_by: userId
-    });
 
     if (!selectedTeam) {
       const { error: persistError } = await client
@@ -158,17 +168,22 @@ export async function GET(request: Request, { params }: Params) {
       throw new HttpError(500, `Signed URL failed: ${signedError.message}`);
     }
 
-    ctx.info("generated and uploaded pdf", { userId, briefingId, storagePath });
+    ctx.info("generated and uploaded pdf", {
+      userId,
+      briefingId,
+      storagePath,
+      team: selectedTeam,
+      filename
+    });
 
     if (format === "json") {
       return NextResponse.json({
         ok: true,
-        export_id: exportRow.id,
-        version,
         pdf_path: storagePath,
         pdf_url: signed.signedUrl,
-        generated_at: new Date().toISOString(),
-        team: selectedTeam
+        generated_at: generatedAt.toISOString(),
+        team: selectedTeam,
+        filename
       });
     }
 
@@ -177,11 +192,14 @@ export async function GET(request: Request, { params }: Params) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="briefing-${briefing.id}.pdf"`
+        "Content-Disposition": `attachment; filename="${filename}"`
       }
     });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to generate pdf", error, {
+      origin: "server",
+      step: "generate-pdf"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

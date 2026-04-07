@@ -28,7 +28,7 @@ type WorkspaceSnapshot = {
 };
 
 export async function GET(request: Request) {
-  const ctx = createRequestContext("GET /api/me");
+  const ctx = createRequestContext("GET /api/me", request);
 
   try {
     const { client, userId, email } = await requireAuthContext(request);
@@ -109,7 +109,10 @@ export async function GET(request: Request) {
       is_admin: membership?.role === "owner" || membership?.role === "admin"
     });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to resolve me", error, {
+      origin: "server",
+      step: "load-me"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

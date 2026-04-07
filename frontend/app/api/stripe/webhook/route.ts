@@ -7,7 +7,7 @@ import { getStripe, getStripeWebhookSecret } from "@/stripe/stripe";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const ctx = createRequestContext("POST /api/stripe/webhook");
+  const ctx = createRequestContext("POST /api/stripe/webhook", request);
 
   try {
     const signature = request.headers.get("stripe-signature");
@@ -25,11 +25,17 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && /invalid signature/i.test(error.message)) {
       const normalized = new HttpError(400, "Invalid signature");
-      ctx.error("failed", { error: normalized.message });
+      ctx.captureException("stripe webhook signature invalid", normalized, {
+        origin: "server",
+        step: "verify-signature"
+      });
       return toErrorResponse(normalized, ctx.requestId);
     }
 
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("stripe webhook failed", error, {
+      origin: "server",
+      step: "process-webhook"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

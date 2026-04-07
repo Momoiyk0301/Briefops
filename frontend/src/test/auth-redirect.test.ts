@@ -47,4 +47,32 @@ describe("getPostAuthRedirect", () => {
       )
     ).toBe("/briefings");
   });
+
+  it("routes to products when a workspace exists even if onboarding_step is stale", () => {
+    expect(
+      getPostAuthRedirect(
+        buildMe({
+          role: "owner",
+          workspace: { id: "ws-1", name: "Org" },
+          org: { id: "ws-1", name: "Org" },
+          onboarding_step: "workspace",
+          plan: null
+        })
+      )
+    ).toBe("/onboarding?step=products");
+  });
+
+  it("routes to briefings when a paid workspace exists but onboarding_step is missing", () => {
+    expect(
+      getPostAuthRedirect(
+        buildMe({
+          role: "owner",
+          workspace: { id: "ws-1", name: "Org" },
+          org: { id: "ws-1", name: "Org" },
+          onboarding_step: null,
+          plan: "starter"
+        })
+      )
+    ).toBe("/briefings");
+  });
 });

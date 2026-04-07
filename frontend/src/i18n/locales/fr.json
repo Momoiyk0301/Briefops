@@ -17,6 +17,9 @@
     "forgotPassword": "Mot de passe oublié ?",
     "offersRedirect": "Compte trouvé. Choisis une offre pour terminer l'activation.",
     "accountMissing": "Compte introuvable. Passe en création de compte pour continuer.",
+    "userNotFound": "Utilisateur introuvable.",
+    "invalidPassword": "Mot de passe incorrect.",
+    "emailNotConfirmed": "Email non confirmé. Vérifie ta boîte mail avant de te connecter.",
     "logout": "Se déconnecter"
   },
   "nav": {
@@ -142,6 +145,10 @@
     "saved": "Enregistré",
     "saveError": "Échec de l'enregistrement",
     "saving": "Enregistrement...",
-    "savedShort": "Enregistré"
+    "savedShort": "Enregistré",
+    "savedAt": "Sauvegardé à {{time}}",
+    "pdfFailed": "La génération PDF a échoué.",
+    "briefingLoading": "Chargement du briefing...",
+    "downloadReady": "Télécharger le PDF prêt"
   }
 }

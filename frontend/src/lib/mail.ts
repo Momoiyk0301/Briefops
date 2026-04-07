@@ -16,6 +16,14 @@ type SendMailInput = {
 
 export type BillingPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
 
+export const EMAIL_FLOW_MAP = {
+  stripe: ["invoices", "receipts", "financial billing emails"],
+  supabase_auth: ["email confirmation", "password reset", "magic link via Resend SMTP"],
+  briefops_app: ["support", "welcome", "onboarding", "product notifications via Resend API"]
+} as const;
+
+export type AppEmailKind = "billing_checkout_confirmation" | "billing_account_activated" | "support" | "welcome" | "onboarding";
+
 function getMailConfig(): MailConfig | null {
   const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
   const from = String(process.env.MAIL_FROM ?? "").trim();
@@ -27,11 +35,11 @@ export function isMailEnabled() {
   return Boolean(getMailConfig());
 }
 
-export async function sendTransactionalEmail(input: SendMailInput) {
+export async function sendTransactionalEmail(input: SendMailInput & { kind?: AppEmailKind; tags?: Record<string, string> }) {
   const config = getMailConfig();
   if (!config) {
     if (isDev) {
-      console.info("[mail] skipped: RESEND_API_KEY or MAIL_FROM missing");
+      console.info("[mail] skipped: RESEND_API_KEY or MAIL_FROM missing", { kind: input.kind ?? "unknown" });
     }
     return;
   }
@@ -46,7 +54,10 @@ export async function sendTransactionalEmail(input: SendMailInput) {
       from: config.from,
       to: [input.to],
       subject: input.subject,
-      html: input.html
+      html: input.html,
+      tags: input.tags
+        ? Object.entries(input.tags).map(([name, value]) => ({ name, value }))
+        : undefined
     })
   });
 
@@ -82,6 +93,7 @@ export async function sendCheckoutConfirmationEmails(email: string, plan: Billin
 
   await sendTransactionalEmail({
     to: email,
+    kind: "billing_checkout_confirmation",
     subject: `Commande BriefOPS confirmée (${plan.toUpperCase()})`,
     html: renderMailShell(
       "Commande confirmée",
@@ -93,11 +105,17 @@ export async function sendCheckoutConfirmationEmails(email: string, plan: Billin
       `,
       "Accéder à BriefOPS",
       `${appUrl}/briefings`
-    )
+    ),
+    tags: {
+      source: "briefops-app",
+      flow: "billing_checkout_confirmation",
+      provider_boundary: "stripe_financial_emails_stay_on_stripe"
+    }
   });
 
   await sendTransactionalEmail({
     to: email,
+    kind: "billing_account_activated",
     subject: "Compte BriefOPS activé",
     html: renderMailShell(
       "Compte activé",
@@ -107,6 +125,10 @@ export async function sendCheckoutConfirmationEmails(email: string, plan: Billin
       `,
       "Ouvrir mon espace",
       `${appUrl}/auth/confirmed`
-    )
+    ),
+    tags: {
+      source: "briefops-app",
+      flow: "billing_account_activated"
+    }
   });
 }

@@ -17,7 +17,7 @@ const createSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const ctx = createRequestContext("GET /api/briefings");
+  const ctx = createRequestContext("GET /api/briefings", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -25,13 +25,16 @@ export async function GET(request: Request) {
     ctx.info("listed briefings", { userId, count: briefings.length });
     return NextResponse.json({ data: briefings });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to list briefings", error, {
+      origin: "server",
+      step: "list-briefings"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }
 
 export async function POST(request: Request) {
-  const ctx = createRequestContext("POST /api/briefings");
+  const ctx = createRequestContext("POST /api/briefings", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -58,7 +61,10 @@ export async function POST(request: Request) {
     ctx.info("created briefing", { userId, briefingId: briefing.id });
     return NextResponse.json({ data: briefing }, { status: 201 });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to create briefing", error, {
+      origin: "server",
+      step: "create-briefing"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

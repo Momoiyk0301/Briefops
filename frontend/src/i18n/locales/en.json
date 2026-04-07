@@ -17,6 +17,9 @@
     "forgotPassword": "Forgot password?",
     "offersRedirect": "Account found. Choose a plan to finish activation.",
     "accountMissing": "Account not found. Switch to sign up to continue.",
+    "userNotFound": "User not found.",
+    "invalidPassword": "Incorrect password.",
+    "emailNotConfirmed": "Email not confirmed. Check your inbox before signing in.",
     "logout": "Logout"
   },
   "nav": {
@@ -142,6 +145,10 @@
     "saved": "Saved",
     "saveError": "Save failed",
     "saving": "Saving...",
-    "savedShort": "Saved"
+    "savedShort": "Saved",
+    "savedAt": "Saved at {{time}}",
+    "pdfFailed": "PDF generation failed.",
+    "briefingLoading": "Loading briefing...",
+    "downloadReady": "Download ready PDF"
   }
 }
