@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
 
 export class HttpError extends Error {
   status: number;
@@ -11,35 +12,54 @@ export class HttpError extends Error {
   }
 }
 
-export function createRequestContext(route: string) {
+type RequestContextExtra = Record<string, unknown>;
+
+function sanitize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitize);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
+      if (/token|authorization|signature|secret|password|email|stripe|api[-_]?key/i.test(key)) {
+        return [key, "[redacted]"];
+      }
+      return [key, sanitize(entry)];
+    })
+  );
+}
+
+function sanitizeObject(value?: RequestContextExtra): RequestContextExtra {
+  if (!value) return {};
+  return sanitize(value) as RequestContextExtra;
+}
+
+export function createRequestContext(route: string, request?: Request, baseExtra?: RequestContextExtra) {
   const requestId = randomUUID();
+  const requestDetails = request
+    ? {
+        method: request.method,
+        url: (() => {
+          try {
+            return new URL(request.url).pathname;
+          } catch {
+            return request.url;
+          }
+        })()
+      }
+    : {};
 
-  const sanitize = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(sanitize);
-    if (!value || typeof value !== "object") return value;
-
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
-        if (/token|authorization|signature|secret|password|email|stripe|api[-_]?key/i.test(key)) {
-          return [key, "[redacted]"];
-        }
-        return [key, sanitize(entry)];
-      })
-    );
-  };
-
-  const sanitizeObject = (value?: Record<string, unknown>): Record<string, unknown> => {
-    if (!value) return {};
-    return sanitize(value) as Record<string, unknown>;
-  };
-
-  const log = (level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) => {
-    const payload = {
+  const buildPayload = (extra?: RequestContextExtra) => {
+    return {
       requestId,
       route,
+      ...requestDetails,
+      ...sanitizeObject(baseExtra),
       ...sanitizeObject(extra)
     };
+  };
 
+  const log = (level: "info" | "warn" | "error", message: string, extra?: RequestContextExtra) => {
+    const payload = buildPayload(extra);
     if (level === "info") {
       console.info(`[api] ${message}`, payload);
       return;
@@ -53,11 +73,33 @@ export function createRequestContext(route: string) {
     console.error(`[api] ${message}`, payload);
   };
 
+  const captureException = (message: string, error: unknown, extra?: RequestContextExtra) => {
+    const payload = buildPayload(extra);
+    Sentry.withScope((scope) => {
+      scope.setTag("request_id", requestId);
+      scope.setTag("route", route);
+      if (typeof payload.method === "string") {
+        scope.setTag("method", payload.method);
+      }
+      if ("userId" in payload && typeof payload.userId === "string") {
+        scope.setUser({ id: payload.userId });
+      }
+      scope.setContext("request", payload);
+      scope.setExtras(payload);
+      Sentry.captureException(error instanceof Error ? error : new Error(String(error)));
+    });
+    log("error", message, {
+      ...payload,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  };
+
   return {
     requestId,
     info: (message: string, extra?: Record<string, unknown>) => log("info", message, extra),
     warn: (message: string, extra?: Record<string, unknown>) => log("warn", message, extra),
-    error: (message: string, extra?: Record<string, unknown>) => log("error", message, extra)
+    error: (message: string, extra?: Record<string, unknown>) => log("error", message, extra),
+    captureException
   };
 }
 

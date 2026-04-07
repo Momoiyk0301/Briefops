@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { getBriefing, getBriefingModules, getRegistryModules, toApiMessage } from "@/lib/api";
-import { A4Preview } from "@/components/briefing/A4Preview";
-import { BriefingEditor, buildInitialState } from "@/components/briefing/BriefingEditor";
+import { BriefingEditor } from "@/components/briefing/BriefingEditor";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -17,7 +16,6 @@ export default function BriefingDetailPage() {
   const id = params.id ?? "";
   const locationState = location.state as { initializingNewBriefing?: boolean } | null;
   const isInitializingNewBriefing = Boolean(locationState?.initializingNewBriefing);
-  const [editing, setEditing] = useState(false);
 
   const briefingQuery = useQuery({ queryKey: ["briefing", id], queryFn: () => getBriefing(id), enabled: Boolean(id) });
   const modulesQuery = useQuery({ queryKey: ["modules", id], queryFn: () => getBriefingModules(id), enabled: Boolean(id) });
@@ -56,10 +54,6 @@ export default function BriefingDetailPage() {
     }));
   }, [briefingQuery.data, registryQuery.data]);
 
-  useEffect(() => {
-    setEditing(false);
-  }, [id]);
-
   if (briefingQuery.isLoading || registryQuery.isLoading || (modulesQuery.isLoading && !isInitializingNewBriefing)) {
     return (
       <div className="space-y-4">
@@ -79,31 +73,25 @@ export default function BriefingDetailPage() {
   const modules = modulesQuery.data ?? (isInitializingNewBriefing ? seededModules : null);
   if (!modules || !registryQuery.data) return <Card>Not found</Card>;
   const showInitOverlay = isInitializingNewBriefing && (modulesQuery.isLoading || modulesQuery.isFetching);
-  const previewState = buildInitialState(briefingQuery.data, modules, registryQuery.data);
 
   return (
     <div className="relative">
       <div className="mb-4 flex items-center justify-between">
         <Button variant="secondary" onClick={() => navigate(-1)}>Retour</Button>
-        {editing ? (
-          <Button variant="secondary" onClick={() => setEditing(false)}>OK</Button>
-        ) : (
-          <Button onClick={() => setEditing(true)}>Modifier</Button>
-        )}
+        <div className="text-right">
+          <p className="text-xs uppercase tracking-[0.18em] text-[#7b849d]">Briefing</p>
+          <p className="text-sm font-medium text-[#111827] dark:text-white">
+            {briefingQuery.data.title?.trim() || "Untitled briefing"}
+          </p>
+        </div>
       </div>
 
-      {editing ? (
-        <BriefingEditor
-          key={modulesQuery.data?.length ? `real-${briefingQuery.data.id}` : `seed-${briefingQuery.data.id}`}
-          briefing={briefingQuery.data}
-          modules={modules}
-          registryModules={registryQuery.data}
-        />
-      ) : (
-        <Card className="flex justify-center p-4">
-          <A4Preview state={previewState} />
-        </Card>
-      )}
+      <BriefingEditor
+        key={modulesQuery.data?.length ? `real-${briefingQuery.data.id}` : `seed-${briefingQuery.data.id}`}
+        briefing={briefingQuery.data}
+        modules={modules}
+        registryModules={registryQuery.data}
+      />
       {showInitOverlay ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-panel bg-white/65 backdrop-blur-sm dark:bg-[#090909]/60">
           <Card className="border-brand-500/30 px-5 py-3">

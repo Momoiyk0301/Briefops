@@ -99,8 +99,8 @@ export function buildInitialState(
 
   return {
     core: {
-      title: briefing.title,
-      event_date: briefing.event_date,
+      title: briefing.title ?? "",
+      event_date: briefing.event_date ?? null,
       location_text: briefing.location_text ?? ""
     },
     selectedModuleKey: defaultSelected,
@@ -153,14 +153,32 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
   const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
   const [shareOpen, setShareOpen] = useState(false);
-  const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved">("hidden");
+  const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved" | "timestamp">("hidden");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfPath, setPdfPath] = useState<string | null>(briefing.pdf_path ?? null);
+  const [pdfFilename, setPdfFilename] = useState<string | null>(briefing.pdf_path?.split("/").pop() ?? null);
   const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
+  const [teamPdfFiles, setTeamPdfFiles] = useState<Record<string, { path: string; url: string; filename: string }>>({});
   const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
   const [pageCountOverride, setPageCountOverride] = useState<number>(() => getEnabledPageCount(buildInitialState(briefing, modules, registryModules).modules));
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const lastSaved = useRef("");
+  const saveIndicatorTimeoutRef = useRef<number | null>(null);
+
+  const setSavedIndicator = (savedAt: Date) => {
+    setLastSavedAt(savedAt.toISOString());
+    setSaveIndicator("saved");
+
+    if (saveIndicatorTimeoutRef.current) {
+      window.clearTimeout(saveIndicatorTimeoutRef.current);
+    }
+
+    saveIndicatorTimeoutRef.current = window.setTimeout(() => {
+      setSaveIndicator("timestamp");
+      saveIndicatorTimeoutRef.current = null;
+    }, 1200);
+  };
 
   useEffect(() => {
     const snapshot = JSON.stringify(state);
@@ -189,6 +207,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         if (!cancelled) {
           setPdfUrl(signedUrl);
           setPdfPath(briefing.pdf_path);
+          setPdfFilename(briefing.pdf_path.split("/").pop() ?? "briefing.pdf");
           setPdfButtonState("ready");
         }
       } catch {
@@ -202,6 +221,14 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     };
   }, [briefing.pdf_path]);
 
+  useEffect(() => {
+    return () => {
+      if (saveIndicatorTimeoutRef.current) {
+        window.clearTimeout(saveIndicatorTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const teamModeEnabled = state.modules.metadata.data.team_mode;
   const definedTeams = state.modules.metadata.data.teams;
 
@@ -214,6 +241,15 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     const stillExists = definedTeams.some((team) => team.toLowerCase() === selectedPdfTeam.toLowerCase());
     if (!stillExists) setSelectedPdfTeam("all");
   }, [definedTeams, selectedPdfTeam, teamModeEnabled]);
+
+  useEffect(() => {
+    if (pdfButtonState === "loading") return;
+    if (selectedPdfTeam === "all") {
+      setPdfButtonState(pdfPath || pdfUrl ? "ready" : "idle");
+      return;
+    }
+    setPdfButtonState(teamPdfFiles[selectedPdfTeam] ? "ready" : "idle");
+  }, [pdfButtonState, pdfPath, pdfUrl, selectedPdfTeam, teamPdfFiles]);
 
   useEffect(() => {
     setState((prev) => {
@@ -268,6 +304,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const handleSave = async (manual = true) => {
     try {
       setSaving(true);
+      setSaveIndicator("saving");
       await patchBriefing(briefing.id, {
         title: state.core.title,
         event_date: state.core.event_date,
@@ -275,28 +312,56 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       });
       await upsertBriefingModules(briefing.id, payload);
       lastSaved.current = JSON.stringify(state);
-      if (manual) toast.success(t("editor.saved"));
-      if (!manual) setSaveIndicator("saved");
+      setSavedIndicator(new Date());
     } catch (error) {
+      setSaveIndicator(lastSavedAt ? "timestamp" : "hidden");
       toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
     } finally {
       setSaving(false);
     }
   };
 
+  const downloadGeneratedPdf = (url: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handlePdf = async () => {
     const targetTeam = teamModeEnabled && selectedPdfTeam !== "all" ? selectedPdfTeam : null;
+    const readyTeamFile = targetTeam ? teamPdfFiles[targetTeam] ?? null : null;
+    const readyFile = targetTeam
+      ? readyTeamFile
+      : pdfUrl && pdfFilename
+        ? { url: pdfUrl, filename: pdfFilename }
+        : null;
 
-    if (pdfButtonState === "ready" && !targetTeam) {
+    if (pdfButtonState === "ready" && readyFile) {
       try {
-        if (pdfPath) {
+        if (!targetTeam && pdfPath) {
           const signedUrl = await getStorageSignedUrl("exports", pdfPath, 3600);
           setPdfUrl(signedUrl);
-          window.open(signedUrl, "_blank", "noopener,noreferrer");
+          downloadGeneratedPdf(signedUrl, pdfFilename ?? "briefing.pdf");
           return;
         }
-        if (pdfUrl) {
-          window.open(pdfUrl, "_blank", "noopener,noreferrer");
+        if (targetTeam && readyTeamFile?.path) {
+          const signedUrl = await getStorageSignedUrl("exports", readyTeamFile.path, 3600);
+          setTeamPdfFiles((prev) => ({
+            ...prev,
+            [targetTeam]: {
+              ...readyTeamFile,
+              url: signedUrl
+            }
+          }));
+          downloadGeneratedPdf(signedUrl, readyTeamFile.filename);
+          return;
+        }
+        if (readyFile.url) {
+          downloadGeneratedPdf(readyFile.url, readyFile.filename);
           return;
         }
       } catch (error) {
@@ -311,20 +376,31 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     try {
       setPdfButtonState("loading");
       const result = await generateBriefingPdf(briefing.id, targetTeam);
-      setPdfUrl(result.pdf_url);
-      setPdfPath(result.pdf_path);
       if (targetTeam) {
         setTeamPdfPaths((prev) => ({
           ...prev,
           [targetTeam]: result.pdf_path
         }));
+        setTeamPdfFiles((prev) => ({
+          ...prev,
+          [targetTeam]: {
+            path: result.pdf_path,
+            url: result.pdf_url,
+            filename: result.filename
+          }
+        }));
+      } else {
+        setPdfUrl(result.pdf_url);
+        setPdfPath(result.pdf_path);
+        setPdfFilename(result.filename);
       }
       setPdfButtonState("ready");
       generated = true;
       toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
+      downloadGeneratedPdf(result.pdf_url, result.filename);
     } catch (error) {
       const msg = toApiMessage(error);
-      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : msg, { id: toastId });
+      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : `${t("editor.pdfFailed")} ${msg}`, { id: toastId });
       setPdfButtonState("idle");
     } finally {
       if (!generated) setPdfButtonState("idle");
@@ -428,6 +504,18 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const selectedModule = state.modules[state.selectedModuleKey];
   const selectedAudienceTeams = selectedModule.audience.teams;
   const pageCount = Math.max(pageCountOverride, getEnabledPageCount(state.modules));
+  const saveStatusLabel = saveIndicator === "saving"
+    ? t("editor.saving")
+    : saveIndicator === "saved"
+      ? t("editor.savedShort")
+      : saveIndicator === "timestamp" && lastSavedAt
+        ? t("editor.savedAt", {
+            time: new Intl.DateTimeFormat(i18n.language === "fr" ? "fr-BE" : "en-US", {
+              hour: "2-digit",
+              minute: "2-digit"
+            }).format(new Date(lastSavedAt))
+          })
+        : "";
 
   const visibleModulesByPage = useMemo(
     () =>
@@ -891,7 +979,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             </select>
           ) : null}
           <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button variant="secondary" onClick={() => void handlePdf()} disabled={pdfButtonState === "loading"}>
+          <Button
+            variant="secondary"
+            onClick={() => void handlePdf()}
+            disabled={pdfButtonState === "loading"}
+            className={pdfButtonState === "ready" ? "border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300" : ""}
+            aria-label={pdfButtonState === "ready" ? t("editor.downloadReady") : undefined}
+          >
             {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
             {pdfButtonState === "ready" ? <Check size={14} /> : null}
             {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.ready")}
@@ -901,7 +995,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             {t("editor.share")}
           </Button>
           <span className="ml-auto text-xs text-slate-500">
-            {saveIndicator === "saving" ? t("editor.saving") : saveIndicator === "saved" ? t("editor.savedShort") : ""}
+            {saveStatusLabel}
           </span>
         </div>
       </Card>

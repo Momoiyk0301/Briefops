@@ -76,7 +76,7 @@ describe("BriefingEditor", () => {
 
   it("shows loading then displays the PDF icon link after generation", async () => {
     const user = userEvent.setup();
-    let resolveGeneration: ((value: { pdf_path: string; pdf_url: string; generated_at: string }) => void) | null = null;
+    let resolveGeneration: ((value: { pdf_path: string; pdf_url: string; generated_at: string; filename: string }) => void) | null = null;
 
     apiMocks.generateBriefingPdf.mockImplementationOnce(
       () =>
@@ -93,7 +93,8 @@ describe("BriefingEditor", () => {
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
       pdf_url: "https://example.test/briefing.pdf",
-      generated_at: "2026-03-07T00:00:00.000Z"
+      generated_at: "2026-03-07T00:00:00.000Z",
+      filename: "briefing-demo-v202603070000-20260307.pdf"
     });
 
     await waitFor(() => expect(screen.getByRole("button", { name: /prêt/i })).toBeInTheDocument());

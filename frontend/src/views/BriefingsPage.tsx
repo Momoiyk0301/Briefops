@@ -59,6 +59,7 @@ export default function BriefingsPage() {
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const plan = meQuery.data?.plan ?? "free";
   const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
+  const isCreateReady = !meQuery.isLoading && !meQuery.isFetching && !meQuery.data?.degraded && Boolean(workspaceId);
   const briefingLimit = plan === "free" ? 1 : plan === "starter" ? 20 : plan === "plus" ? 100 : null;
   const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
@@ -122,7 +123,11 @@ export default function BriefingsPage() {
   }, [filteredBriefings, currentMonth, currentYear]);
 
   const handleCreateBriefing = () => {
-    if (meQuery.isLoading) return;
+    if (!isCreateReady) {
+      toast.error(meQuery.data?.degraded ? "Workspace context is still loading. Retry in a moment." : t("briefings.workspaceMissing"));
+      if (!workspaceId) navigate("/onboarding");
+      return;
+    }
     if (!workspaceId) {
       toast.error("Workspace missing. Complete onboarding first.");
       navigate("/onboarding");
@@ -175,8 +180,8 @@ export default function BriefingsPage() {
                 Calendrier
               </Button>
             </div>
-            <Button onClick={handleCreateBriefing} withArrow disabled={meQuery.isLoading || createMutation.isPending}>
-              {t("briefings.new")}
+            <Button onClick={handleCreateBriefing} withArrow disabled={!isCreateReady || createMutation.isPending}>
+              {createMutation.isPending ? t("app.loading") : t("briefings.new")}
             </Button>
           </div>
         </div>

@@ -6,9 +6,9 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
-import { getMe, toApiMessage } from "@/lib/api";
+import { getLoginHint, getMe, toApiMessage } from "@/lib/api";
 import { getPostAuthRedirect } from "@/lib/authRedirect";
-import { signInWithPassword, signUpWithPassword } from "@/lib/auth";
+import { classifyLoginError, signInWithPassword, signUpWithPassword } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -21,11 +21,6 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
-function isMissingAccountLoginError(error: unknown) {
-  const message = toApiMessage(error);
-  return /invalid login credentials|user not found|email not confirmed/i.test(message);
-}
-
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -36,7 +31,43 @@ export default function LoginPage() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       if (mode === "login") {
-        await signInWithPassword(values.email, values.password);
+        const normalizedEmail = values.email.trim().toLowerCase();
+        let loginHint: { exists: boolean; email_confirmed: boolean } | null = null;
+
+        try {
+          loginHint = await getLoginHint(normalizedEmail);
+        } catch {
+          loginHint = null;
+        }
+
+        try {
+          await signInWithPassword(normalizedEmail, values.password);
+        } catch (error) {
+          const errorKind = classifyLoginError(error);
+
+          if (loginHint && !loginHint.exists && (errorKind === "invalid_credentials" || errorKind === "user_not_found")) {
+            toast.error(t("auth.userNotFound"));
+            return;
+          }
+
+          if ((loginHint && loginHint.exists && !loginHint.email_confirmed) || errorKind === "email_not_confirmed") {
+            toast.error(t("auth.emailNotConfirmed"));
+            return;
+          }
+
+          if (errorKind === "invalid_credentials") {
+            toast.error(loginHint?.exists ? t("auth.invalidPassword") : t("auth.userNotFound"));
+            return;
+          }
+
+          if (errorKind === "user_not_found") {
+            toast.error(t("auth.userNotFound"));
+            return;
+          }
+
+          throw error;
+        }
+
         const me = await getMe();
         const nextRoute = getPostAuthRedirect(me);
         if (nextRoute === "/onboarding?step=products") {
@@ -52,11 +83,6 @@ export default function LoginPage() {
         navigate("/onboarding");
       }
     } catch (error) {
-      if (mode === "login" && isMissingAccountLoginError(error)) {
-        toast.error(t("auth.accountMissing"));
-        setMode("register");
-        return;
-      }
       toast.error(toApiMessage(error));
     }
   });
@@ -127,7 +153,7 @@ export default function LoginPage() {
                   </Link>
                 </div>
               ) : null}
-              <Button type="submit" className="w-full" withArrow>
+              <Button type="submit" className="w-full" withArrow disabled={form.formState.isSubmitting}>
                 {mode === "login" ? t("auth.submitLogin") : t("auth.continueRegister")}
               </Button>
             </form>

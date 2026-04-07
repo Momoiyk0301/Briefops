@@ -205,6 +205,22 @@ function replaceCurrentUrl(url: URL) {
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
 }
 
+export type LoginErrorKind =
+  | "invalid_credentials"
+  | "email_not_confirmed"
+  | "user_not_found"
+  | "rate_limited"
+  | "unknown";
+
+export function classifyLoginError(error: unknown): LoginErrorKind {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/email not confirmed/i.test(message)) return "email_not_confirmed";
+  if (/invalid login credentials|invalid credentials|invalid email or password/i.test(message)) return "invalid_credentials";
+  if (/user not found/i.test(message)) return "user_not_found";
+  if (/rate limit|too many requests/i.test(message)) return "rate_limited";
+  return "unknown";
+}
+
 export async function resetPasswordForEmail(email: string) {
   if (isE2eMockAuth) return;
   const redirectTo = buildBrowserRedirectUrl("/auth/reset-password");

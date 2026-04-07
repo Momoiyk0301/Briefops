@@ -68,7 +68,7 @@ export default function BillingPage() {
         ) : null}
         {searchParams.get("checkout") === "success" ? (
           <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
-            Paiement confirme. Les emails de confirmation de commande et de compte sont envoyes par webhook Stripe.
+            Paiement confirmé. Stripe garde les reçus et factures, tandis que BriefOPS peut envoyer les emails applicatifs de confirmation de compte.
           </p>
         ) : null}
       </div>

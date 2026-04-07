@@ -24,6 +24,26 @@ const PDF_LIMITS: Record<"free" | "starter" | "plus" | "pro", number> = {
 
 type Params = { params: Promise<{ id: string }> };
 
+function slugifySegment(value: string | null | undefined, fallback: string) {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || fallback;
+}
+
+function buildPdfFileName(title: string | null | undefined, generatedAt: Date) {
+  const eventName = slugifySegment(title, "event");
+  const yyyy = generatedAt.getFullYear();
+  const mm = String(generatedAt.getMonth() + 1).padStart(2, "0");
+  const dd = String(generatedAt.getDate()).padStart(2, "0");
+  const hh = String(generatedAt.getHours()).padStart(2, "0");
+  const min = String(generatedAt.getMinutes()).padStart(2, "0");
+  return `briefing-${eventName}-v${yyyy}${mm}${dd}${hh}${min}-${yyyy}${mm}${dd}.pdf`;
+}
+
 function normalizeTeamKey(team?: string | null) {
   if (!team) return null;
   const normalized = team
@@ -56,7 +76,7 @@ function isModuleVisibleForTeam(
 }
 
 export async function GET(request: Request, { params }: Params) {
-  const ctx = createRequestContext("GET /api/pdf/:id");
+  const ctx = createRequestContext("GET /api/pdf/:id", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -69,6 +89,7 @@ export async function GET(request: Request, { params }: Params) {
     const requestUrl = new URL(request.url);
     const format = formatSchema.parse(requestUrl.searchParams.get("format") ?? "binary");
     const selectedTeam = normalizeTeamKey(teamSchema.parse(requestUrl.searchParams.get("team") ?? undefined));
+    const generatedAt = new Date();
 
     const [briefing, orgId] = await Promise.all([
       getBriefingById(client, briefingId),
@@ -112,9 +133,10 @@ export async function GET(request: Request, { params }: Params) {
     });
 
     const service = createServiceRoleClient();
+    const filename = buildPdfFileName(briefing.title, generatedAt);
     const storagePath = selectedTeam
       ? `${userId}/${briefing.id}/team-${selectedTeam}.pdf`
-      : `${userId}/${briefing.id}/briefing-${briefing.id}-${Date.now()}.pdf`;
+      : `${userId}/${briefing.id}/${filename}`;
 
     const { error: uploadError } = await service.storage
       .from("exports")
@@ -146,15 +168,22 @@ export async function GET(request: Request, { params }: Params) {
       throw new HttpError(500, `Signed URL failed: ${signedError.message}`);
     }
 
-    ctx.info("generated and uploaded pdf", { userId, briefingId, storagePath });
+    ctx.info("generated and uploaded pdf", {
+      userId,
+      briefingId,
+      storagePath,
+      team: selectedTeam,
+      filename
+    });
 
     if (format === "json") {
       return NextResponse.json({
         ok: true,
         pdf_path: storagePath,
         pdf_url: signed.signedUrl,
-        generated_at: new Date().toISOString(),
-        team: selectedTeam
+        generated_at: generatedAt.toISOString(),
+        team: selectedTeam,
+        filename
       });
     }
 
@@ -163,11 +192,14 @@ export async function GET(request: Request, { params }: Params) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="briefing-${briefing.id}.pdf"`
+        "Content-Disposition": `attachment; filename="${filename}"`
       }
     });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to generate pdf", error, {
+      origin: "server",
+      step: "generate-pdf"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

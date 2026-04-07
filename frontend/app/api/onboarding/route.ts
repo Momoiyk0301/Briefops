@@ -66,7 +66,7 @@ function normalizeCreateWorkspaceBody(rawBody: unknown) {
 }
 
 export async function POST(request: Request) {
-  const ctx = createRequestContext("POST /api/onboarding");
+  const ctx = createRequestContext("POST /api/onboarding", request);
 
   try {
     const { client, userId, email } = await requireAuthContext(request);
@@ -145,7 +145,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, workspace, onboarding_step: "products" }, { status: 201 });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed onboarding action", error, {
+      origin: "server",
+      step: "onboarding"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

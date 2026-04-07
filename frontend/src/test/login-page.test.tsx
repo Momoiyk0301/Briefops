@@ -9,13 +9,20 @@ import toast from "react-hot-toast";
 import i18n from "@/i18n";
 import LoginPage from "@/views/LoginPage";
 
-const { signInWithPassword, signUpWithPassword } = vi.hoisted(() => ({
+const { signInWithPassword, signUpWithPassword, classifyLoginError } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
-  signUpWithPassword: vi.fn()
+  signUpWithPassword: vi.fn(),
+  classifyLoginError: vi.fn((error: unknown) => {
+    const message = String(error);
+    if (/Email not confirmed/i.test(message)) return "email_not_confirmed";
+    if (/Invalid login credentials/i.test(message)) return "invalid_credentials";
+    return "unknown";
+  })
 }));
 
 const apiMocks = vi.hoisted(() => ({
-  getMe: vi.fn()
+  getMe: vi.fn(),
+  getLoginHint: vi.fn()
 }));
 
 const routerMocks = vi.hoisted(() => ({
@@ -24,11 +31,13 @@ const routerMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   signInWithPassword,
-  signUpWithPassword
+  signUpWithPassword,
+  classifyLoginError
 }));
 
 vi.mock("@/lib/api", () => ({
   getMe: apiMocks.getMe,
+  getLoginHint: apiMocks.getLoginHint,
   toApiMessage: vi.fn((error: unknown) => String(error))
 }));
 
@@ -70,6 +79,7 @@ function renderPage() {
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.getLoginHint.mockResolvedValue({ exists: true, email_confirmed: true });
     apiMocks.getMe.mockResolvedValue({
       role: "owner",
       org: { id: "org-1", name: "Org" },
@@ -126,7 +136,8 @@ describe("LoginPage", () => {
     expect(toast).toHaveBeenCalledWith("Compte trouvé. Choisis une offre pour terminer l'activation.");
   });
 
-  it("switches to register mode when login targets a missing account", async () => {
+  it("stays on login mode and shows a clear message when the account is missing", async () => {
+    apiMocks.getLoginHint.mockResolvedValueOnce({ exists: false, email_confirmed: false });
     signInWithPassword.mockRejectedValueOnce(new Error("Invalid login credentials"));
     renderPage();
 
@@ -134,9 +145,34 @@ describe("LoginPage", () => {
     await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
     await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
 
-    expect(toast.error).toHaveBeenCalledWith("Compte introuvable. Passe en création de compte pour continuer.");
-    expect(screen.getByRole("button", { name: /Continuer/i })).toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith("Utilisateur introuvable.");
+    expect(screen.getAllByRole("button", { name: /Se connecter/i }).length).toBeGreaterThan(0);
     expect(routerMocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("shows a dedicated error when the password is invalid", async () => {
+    apiMocks.getLoginHint.mockResolvedValueOnce({ exists: true, email_confirmed: true });
+    signInWithPassword.mockRejectedValueOnce(new Error("Invalid login credentials"));
+    renderPage();
+
+    await userEvent.type(screen.getByPlaceholderText(/email/i), "known@example.com");
+    await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "wrongpass");
+    await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
+
+    expect(toast.error).toHaveBeenCalledWith("Mot de passe incorrect.");
+    expect(routerMocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("shows a dedicated error when the email is not confirmed", async () => {
+    apiMocks.getLoginHint.mockResolvedValueOnce({ exists: true, email_confirmed: false });
+    signInWithPassword.mockRejectedValueOnce(new Error("Email not confirmed"));
+    renderPage();
+
+    await userEvent.type(screen.getByPlaceholderText(/email/i), "pending@example.com");
+    await userEvent.type(screen.getByPlaceholderText(/password|mot de passe/i), "secret12");
+    await userEvent.click(document.querySelector('button[type="submit"]') as HTMLButtonElement);
+
+    expect(toast.error).toHaveBeenCalledWith("Email non confirmé. Vérifie ta boîte mail avant de te connecter.");
   });
 
   it("links to dedicated forgot password page", async () => {

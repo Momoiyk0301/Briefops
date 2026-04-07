@@ -28,7 +28,7 @@ async function assertBriefingAccess(client: Awaited<ReturnType<typeof requireUse
 }
 
 export async function GET(request: Request, { params }: Params) {
-  const ctx = createRequestContext("GET /api/briefings/:id");
+  const ctx = createRequestContext("GET /api/briefings/:id", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -38,13 +38,16 @@ export async function GET(request: Request, { params }: Params) {
     ctx.info("fetched briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to fetch briefing", error, {
+      origin: "server",
+      step: "get-briefing"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const ctx = createRequestContext("PATCH /api/briefings/:id");
+  const ctx = createRequestContext("PATCH /api/briefings/:id", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -56,13 +59,16 @@ export async function PATCH(request: Request, { params }: Params) {
     ctx.info("updated briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to update briefing", error, {
+      origin: "server",
+      step: "patch-briefing"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }
 
 export async function DELETE(request: Request, { params }: Params) {
-  const ctx = createRequestContext("DELETE /api/briefings/:id");
+  const ctx = createRequestContext("DELETE /api/briefings/:id", request);
 
   try {
     const { client, userId } = await requireUser(request);
@@ -73,7 +79,10 @@ export async function DELETE(request: Request, { params }: Params) {
     ctx.info("deleted briefing", { userId, briefingId: id });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to delete briefing", error, {
+      origin: "server",
+      step: "delete-briefing"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }

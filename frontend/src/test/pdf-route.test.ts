@@ -56,6 +56,7 @@ describe("frontend /api/pdf/:id", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.pdf_url).toContain("example.test/file.pdf");
+    expect(body.filename).toMatch(/^briefing-/);
     expect(upload).toHaveBeenCalledTimes(1);
   });
 

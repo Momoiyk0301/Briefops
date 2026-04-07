@@ -91,4 +91,11 @@ describe("auth helpers", () => {
       redirectTo: `${window.location.origin}/auth/reset-password`
     });
   });
+
+  it("classifies login errors for clearer UI messages", async () => {
+    const { classifyLoginError } = await import("@/lib/auth");
+
+    expect(classifyLoginError(new Error("Email not confirmed"))).toBe("email_not_confirmed");
+    expect(classifyLoginError(new Error("Invalid login credentials"))).toBe("invalid_credentials");
+  });
 });
