@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const monitoringMocks = vi.hoisted(() => ({ captureClientError: vi.fn() }));
+const sentryScope = {
+  setTag: vi.fn(),
+  setContext: vi.fn()
+};
+
+const sentryMocks = vi.hoisted(() => ({
+  captureException: vi.fn(),
+  withScope: vi.fn((callback: (scope: typeof sentryScope) => void) => callback(sentryScope))
+}));
 
 vi.mock("@/lib/auth", () => ({
   getSession: vi.fn().mockResolvedValue({ access_token: "token" })
 }));
 
-vi.mock("@/lib/monitoring", () => monitoringMocks);
+vi.mock("@sentry/nextjs", () => sentryMocks);
 
 describe("api monitoring", () => {
   beforeEach(() => {
@@ -18,6 +26,7 @@ describe("api monitoring", () => {
     const { getBriefing } = await import("@/lib/api");
 
     await expect(getBriefing("briefing-1")).rejects.toMatchObject({ status: 0 });
-    expect(monitoringMocks.captureClientError).toHaveBeenCalled();
+    expect(sentryMocks.withScope).toHaveBeenCalled();
+    expect(sentryMocks.captureException).toHaveBeenCalled();
   });
 });

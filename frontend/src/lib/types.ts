@@ -83,7 +83,8 @@ export type StaffMember = {
 
 export type Briefing = {
   id: string;
-  org_id: string;
+  org_id?: string;
+  workspace_id?: string;
   title: string;
   status?: "draft" | "ready" | "archived" | string;
   shared?: boolean;
@@ -134,13 +135,17 @@ export type BriefingModuleRow = {
 
 export type RegistryModule = {
   id: string;
-  org_id: string;
+  org_id?: string | null;
+  workspace_id?: string | null;
   name: string;
   type: ModuleKey;
   version: number;
   icon: string;
   category: string;
   enabled: boolean;
+  global_enabled?: boolean;
+  workspace_enabled?: boolean;
+  workspace_module_id?: string | null;
   settings_schema?: unknown;
   field_schema?: unknown;
   default_settings?: unknown;

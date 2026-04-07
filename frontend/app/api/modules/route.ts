@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { getUserWorkspaceId, listWorkspaceModules, updateWorkspaceModuleEnabled } from "@/supabase/queries/modulesRegistry";
+import { ensureRegistryModules, getUserWorkspaceId, updateWorkspaceModuleEnabled } from "@/supabase/queries/modulesRegistry";
 import { requireUser } from "@/supabase/server";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const workspaceId = await getUserWorkspaceId(client, userId);
     if (!workspaceId) throw new HttpError(404, "Workspace not found");
 
-    const data = await listWorkspaceModules(client, workspaceId);
+    const data = await ensureRegistryModules(client, workspaceId);
     return NextResponse.json({ data });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });

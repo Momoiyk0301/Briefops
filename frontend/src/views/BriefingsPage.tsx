@@ -28,9 +28,9 @@ export default function BriefingsPage() {
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
   const createMutation = useMutation({
     mutationFn: async () => {
-      const orgId = meQuery.data?.org?.id;
-      if (!orgId) throw new Error("Organization missing");
-      return createBriefing({ org_id: orgId, title: "Untitled briefing" });
+      const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id;
+      if (!workspaceId) throw new Error("Workspace missing");
+      return createBriefing({ workspace_id: workspaceId, title: "Untitled briefing" });
     },
     onSuccess: (briefing) => {
       navigate(`/briefings/${briefing.id}`, { state: { initializingNewBriefing: true } });
