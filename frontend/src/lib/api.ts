@@ -337,11 +337,11 @@ export async function createBriefing(input: {
   event_date?: string;
   location_text?: string;
 }) {
-  const orgId = input.org_id ?? input.workspace_id;
+  const workspaceId = input.workspace_id ?? input.org_id;
   const response = await requestJson<{ data: Briefing }>("/api/briefings", {
     method: "POST",
     body: {
-      org_id: orgId,
+      workspace_id: workspaceId,
       title: input.title,
       event_date: input.event_date,
       location_text: input.location_text

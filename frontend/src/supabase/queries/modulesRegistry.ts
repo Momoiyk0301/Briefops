@@ -70,7 +70,7 @@ const DEFAULT_MODULES: Array<{
       {
         key: "allow_custom_tag",
         type: "boolean",
-        label: "Autoriser un tag personnalisé",
+        label: "Autoriser un tag personnalise",
         description: "Permet de saisir un tag libre"
       }
     ],
@@ -187,10 +187,13 @@ const DEFAULT_MODULES: Array<{
   }
 ];
 
-const SELECT_REGISTRY_FIELDS =
-  "id, org_id, name, type, version, icon, category, enabled, settings_schema, field_schema, default_settings, default_layout, default_data, created_at, updated_at";
+const SELECT_MODULE_FIELDS =
+  "id, name, type, version, icon, category, enabled, settings_schema, field_schema, default_settings, default_layout, default_data, created_at, updated_at";
 
-export async function getUserOrgId(client: SupabaseClient, userId: string) {
+const SELECT_WORKSPACE_MODULE_FIELDS =
+  "id, workspace_id, module_id, enabled, created_at, updated_at";
+
+export async function getUserWorkspaceId(client: SupabaseClient, userId: string) {
   const { data, error } = await client
     .from("memberships")
     .select("workspace_id")
@@ -201,56 +204,95 @@ export async function getUserOrgId(client: SupabaseClient, userId: string) {
   return data?.workspace_id ?? null;
 }
 
-export const getUserWorkspaceId = getUserOrgId;
+export const getUserOrgId = getUserWorkspaceId;
 
-export async function listRegistryModules(client: SupabaseClient, orgId: string) {
-  const { data, error } = await client
-    .from("modules")
-    .select(SELECT_REGISTRY_FIELDS)
-    .eq("org_id", orgId)
-    .order("type", { ascending: true });
-
+export async function listGlobalModules(client: SupabaseClient) {
+  const { data, error } = await client.from("modules").select(SELECT_MODULE_FIELDS).order("type", { ascending: true });
   if (error) throw error;
-  return data;
+  return data ?? [];
 }
 
-export const listWorkspaceModules = listRegistryModules;
-
-export async function ensureRegistryModules(client: SupabaseClient, orgId: string) {
-  const existing = await listRegistryModules(client, orgId);
-  if (existing.length > 0) return existing;
-
-  const payload = DEFAULT_MODULES.map((item) => ({
-    org_id: orgId,
-    ...item
-  }));
-
+export async function listWorkspaceModuleRows(client: SupabaseClient, workspaceId: string) {
   const { data, error } = await client
-    .from("modules")
-    .upsert(payload, { onConflict: "org_id,type" })
-    .select(SELECT_REGISTRY_FIELDS)
-    .order("type", { ascending: true });
+    .from("workspace_modules")
+    .select(SELECT_WORKSPACE_MODULE_FIELDS)
+    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
-  return data;
+  return data ?? [];
 }
 
-export async function updateRegistryModuleEnabled(
-  client: SupabaseClient,
-  orgId: string,
-  moduleId: string,
-  enabled: boolean
-) {
-  const { data, error } = await client
-    .from("modules")
-    .update({ enabled })
-    .eq("id", moduleId)
-    .eq("org_id", orgId)
-    .select(SELECT_REGISTRY_FIELDS)
-    .single();
+export async function listWorkspaceModules(client: SupabaseClient, workspaceId: string) {
+  const [modules, workspaceModules] = await Promise.all([
+    listGlobalModules(client),
+    listWorkspaceModuleRows(client, workspaceId)
+  ]);
+
+  const overrides = new Map(workspaceModules.map((item) => [item.module_id, item]));
+
+  return modules.map((module) => {
+    const override = overrides.get(module.id);
+    const workspaceEnabled = override?.enabled ?? module.enabled;
+
+    return {
+      ...module,
+      enabled: Boolean(module.enabled && workspaceEnabled),
+      global_enabled: Boolean(module.enabled),
+      workspace_enabled: Boolean(workspaceEnabled),
+      workspace_module_id: override?.id ?? null
+    };
+  });
+}
+
+export const listRegistryModules = listWorkspaceModules;
+
+export async function ensureRegistryModules(client: SupabaseClient, workspaceId: string) {
+  const [existingGlobalModules, workspaceModules] = await Promise.all([
+    listGlobalModules(client),
+    listWorkspaceModuleRows(client, workspaceId)
+  ]);
+
+  let globalModules = existingGlobalModules;
+  if (globalModules.length === 0) {
+    const { data, error } = await client
+      .from("modules")
+      .upsert(DEFAULT_MODULES, { onConflict: "type" })
+      .select(SELECT_MODULE_FIELDS)
+      .order("type", { ascending: true });
+    if (error) throw error;
+    globalModules = data ?? [];
+  }
+
+  const existingOverrides = new Set(workspaceModules.map((item) => item.module_id));
+  const missingOverrides = globalModules
+    .filter((module) => !existingOverrides.has(module.id))
+    .map((module) => ({
+      workspace_id: workspaceId,
+      module_id: module.id,
+      enabled: module.enabled
+    }));
+
+  if (missingOverrides.length > 0) {
+    const { error } = await client
+      .from("workspace_modules")
+      .upsert(missingOverrides, { onConflict: "workspace_id,module_id" });
+    if (error) throw error;
+  }
+
+  return listWorkspaceModules(client, workspaceId);
+}
+
+export async function updateRegistryModuleEnabled(client: SupabaseClient, workspaceId: string, moduleId: string, enabled: boolean) {
+  const { error } = await client
+    .from("workspace_modules")
+    .upsert({ workspace_id: workspaceId, module_id: moduleId, enabled }, { onConflict: "workspace_id,module_id" });
 
   if (error) throw error;
-  return data;
+
+  const modules = await listWorkspaceModules(client, workspaceId);
+  const resolved = modules.find((module) => module.id === moduleId);
+  if (!resolved) throw new Error("Module not found after workspace update");
+  return resolved;
 }
 
 export const updateWorkspaceModuleEnabled = updateRegistryModuleEnabled;

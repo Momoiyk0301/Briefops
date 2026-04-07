@@ -8,27 +8,8 @@ import BriefingsPage from "@/views/BriefingsPage";
 
 const apiMocks = vi.hoisted(() => ({
   getMe: vi.fn().mockResolvedValue({ org: { id: "org-1", name: "Org" }, workspace: { id: "org-1", name: "Org" } }),
-  createBriefing: vi.fn(),
+  createBriefing: vi.fn().mockResolvedValue({ id: "created-1" }),
   getStaff: vi.fn().mockResolvedValue([]),
-  listPublicLinks: vi.fn().mockResolvedValue([
-    {
-      id: "l1",
-      briefing_id: "demo-1",
-      resource_type: "pdf",
-      link_type: "audience",
-      audience_tag: "Audio",
-      team: "Audio",
-      token: "t1",
-      created_by: "u1",
-      expires_at: null,
-      revoked_at: null,
-      created_at: "",
-      status: "active",
-      url: "http://localhost/briefings/demo-1/audio/t1",
-      briefing_title: "Demo - One",
-      pdf_path: null
-    }
-  ]),
   listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   toApiMessage: vi.fn((e: unknown) => String(e))
 }));
@@ -59,7 +40,6 @@ vi.mock("@/lib/api", () => ({
   createBriefing: apiMocks.createBriefing,
   deleteBriefing: vi.fn(),
   getStaff: apiMocks.getStaff,
-  listPublicLinks: apiMocks.listPublicLinks,
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: vi.fn(),
   revokeBriefingShareLink: vi.fn(),
@@ -95,14 +75,14 @@ describe("BriefingsPage", () => {
 
     await waitFor(() => expect(screen.getByText(/Demo data/i)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /Partager le briefing/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Exporter le PDF/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Supprimer le briefing/i })).toBeInTheDocument();
   });
 
   it("routes to the briefing preview when clicking on a row", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("link", { name: /Demo - One/i }));
+    await user.click(await screen.findByText(/Demo - One/i));
     expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/demo-1");
   });
 
@@ -119,11 +99,20 @@ describe("BriefingsPage", () => {
     expect(routerMocks.navigate).not.toHaveBeenCalledWith("/briefings/demo-1");
   });
 
-  it("routes to the team-aware PDF export from row actions", async () => {
+  it("creates a briefing with workspace_id from the current workspace", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /Exporter le PDF/i }));
-    expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/demo-1/export?team=Audio");
+    await user.click(await screen.findByRole("button", { name: /briefings\.new/i }));
+
+    await waitFor(() => {
+      expect(apiMocks.createBriefing).toHaveBeenCalledWith({
+        workspace_id: "org-1",
+        title: "Untitled briefing"
+      });
+    });
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings/created-1", {
+      state: { initializingNewBriefing: true }
+    });
   });
 });

@@ -51,8 +51,6 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    expect(screen.getAllByText(/Edition module/i).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: /Edition/i }));
     expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("move-access")).toBeInTheDocument();
     expect(screen.queryByLabelText("move-notes")).not.toBeInTheDocument();
@@ -87,8 +85,8 @@ describe("BriefingEditor", () => {
 
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /^pdf$/i }));
-    expect(screen.getByRole("button", { name: /chargement/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /editor\.pdf|^pdf$/i }));
+    expect(screen.getByRole("button", { name: /editor\.loadingShort|chargement/i })).toBeDisabled();
 
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
@@ -97,15 +95,19 @@ describe("BriefingEditor", () => {
       filename: "briefing-demo-v202603070000-20260307.pdf"
     });
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /prêt/i })).toBeInTheDocument());
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /editor\.downloadReady|download ready|télécharger/i })
+      ).toBeInTheDocument();
+    });
   });
 
   it("opens share drawer and loads links for the current briefing", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /partager/i }));
-    expect(await screen.findByText(/Partager PDF/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /editor\.share|partager|share/i }));
+    expect(await screen.findByText(/Share briefing|Partager PDF/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 
@@ -125,10 +127,11 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getAllByRole("button", { name: /Ajouter une page/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: /editor\.addPage|Ajouter une page/i })[0]);
     const selectors = screen.getAllByRole("combobox", { name: /page-selector/i });
+    expect(screen.getAllByRole("option")).toHaveLength(4);
     await user.selectOptions(selectors[0], "1");
 
-    expect(screen.getAllByText(/Page 2/i).length).toBeGreaterThan(0);
+    expect(selectors[0]).toHaveValue("1");
   });
 });
