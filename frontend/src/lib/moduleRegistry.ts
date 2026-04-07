@@ -14,7 +14,14 @@ import { EquipmentPreview } from "@/components/briefing/preview/EquipmentPreview
 import { NotesPreview } from "@/components/briefing/preview/NotesPreview";
 import { StaffPreview } from "@/components/briefing/preview/StaffPreview";
 import { VehiclePreview } from "@/components/briefing/preview/VehiclePreview";
-import { ModuleDataMap, ModuleKey, ModuleRegistryEntry } from "@/lib/types";
+import {
+  DeliverySettings,
+  ModuleDataMap,
+  ModuleFieldDefinition,
+  ModuleKey,
+  ModuleRegistryEntry,
+  ModuleSettingDefinition
+} from "@/lib/types";
 
 const metadataSchema = z.object({
   main_contact_name: z.string(),
@@ -37,10 +44,88 @@ const deliverySchema = z.object({
       time: z.string(),
       place: z.string(),
       contact: z.string(),
+      tag_mode: z.enum(["", "depot", "retour", "custom"]).optional().default(""),
+      custom_tag: z.string().optional().default(""),
       notes: z.string()
     })
   )
 });
+
+const deliverySettingsSchema = z.object({
+  enable_depot_tag: z.boolean().default(true),
+  enable_retour_tag: z.boolean().default(true),
+  allow_custom_tag: z.boolean().default(true)
+});
+
+export const deliverySettingsDefinitions: ModuleSettingDefinition[] = [
+  {
+    key: "enable_depot_tag",
+    type: "boolean",
+    label: "Activer le tag depot",
+    description: "Permet de tagger une livraison comme depot"
+  },
+  {
+    key: "enable_retour_tag",
+    type: "boolean",
+    label: "Activer le tag retour",
+    description: "Permet de tagger une livraison comme retour"
+  },
+  {
+    key: "allow_custom_tag",
+    type: "boolean",
+    label: "Autoriser un tag personnalisé",
+    description: "Permet de saisir un tag libre"
+  }
+];
+
+export const deliveryFieldDefinitions: ModuleFieldDefinition[] = [
+  { key: "time", type: "time", label: "Time", placeholder: "Time" },
+  { key: "place", type: "text", label: "Place", placeholder: "Place" },
+  { key: "contact", type: "text", label: "Contact", placeholder: "Contact" },
+  {
+    key: "tag_mode",
+    type: "select",
+    label: "Tag",
+    placeholder: "Select a tag",
+    visibilityMode: "any",
+    visibleWhen: [
+      { source: "settings", path: "enable_depot_tag", truthy: true },
+      { source: "settings", path: "enable_retour_tag", truthy: true },
+      { source: "settings", path: "allow_custom_tag", truthy: true }
+    ],
+    options: [
+      {
+        value: "depot",
+        label: "Depot",
+        visibleWhen: [{ source: "settings", path: "enable_depot_tag", truthy: true }]
+      },
+      {
+        value: "retour",
+        label: "Retour",
+        visibleWhen: [{ source: "settings", path: "enable_retour_tag", truthy: true }]
+      },
+      {
+        value: "custom",
+        label: "Custom",
+        visibleWhen: [{ source: "settings", path: "allow_custom_tag", truthy: true }]
+      }
+    ]
+  },
+  {
+    key: "custom_tag",
+    type: "text",
+    label: "Custom tag",
+    placeholder: "Type a custom tag",
+    visibleWhen: [{ source: "values", path: "tag_mode", equals: "custom" }]
+  },
+  { key: "notes", type: "textarea", label: "Notes", placeholder: "Notes" }
+];
+
+const defaultDeliverySettings: DeliverySettings = {
+  enable_depot_tag: true,
+  enable_retour_tag: true,
+  allow_custom_tag: true
+};
 
 const vehicleSchema = z.object({
   vehicles: z.array(
@@ -116,6 +201,8 @@ export const moduleRegistry: { [K in ModuleKey]: ModuleRegistryEntry<K> } = {
     defaultEnabled: false,
     schema: deliverySchema,
     defaultData: { deliveries: [] },
+    settingsSchema: deliverySettingsSchema as unknown as ModuleRegistryEntry<"delivery">["settingsSchema"],
+    defaultSettings: defaultDeliverySettings,
     FormComponent: DeliveryForm,
     PreviewComponent: DeliveryPreview
   },

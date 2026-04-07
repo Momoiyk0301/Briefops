@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 export default function BillingPage() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const [searchParams] = useSearchParams();
-  const [submittingPlan, setSubmittingPlan] = useState<"starter" | "plus" | "pro" | null>(null);
+  const [submittingPlan, setSubmittingPlan] = useState<"starter" | "pro" | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
 
   const usage = meQuery.data?.usage;
@@ -29,7 +29,7 @@ export default function BillingPage() {
       ? "Illimité"
       : `${usage?.pdf_exports_remaining ?? 0} restant(s)`;
 
-  const openCheckout = async (plan: "starter" | "plus" | "pro") => {
+  const openCheckout = async (plan: "starter" | "pro") => {
     try {
       setSubmittingPlan(plan);
       const session = await createStripeCheckoutSession(plan);
@@ -63,7 +63,7 @@ export default function BillingPage() {
         </p>
         {searchParams.get("fromSignup") === "1" ? (
           <p className="mt-2 text-sm text-[#5f6680] dark:text-[#a8afc6]">
-            Choisis ton offre (Starter, Plus ou Pro), puis finalise ton checkout Stripe.
+            Choisis ton offre (Starter ou Pro), puis finalise ton checkout Stripe.
           </p>
         ) : null}
         {searchParams.get("checkout") === "success" ? (
@@ -100,18 +100,6 @@ export default function BillingPage() {
               onClick={() => void openCheckout("starter")}
             >
               {submittingPlan === "starter" ? "Redirection..." : currentPlan === "starter" || currentPlan === "plus" || currentPlan === "pro" ? "Plan actuel ou superieur" : "Passer Starter"}
-            </Button>
-          </div>
-
-          <div className="surface-pad rounded-2xl border border-[#e6e8f2] dark:border-white/10">
-            <p className="text-sm font-semibold">Plus</p>
-            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">300 exports PDF/mois</p>
-            <Button
-              className="mt-4"
-              disabled={submittingPlan !== null || currentPlan === "plus" || currentPlan === "pro"}
-              onClick={() => void openCheckout("plus")}
-            >
-              {submittingPlan === "plus" ? "Redirection..." : currentPlan === "plus" || currentPlan === "pro" ? "Plan actuel ou superieur" : "Passer Plus"}
             </Button>
           </div>
 

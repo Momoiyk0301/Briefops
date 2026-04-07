@@ -1,34 +1,111 @@
-# BriefOPS Agent Notes
+🎯 Project Mission
 
-## Produit
-- SaaS MVP pour les opérations événementielles
-- coeur métier: briefings terrain, modules, PDF, partage public, workspace, onboarding, billing
+This project is a SaaS for the event industry.
 
-## Stack
-- `frontend/`: Next.js 15, React 19, TypeScript, Tailwind
-- Supabase: auth, DB, storage
-- Stripe: checkout, billing, webhooks
-- Resend: emails applicatifs
-- Sentry: monitoring
-- Vercel: cible de déploiement
+The goal is to generate structured, modular event briefings for field teams (roadies, stage managers, staff managers, event crew).
 
-## Architecture
-- déploiement cible: un seul projet Vercel avec `Root Directory = frontend`
-- `frontend/app/api`: API active
-- `frontend/app/[[...slug]]`: shell SPA React Router
-- `backend/`: legacy / compat / tests / scripts
+The MVP must focus only on:
 
-## Règles
-- priorité à la clarté, la robustesse et la vitesse
-- pas de sur-ingénierie
-- composants petits et ciblés
-- ne pas casser l’auth, le billing ni les RLS
-- erreurs visibles, traçables, utiles
+Creating a briefing
 
-## Flux email
-- Stripe: factures et reçus financiers
-- Supabase Auth: confirmation email, reset password, magic link via SMTP Resend
-- BriefOPS app: mails applicatifs via API Resend
+Activating/deactivating modules
+
+Exporting or sharing the briefing
+
+Basic subscription restriction (Stripe)
+
+No over-engineering.
+Speed and clarity over complexity.
+
+🧠 Product Philosophy
+
+This is a real-world tool built from field experience.
+
+Priorities:
+
+Clarity of information
+
+Simplicity of UI
+
+Modular structure
+
+Fast creation workflow
+
+Mobile-friendly interface
+
+Every feature must answer:
+"Does this reduce confusion on the field?"
+
+If not, do not build it.
+
+🏗 Technical Stack
+
+Frontend:
+
+React 
+
+TailwindCSS
+
+Backend / DB:
+
+Supabase (Postgres + Auth + RLS Storage
+Stoage  bucket : exports, logos, assets
+Payments:
+
+Stripe
+
+Deployment:
+
+Vercel
+
+📦 Architecture Rules
+
+Keep database schema simple.
+
+Use JSON fields for module data (avoid premature normalization).
+
+One organization per user for MVP.
+
+Use server-side routes for sensitive operations (PDF generation, Stripe webhooks).
+
+Always implement RLS policies.
+
+⚙️ Coding Rules
+
+No unnecessary abstractions.
+
+No premature optimization.
+
+Prefer readable code over clever code.
+
+Keep components small and focused.
+
+Reuse logic when possible.
+
+Always explain what files were modified.
+
+Environment files rule:
+- Do not modify existing environment variables (values already defined).
+- Creating `.env` files is allowed.
+- Adding new environment variables is allowed.
+
+🧩 How AI Should Work
+
+When implementing a feature:
+
+Explain the approach briefly.
+
+Show file structure changes.
+
+Provide code per file.
+
+Explain how to test it locally.
+
+Never rewrite the entire project unless explicitly requested.
+
+If something is unclear, make the simplest assumption and proceed.
+
+don't delete SQL file
 
 ## Points d’attention
 - architecture hybride Next App Router + SPA React Router

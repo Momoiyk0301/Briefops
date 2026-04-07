@@ -34,6 +34,8 @@ export async function listStaffByWorkspace(client: SupabaseClient, workspaceId: 
   return data;
 }
 
+export const listStaffByOrg = listStaffByWorkspace;
+
 export async function getStaffById(client: SupabaseClient, id: string) {
   const { data, error } = await client
     .from("staff")

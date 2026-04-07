@@ -14,7 +14,7 @@ type SendMailInput = {
   html: string;
 };
 
-export type BillingPlan = "starter" | "pro" | "guest" | "funder" | "enterprise";
+export type BillingPlan = "free" | "starter" | "plus" | "pro" | "guest" | "funder" | "enterprise";
 
 export const EMAIL_FLOW_MAP = {
   stripe: ["invoices", "receipts", "financial billing emails"],

@@ -6,6 +6,8 @@ const createPublicLink = vi.fn();
 const revokePublicLink = vi.fn();
 const adminHeadCount = vi.fn();
 const adminUpdateEq = vi.fn();
+const adminBriefingMaybeSingle = vi.fn();
+const adminCreateSignedUrl = vi.fn();
 
 vi.mock("@/env", () => ({
   env: { APP_URL: "http://localhost:3000" }
@@ -14,6 +16,11 @@ vi.mock("@/env", () => ({
 vi.mock("@/supabase/server", () => ({
   requireUser,
   createServiceRoleClient: () => ({
+    storage: {
+      from: () => ({
+        createSignedUrl: adminCreateSignedUrl
+      })
+    },
     from: () => {
       const chain = {
         select: (...args: unknown[]) => {
@@ -23,6 +30,7 @@ vi.mock("@/supabase/server", () => ({
           return chain;
         },
         eq: () => chain,
+        maybeSingle: adminBriefingMaybeSingle,
         is: () => ({
           or: () => Promise.resolve({ count: adminHeadCount(), error: null })
         }),
@@ -46,6 +54,11 @@ describe("frontend /api/briefings/:id/share", () => {
     vi.resetAllMocks();
     adminHeadCount.mockReturnValue(1);
     adminUpdateEq.mockResolvedValue({ error: null });
+    adminCreateSignedUrl.mockResolvedValue({ data: { signedUrl: "http://localhost/file.pdf" }, error: null });
+    adminBriefingMaybeSingle.mockResolvedValue({
+      data: { id: "11111111-1111-1111-1111-111111111111", created_by: "u1", pdf_path: "exports/briefing.pdf" },
+      error: null
+    });
   });
 
   it("lists and creates staff or audience public links", async () => {
@@ -93,7 +106,7 @@ describe("frontend /api/briefings/:id/share", () => {
       new Request("http://localhost/api/briefings/b1/share", {
         method: "POST",
         headers: { authorization: "Bearer token", "content-type": "application/json" },
-        body: JSON.stringify({ duration: "24h", type: "staff" })
+        body: JSON.stringify({ duration: "24h" })
       }),
       { params: Promise.resolve({ id: "11111111-1111-1111-1111-111111111111" }) }
     );
@@ -102,11 +115,12 @@ describe("frontend /api/briefings/:id/share", () => {
     expect(createPublicLink).toHaveBeenCalledTimes(1);
     expect(createPublicLink.mock.calls[0][3]).toBeTruthy();
     expect(createPublicLink.mock.calls[0][4]).toBe("staff");
+    expect(createPublicLink.mock.calls[0][5]).toBeNull();
     expect(getBody.data[0].url).toContain("/briefings/s/");
-    expect(getBody.data[1].url).toContain("/briefings/11111111-1111-1111-1111-111111111111/sound/");
+    expect(getBody.data[1].url).toContain("/briefings/b1/sound/");
   });
 
-  it("rejects public pdf link creation because the type is no longer supported", async () => {
+  it("rejects team link creation when the team PDF is missing", async () => {
     const client = {
       from: () => {
         const chain = {
@@ -120,18 +134,19 @@ describe("frontend /api/briefings/:id/share", () => {
       }
     };
     requireUser.mockResolvedValue({ client, userId: "u1" });
+    adminCreateSignedUrl.mockResolvedValueOnce({ data: null, error: { message: "missing" } });
 
     const mod = await import("../../app/api/briefings/[id]/share/route");
     const postRes = await mod.POST(
       new Request("http://localhost/api/briefings/b1/share", {
         method: "POST",
         headers: { authorization: "Bearer token", "content-type": "application/json" },
-        body: JSON.stringify({ duration: "24h", type: "pdf" })
+        body: JSON.stringify({ duration: "24h", team: "Sound" })
       }),
       { params: Promise.resolve({ id: "11111111-1111-1111-1111-111111111111" }) }
     );
 
-    expect(postRes.status).toBe(400);
+    expect(postRes.status).toBe(409);
     expect(createPublicLink).not.toHaveBeenCalled();
   });
 

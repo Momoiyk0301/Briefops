@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
     const { data: existingMembership, error: existingMembershipError } = await client
       .from("memberships")
-      .select("id,org_id")
+      .select("id,workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       const { data: existingWorkspace, error: existingWorkspaceError } = await admin
         .from("workspaces")
         .select("id,name,country,team_size,vat_number")
-        .eq("id", existingMembership.org_id)
+        .eq("id", existingMembership.workspace_id)
         .maybeSingle();
 
       if (existingWorkspaceError) throw existingWorkspaceError;
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
       ctx.warn("workspace creation skipped because membership already exists", {
         userId,
-        workspaceId: existingMembership.org_id
+        workspaceId: existingMembership.workspace_id
       });
 
       return NextResponse.json(

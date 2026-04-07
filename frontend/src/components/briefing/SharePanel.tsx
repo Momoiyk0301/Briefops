@@ -12,6 +12,7 @@ type ShareDuration = "24h" | "3d" | "1w" | "30d" | "never";
 type Props = {
   open: boolean;
   briefingId: string;
+  hasPdf?: boolean;
   teams?: string[];
   selectedTeam?: string | null;
   desktopWidthRatio?: number;
@@ -57,6 +58,7 @@ function SectionCard({
 export function SharePanel({
   open,
   briefingId,
+  hasPdf: _hasPdf = false,
   teams = [],
   selectedTeam = null,
   desktopWidthRatio = 0.32,
@@ -112,11 +114,7 @@ export function SharePanel({
   const handleCreateCrew = async () => {
     setCreatingCrew(true);
     try {
-      const created = await createBriefingShareLink(briefingId, {
-        duration,
-        type: "staff",
-        tag: null
-      });
+      const created = await createBriefingShareLink(briefingId, duration, null);
       setLatestCrewLink(created);
       setLinks((prev) => [created, ...prev]);
       toast.success("Lien crew créé");
@@ -135,11 +133,7 @@ export function SharePanel({
 
     setCreatingTeam(true);
     try {
-      const created = await createBriefingShareLink(briefingId, {
-        duration,
-        type: "audience",
-        tag: teamValue
-      });
+      const created = await createBriefingShareLink(briefingId, duration, teamValue);
       setLatestTeamLink(created);
       setLinks((prev) => [created, ...prev]);
       toast.success("Lien team créé");

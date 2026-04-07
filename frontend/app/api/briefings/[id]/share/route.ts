@@ -3,19 +3,17 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { env } from "@/env";
-import { syncBriefingSharedState } from "@/supabase/queries/briefings";
+import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { createPublicLink, listPublicLinks, revokePublicLink } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
-import { buildAudienceBriefingUrl, buildStaffBriefingUrl } from "@/lib/publicLinkRoutes";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 
 const idSchema = z.string().uuid();
 const durationSchema = z.enum(["24h", "3d", "1w", "30d", "never"]);
 const createShareSchema = z.object({
   duration: durationSchema,
-  type: z.enum(["staff", "audience"]).default("staff"),
-  tag: z.string().trim().min(1).max(64).nullable().optional()
+  team: z.string().trim().min(1).max(64).nullable().optional()
 });
 const deleteShareSchema = z.object({ link_id: z.string().uuid() });
 
@@ -24,7 +22,7 @@ type Params = { params: Promise<{ id: string }> };
 async function assertCanManagePublicLinks(briefingId: string, userId: string, client: SupabaseClient) {
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("workspace_id")
+    .select("org_id")
     .eq("id", briefingId)
     .single();
 
@@ -35,7 +33,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
   const { data: membership, error: membershipError } = await client
     .from("memberships")
     .select("role")
-    .eq("workspace_id", briefing.workspace_id)
+    .eq("workspace_id", briefing.org_id)
     .eq("user_id", userId)
     .in("role", ["owner", "admin"])
     .maybeSingle();
@@ -58,7 +56,7 @@ function resolveExpiration(duration: z.infer<typeof durationSchema>) {
   return expiresAt.toISOString();
 }
 
-function normalizeTag(team?: string | null) {
+function normalizeTeamKey(team?: string | null) {
   if (!team) return null;
   const normalized = team
     .trim()
@@ -73,6 +71,10 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     const { client, userId } = await requireUser(request);
+    const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "share:create", userId), 20, 60_000);
+    if (!rateLimit.allowed) {
+      throw new HttpError(429, "Too many share link requests. Please wait a minute.");
+    }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     await assertCanManagePublicLinks(briefingId, userId, client);
@@ -86,7 +88,7 @@ export async function GET(request: Request, { params }: Params) {
         ...link,
         url:
           link.link_type === "audience" && link.audience_tag
-            ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+            ? buildAudienceBriefingUrl(baseUrl, link.briefing_id, link.audience_tag, link.token)
             : buildStaffBriefingUrl(baseUrl, link.token)
       }))
     });
@@ -101,24 +103,42 @@ export async function POST(request: Request, { params }: Params) {
 
   try {
     const { client, userId } = await requireUser(request);
-    const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "share:create", userId), 20, 60_000);
-    if (!rateLimit.allowed) {
-      throw new HttpError(429, "Too many share link requests. Please wait a minute.");
-    }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     await assertCanManagePublicLinks(briefingId, userId, client);
 
     const admin = createServiceRoleClient();
     const body = createShareSchema.parse(await request.json());
-
-    const normalizedTag = normalizeTag(body.tag ?? null);
-    if (body.type === "audience" && !normalizedTag) {
-      throw new HttpError(400, "Audience tag is required");
+    const { data: briefing } = await admin
+      .from("briefings")
+      .select("id, created_by, pdf_path")
+      .eq("id", briefingId)
+      .maybeSingle();
+    if (!briefing) {
+      throw new HttpError(404, "Briefing not found");
     }
 
-    const link = await createPublicLink(admin, briefingId, userId, resolveExpiration(body.duration), body.type, normalizedTag);
-    await syncBriefingSharedState(admin, briefingId);
+    const normalizedTeam = normalizeTeamKey(body.team ?? null);
+    if (normalizedTeam) {
+      const teamPdfPath = `${briefing.created_by}/${briefingId}/team-${normalizedTeam}.pdf`;
+      const { error: teamPdfError } = await admin.storage
+        .from("exports")
+        .createSignedUrl(teamPdfPath, 60);
+      if (teamPdfError) {
+        throw new HttpError(409, `Generate team PDF first (${normalizedTeam})`);
+      }
+    } else if (!briefing.pdf_path) {
+      throw new HttpError(409, "Generate a PDF before sharing");
+    }
+
+    const link = await createPublicLink(
+      admin,
+      briefingId,
+      userId,
+      resolveExpiration(body.duration),
+      normalizedTeam ? "audience" : "staff",
+      normalizedTeam
+    );
     const baseUrl = env.APP_URL.replace(/\/$/, "");
 
     return NextResponse.json(
@@ -127,7 +147,7 @@ export async function POST(request: Request, { params }: Params) {
           ...link,
           url:
             link.link_type === "audience" && link.audience_tag
-              ? buildAudienceBriefingUrl(baseUrl, briefingId, link.audience_tag, link.token)
+              ? buildAudienceBriefingUrl(baseUrl, link.briefing_id, link.audience_tag, link.token)
               : buildStaffBriefingUrl(baseUrl, link.token)
         }
       },
@@ -154,7 +174,6 @@ export async function DELETE(request: Request, { params }: Params) {
     if (!revoked || revoked.briefing_id !== briefingId) {
       throw new HttpError(404, "Share link not found");
     }
-    await syncBriefingSharedState(admin, briefingId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

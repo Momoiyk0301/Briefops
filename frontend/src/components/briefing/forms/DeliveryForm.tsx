@@ -1,36 +1,27 @@
-import { TextAreaInput, TextInput } from "@/components/input/text";
-import { TimeInput } from "@/components/input/time";
-import { DeliveryData } from "@/lib/types";
-import { Button } from "@/components/ui/Button";
+import { ModuleFieldsRenderer } from "@/components/briefing/runtime/ModuleFieldsRenderer";
+import { ModuleSettingsRenderer } from "@/components/briefing/runtime/ModuleSettingsRenderer";
+import { DeliveryData, DeliverySettings, ModuleFieldDefinition, ModuleSettingDefinition } from "@/lib/types";
 
-export function DeliveryForm({ value, onChange }: { value: DeliveryData; onChange: (value: DeliveryData) => void }) {
+type Props = {
+  value: DeliveryData;
+  settings: DeliverySettings;
+  settingsSchema: ModuleSettingDefinition[];
+  fieldSchema: ModuleFieldDefinition[];
+  onChange: (value: DeliveryData) => void;
+  onSettingsChange: (settings: Record<string, unknown>) => void;
+};
+
+export function DeliveryForm({ value, settings, settingsSchema, fieldSchema, onChange, onSettingsChange }: Props) {
   return (
     <div className="space-y-3">
-      {value.deliveries.map((row, idx) => (
-        <div key={idx} className="space-y-2 rounded border border-slate-200 p-2 dark:border-slate-700">
-          <TimeInput placeholder="Time" value={row.time} onChange={(e) => {
-            const next = [...value.deliveries];
-            next[idx] = { ...row, time: e.target.value };
-            onChange({ deliveries: next });
-          }} />
-          <TextInput placeholder="Place" value={row.place} onChange={(e) => {
-            const next = [...value.deliveries];
-            next[idx] = { ...row, place: e.target.value };
-            onChange({ deliveries: next });
-          }} />
-          <TextInput placeholder="Contact" value={row.contact} onChange={(e) => {
-            const next = [...value.deliveries];
-            next[idx] = { ...row, contact: e.target.value };
-            onChange({ deliveries: next });
-          }} />
-          <TextAreaInput rows={2} placeholder="Notes" value={row.notes} onChange={(e) => {
-            const next = [...value.deliveries];
-            next[idx] = { ...row, notes: e.target.value };
-            onChange({ deliveries: next });
-          }} />
-        </div>
-      ))}
-      <Button variant="secondary" onClick={() => onChange({ deliveries: [...value.deliveries, { time: "", place: "", contact: "", notes: "" }] })}>Add delivery</Button>
+      <ModuleSettingsRenderer settings={settings} settingsSchema={settingsSchema} onChange={onSettingsChange} />
+      <ModuleFieldsRenderer
+        title="Add delivery"
+        fields={fieldSchema}
+        items={value.deliveries as Record<string, unknown>[]}
+        settings={settings}
+        onChange={(nextItems) => onChange({ deliveries: nextItems as DeliveryData["deliveries"] })}
+      />
     </div>
   );
 }

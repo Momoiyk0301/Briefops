@@ -1,31 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createRequestContext, toErrorResponse } from "@/http";
-import { getInitials } from "@/lib/branding";
-import { getRemainingQuota } from "@/lib/quotas";
+import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { requireAuthContext } from "@/supabase/server";
-
-const patchSchema = z.object({
-  avatar_path: z.string().trim().min(1).nullable().optional()
-});
-
-type WorkspaceSnapshot = {
-  id: string;
-  name: string;
-  storage_used_bytes: number | null;
-  briefings_count: number | null;
-  pdf_exports_month: number | null;
-  pdf_exports_reset_at: string | null;
-  logo_path: string | null;
-  initials: string | null;
-  due_at: string | null;
-  plan: string | null;
-  stripe_price_id: string | null;
-  subscription_name: string | null;
-  subscription_status: string | null;
-  current_period_end: string | null;
-};
 
 export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/me", request);
@@ -35,7 +13,7 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await client
       .from("profiles")
-      .select("full_name,avatar_path,onboarding_step")
+      .select("full_name,avatar_path,plan,subscription_name,subscription_status,stripe_price_id,current_period_end,onboarding_step")
       .eq("id", userId)
       .maybeSingle();
 
@@ -49,11 +27,11 @@ export async function GET(request: Request) {
 
     if (membershipError) throw membershipError;
 
-    let workspace: WorkspaceSnapshot | null = null;
+    let workspace: { id: string; name: string; initials?: string | null; logo_path?: string | null } | null = null;
     if (membership?.workspace_id) {
       const { data: resolvedWorkspace, error: organizationError } = await client
         .from("workspaces")
-        .select("id,name,storage_used_bytes,briefings_count,pdf_exports_month,pdf_exports_reset_at,logo_path,initials,due_at,plan,stripe_price_id,subscription_name,subscription_status,current_period_end")
+        .select("id,name,initials,logo_path")
         .eq("id", membership.workspace_id)
         .maybeSingle();
 
@@ -61,16 +39,12 @@ export async function GET(request: Request) {
       workspace = resolvedWorkspace ?? null;
     }
 
-    const rawPlan = String(workspace?.plan ?? "").toLowerCase();
-    const plan = rawPlan === "pro" || rawPlan === "guest" || rawPlan === "funder" || rawPlan === "enterprise" ? rawPlan : "starter";
-    const quota = getRemainingQuota({
-      ...workspace,
-      plan,
-      storage_used_bytes: workspace?.storage_used_bytes ?? 0,
-      briefings_count: workspace?.briefings_count ?? 0,
-      pdf_exports_month: workspace?.pdf_exports_month ?? 0,
-      pdf_exports_reset_at: workspace?.pdf_exports_reset_at ?? null
-    });
+    const usage = await getCurrentMonthUsage(client, userId);
+    const rawPlan = String(profile?.plan ?? "").toLowerCase();
+    const plan = rawPlan === "start" ? "starter" : rawPlan || null;
+    const used = Number(usage?.pdf_exports ?? 0);
+    const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
+    const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
     const hasMembership = Boolean(membership?.workspace_id);
 
     ctx.info("resolved me", {
@@ -79,7 +53,7 @@ export async function GET(request: Request) {
       membershipRole: membership?.role ?? null,
       membershipWorkspaceId: membership?.workspace_id ?? null,
       hasWorkspace: Boolean(workspace),
-      hasPlan: Boolean(workspace?.plan ?? null),
+      hasPlan: Boolean(profile?.plan),
       onboardingStep: profile?.onboarding_step ?? null
     });
 
@@ -89,17 +63,17 @@ export async function GET(request: Request) {
         email: email ?? "",
         full_name: profile?.full_name ?? null,
         avatar_path: profile?.avatar_path ?? null,
-        initials: getInitials(profile?.full_name || email || "User", "US")
+        initials: null
       },
       plan,
-      subscription_name: workspace?.subscription_name ?? null,
-      subscription_status: workspace?.subscription_status ?? null,
-      stripe_price_id: workspace?.stripe_price_id ?? null,
-      current_period_end: workspace?.current_period_end ?? null,
+      subscription_name: profile?.subscription_name ?? null,
+      subscription_status: profile?.subscription_status ?? null,
+      stripe_price_id: profile?.stripe_price_id ?? null,
+      current_period_end: profile?.current_period_end ?? null,
       usage: {
-        pdf_exports_used: Number(workspace?.pdf_exports_month ?? 0),
-        pdf_exports_limit: quota.pdf_month,
-        pdf_exports_remaining: quota.pdf_month
+        pdf_exports_used: used,
+        pdf_exports_limit: planLimit,
+        pdf_exports_remaining: remaining
       },
       org: workspace,
       workspace,
@@ -117,8 +91,12 @@ export async function GET(request: Request) {
   }
 }
 
+const patchSchema = z.object({
+  avatar_path: z.string().trim().min(1).nullable().optional()
+});
+
 export async function PATCH(request: Request) {
-  const ctx = createRequestContext("PATCH /api/me");
+  const ctx = createRequestContext("PATCH /api/me", request);
 
   try {
     const { client, userId } = await requireAuthContext(request);
@@ -132,9 +110,14 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) throw error;
+    if (!data) throw new HttpError(404, "Profile not found");
+
     return NextResponse.json({ data });
   } catch (error) {
-    ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
+    ctx.captureException("failed to update me", error, {
+      origin: "server",
+      step: "update-me"
+    });
     return toErrorResponse(error, ctx.requestId);
   }
 }
