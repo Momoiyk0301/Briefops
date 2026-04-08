@@ -35,6 +35,9 @@
     "onboarding": "Onboarding",
     "plan": "Plan"
   },
+  "briefings": {
+    "pageCurrent": "Page active"
+  },
   "shell": {
     "dashboardLink": "Aller au dashboard",
     "logout": "Déconnexion",
@@ -237,6 +240,37 @@
     "updatedToast": "Mot de passe mis à jour."
   },
   "editor": {
+    "previewEyebrow": "Aperçu briefing",
+    "untitled": "Briefing sans titre",
+    "canvasHint": "Aperçu glisser-déposer",
+    "sidebarEyebrow": "Édition",
+    "sidebarOptions": "Options de la sidebar",
+    "contentCardEyebrow": "Contenu",
+    "contentDetails": "Détails du briefing",
+    "modulesOverview": "Active et organise les modules visibles sur le briefing.",
+    "settingsCardEyebrow": "Paramètres du module",
+    "layoutSettings": "Placement",
+    "tabs": {
+      "content": "Contenu",
+      "modules": "Modules",
+      "settings": "Paramètres"
+    },
+    "page": "Page {{count}}",
+    "pageLabel": "Page",
+    "addPage": "Ajouter une page",
+    "moduleEdit": "Édition du module",
+    "audienceTags": "Audience",
+    "allTeams": "Toutes les équipes",
+    "pdf": "Exporter PDF",
+    "loadingShort": "Chargement",
+    "ready": "Prêt",
+    "share": "Partager",
+    "pdfAllModules": "Tous les modules",
+    "pdfGenerating": "Génération du PDF...",
+    "pdfGeneratingTeam": "Génération du PDF pour {{team}}...",
+    "pdfReady": "PDF prêt",
+    "pdfReadyTeam": "PDF prêt pour {{team}}",
+    "pdfDenied": "Export PDF refusé.",
     "saved": "Enregistré",
     "saveError": "Échec de l'enregistrement",
     "saving": "Enregistrement...",

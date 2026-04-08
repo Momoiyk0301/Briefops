@@ -35,6 +35,9 @@
     "onboarding": "Onboarding",
     "plan": "Plan"
   },
+  "briefings": {
+    "pageCurrent": "Current page"
+  },
   "shell": {
     "dashboardLink": "Go to dashboard",
     "logout": "Logout",
@@ -237,6 +240,37 @@
     "updatedToast": "Password updated."
   },
   "editor": {
+    "previewEyebrow": "Briefing preview",
+    "untitled": "Untitled briefing",
+    "canvasHint": "Drag-and-drop preview",
+    "sidebarEyebrow": "Editing",
+    "sidebarOptions": "Sidebar options",
+    "contentCardEyebrow": "Content",
+    "contentDetails": "Briefing details",
+    "modulesOverview": "Enable and organize the modules shown in the briefing.",
+    "settingsCardEyebrow": "Module settings",
+    "layoutSettings": "Placement",
+    "tabs": {
+      "content": "Content",
+      "modules": "Modules",
+      "settings": "Settings"
+    },
+    "page": "Page {{count}}",
+    "pageLabel": "Page",
+    "addPage": "Add page",
+    "moduleEdit": "Module editing",
+    "audienceTags": "Audience",
+    "allTeams": "All teams",
+    "pdf": "Export PDF",
+    "loadingShort": "Loading",
+    "ready": "Ready",
+    "share": "Share",
+    "pdfAllModules": "All modules",
+    "pdfGenerating": "Generating PDF...",
+    "pdfGeneratingTeam": "Generating PDF for {{team}}...",
+    "pdfReady": "PDF ready",
+    "pdfReadyTeam": "PDF ready for {{team}}",
+    "pdfDenied": "PDF export denied.",
     "saved": "Saved",
     "saveError": "Save failed",
     "saving": "Saving...",

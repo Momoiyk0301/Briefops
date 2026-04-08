@@ -51,10 +51,12 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    expect(screen.getAllByPlaceholderText(/Address/i).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: /Paramètres|Settings/i }));
+    expect(screen.getAllByPlaceholderText(/Adresse|Address/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("move-access")).toBeInTheDocument();
     expect(screen.queryByLabelText("move-notes")).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: /^Modules$/i }));
     const notesItem = screen
       .getAllByText(/^Notes$/i)
       .map((node) => node.closest('[role="button"]'))
@@ -67,9 +69,9 @@ describe("BriefingEditor", () => {
 
   it("shows mobile panel tabs for meta/modules/edition", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
-    expect(screen.getByRole("button", { name: "Meta" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Contenu" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Modules" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edition" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paramètres" })).toBeInTheDocument();
   });
 
   it("shows loading then displays the PDF icon link after generation", async () => {
@@ -85,8 +87,8 @@ describe("BriefingEditor", () => {
 
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: /editor\.pdf|^pdf$/i }));
-    expect(screen.getByRole("button", { name: /editor\.loadingShort|chargement/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Exporter PDF|Export PDF|editor\.pdf|^pdf$/i }));
+    expect(screen.getByRole("button", { name: /Chargement|Loading|editor\.loadingShort/i })).toBeDisabled();
 
     resolveGeneration?.({
       pdf_path: "u1/b1/briefing.pdf",
@@ -97,7 +99,7 @@ describe("BriefingEditor", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /editor\.downloadReady|download ready|télécharger/i })
+        screen.getByRole("button", { name: /Télécharger|Download ready|editor\.downloadReady/i })
       ).toBeInTheDocument();
     });
   });
@@ -127,9 +129,10 @@ describe("BriefingEditor", () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getAllByRole("button", { name: /editor\.addPage|Ajouter une page/i })[0]);
+    await user.click(screen.getByRole("button", { name: /Paramètres|Settings/i }));
+    await user.click(screen.getAllByRole("button", { name: /Ajouter une page|Add page/i })[1]);
     const selectors = screen.getAllByRole("combobox", { name: /page-selector/i });
-    expect(screen.getAllByRole("option")).toHaveLength(4);
+    expect(screen.getAllByRole("option")).toHaveLength(2);
     await user.selectOptions(selectors[0], "1");
 
     expect(selectors[0]).toHaveValue("1");
