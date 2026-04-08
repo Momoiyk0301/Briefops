@@ -3,26 +3,14 @@
 .env.*
 !.env.example
 
-# Backend env files
-backend/.env
-backend/.env.*
-!backend/.env.example
-
 # Node / Next.js
 node_modules/
-backend/node_modules/
-frontend/node_modules/
 .next/
-backend/.next/
 out/
-backend/out/
-frontend/dist/
-backend/.next/
-frontend/coverage/
-backend/coverage/
+coverage/
 playwright-report/
 test-results/
-frontend/tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # Logs
 npm-debug.log*
@@ -35,3 +23,9 @@ pnpm-debug.log*
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Legacy archives
+archive/*/.next/
+archive/*/node_modules/
+archive/*/dist/
+archive/*/coverage/

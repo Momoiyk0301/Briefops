@@ -4,12 +4,12 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:3000",
     trace: "on-first-retry"
   },
   webServer: {
-    command: "NEXT_PUBLIC_E2E_MOCK_AUTH=true npm --prefix frontend run dev -- -p 5173",
-    port: 5173,
+    command: "NEXT_PUBLIC_E2E_MOCK_AUTH=true npm run dev -- -p 3000",
+    port: 3000,
     reuseExistingServer: true,
     timeout: 120_000
   }
