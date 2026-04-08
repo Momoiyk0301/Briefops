@@ -76,6 +76,7 @@ describe("frontend /api/pdf/:id", () => {
     expect(body.pdf_url).toContain("example.test/file.pdf");
     expect(body.version).toBe(1);
     expect(body.export_id).toBe("export-1");
+    expect(body.filename).toBe("t-v1.pdf");
     expect(upload).toHaveBeenCalledTimes(1);
     expect(upload.mock.calls[0][0]).toBe("briefings/b1/exports/v1.pdf");
     expect(renderBriefingPdf).toHaveBeenCalledWith(expect.objectContaining({ watermark: false }));

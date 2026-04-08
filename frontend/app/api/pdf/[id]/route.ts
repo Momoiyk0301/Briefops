@@ -9,6 +9,7 @@ import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getUserPlan } from "@/supabase/queries/profiles";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { buildBriefingPdfFilename } from "@/lib/pdfFilename";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 import { checkQuota, getPlanLimits } from "@/lib/quotas";
 import { getWorkspaceById } from "@/supabase/queries/workspaces";
@@ -119,6 +120,12 @@ export async function GET(request: Request, { params }: Params) {
 
     const version = await getNextBriefingExportVersion(service, briefing.id);
     const storagePath = `briefings/${briefing.id}/exports/v${version}.pdf`;
+    const filename = buildBriefingPdfFilename({
+      title: briefing.title,
+      eventDate: briefing.event_date,
+      team: selectedTeam,
+      version
+    });
 
     const { error: uploadError } = await service.storage
       .from("exports")
@@ -168,7 +175,8 @@ export async function GET(request: Request, { params }: Params) {
         pdf_path: storagePath,
         pdf_url: signed.signedUrl,
         generated_at: new Date().toISOString(),
-        team: selectedTeam
+        team: selectedTeam,
+        filename
       });
     }
 
@@ -177,7 +185,7 @@ export async function GET(request: Request, { params }: Params) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="briefing-${briefing.id}.pdf"`
+        "Content-Disposition": `attachment; filename="${filename}"`
       }
     });
   } catch (error) {

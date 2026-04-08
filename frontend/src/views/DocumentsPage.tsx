@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { buildBriefingPdfFilename } from "@/lib/pdfFilename";
 
 export default function DocumentsPage() {
   const [tab, setTab] = useState<"pdfs" | "links">("pdfs");
@@ -56,13 +57,20 @@ export default function DocumentsPage() {
     [linksQuery.data, pdfExports.length]
   );
 
-  const handleDownload = async (exportId: string, briefingId: string, version: number) => {
+  const handleDownload = async (
+    exportId: string,
+    fallback: { title: string; eventDate?: string | null; version: number }
+  ) => {
     try {
       const { blob, filename } = await downloadBriefingExport(exportId);
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = filename ?? `briefing-${briefingId}-v${version}.pdf`;
+      anchor.download = filename ?? buildBriefingPdfFilename({
+        title: fallback.title,
+        eventDate: fallback.eventDate,
+        version: fallback.version
+      });
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -161,7 +169,13 @@ export default function DocumentsPage() {
                   </div>
                   <Button
                     variant="secondary"
-                    onClick={() => void handleDownload(exportRow.id, exportRow.briefing_id, exportRow.version)}
+                    onClick={() =>
+                      void handleDownload(exportRow.id, {
+                        title: exportRow.briefing_title,
+                        eventDate: exportRow.briefing_event_date,
+                        version: exportRow.version
+                      })
+                    }
                   >
                     <Download size={14} />
                     Download PDF

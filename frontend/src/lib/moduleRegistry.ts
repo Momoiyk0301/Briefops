@@ -7,21 +7,28 @@ import { EquipmentForm } from "@/components/briefing/forms/EquipmentForm";
 import { NotesForm } from "@/components/briefing/forms/NotesForm";
 import { StaffForm } from "@/components/briefing/forms/StaffForm";
 import { VehicleForm } from "@/components/briefing/forms/VehicleForm";
-import { AccessPreview } from "@/components/briefing/preview/AccessPreview";
 import { ContactPreview } from "@/components/briefing/preview/ContactPreview";
-import { DeliveryPreview } from "@/components/briefing/preview/DeliveryPreview";
 import { EquipmentPreview } from "@/components/briefing/preview/EquipmentPreview";
-import { NotesPreview } from "@/components/briefing/preview/NotesPreview";
 import { StaffPreview } from "@/components/briefing/preview/StaffPreview";
 import { VehiclePreview } from "@/components/briefing/preview/VehiclePreview";
 import {
-  DeliverySettings,
   ModuleDataMap,
-  ModuleFieldDefinition,
   ModuleKey,
-  ModuleRegistryEntry,
-  ModuleSettingDefinition
+  ModuleRegistryEntry
 } from "@/lib/types";
+import { AccessModulePreview } from "@/modules/access/access.render";
+import { accessSchema, defaultAccessData } from "@/modules/access/access.types";
+import {
+  defaultDeliveryData,
+  defaultDeliverySettings,
+  deliveryFieldDefinitions,
+  deliverySchema,
+  deliverySettingsDefinitions,
+  deliverySettingsSchema
+} from "@/modules/delivery/delivery.types";
+import { DeliveryModulePreview } from "@/modules/delivery/delivery.render";
+import { defaultNotesData, notesSchema } from "@/modules/notes/notes.types";
+import { NotesModulePreview } from "@/modules/notes/notes.render";
 
 const metadataSchema = z.object({
   main_contact_name: z.string(),
@@ -30,102 +37,6 @@ const metadataSchema = z.object({
   team_mode: z.boolean().optional().default(false),
   teams: z.array(z.string()).optional().default([])
 });
-
-const accessSchema = z.object({
-  address: z.string(),
-  parking: z.string(),
-  entrance: z.string(),
-  on_site_contact: z.string()
-});
-
-const deliverySchema = z.object({
-  deliveries: z.array(
-    z.object({
-      time: z.string(),
-      place: z.string(),
-      contact: z.string(),
-      tag_mode: z.enum(["", "depot", "retour", "custom"]).optional().default(""),
-      custom_tag: z.string().optional().default(""),
-      notes: z.string()
-    })
-  )
-});
-
-const deliverySettingsSchema = z.object({
-  enable_depot_tag: z.boolean().default(true),
-  enable_retour_tag: z.boolean().default(true),
-  allow_custom_tag: z.boolean().default(true)
-});
-
-export const deliverySettingsDefinitions: ModuleSettingDefinition[] = [
-  {
-    key: "enable_depot_tag",
-    type: "boolean",
-    label: "Activer le tag depot",
-    description: "Permet de tagger une livraison comme depot"
-  },
-  {
-    key: "enable_retour_tag",
-    type: "boolean",
-    label: "Activer le tag retour",
-    description: "Permet de tagger une livraison comme retour"
-  },
-  {
-    key: "allow_custom_tag",
-    type: "boolean",
-    label: "Autoriser un tag personnalisé",
-    description: "Permet de saisir un tag libre"
-  }
-];
-
-export const deliveryFieldDefinitions: ModuleFieldDefinition[] = [
-  { key: "time", type: "time", label: "Time", placeholder: "Time" },
-  { key: "place", type: "text", label: "Place", placeholder: "Place" },
-  { key: "contact", type: "text", label: "Contact", placeholder: "Contact" },
-  {
-    key: "tag_mode",
-    type: "select",
-    label: "Tag",
-    placeholder: "Select a tag",
-    visibilityMode: "any",
-    visibleWhen: [
-      { source: "settings", path: "enable_depot_tag", truthy: true },
-      { source: "settings", path: "enable_retour_tag", truthy: true },
-      { source: "settings", path: "allow_custom_tag", truthy: true }
-    ],
-    options: [
-      {
-        value: "depot",
-        label: "Depot",
-        visibleWhen: [{ source: "settings", path: "enable_depot_tag", truthy: true }]
-      },
-      {
-        value: "retour",
-        label: "Retour",
-        visibleWhen: [{ source: "settings", path: "enable_retour_tag", truthy: true }]
-      },
-      {
-        value: "custom",
-        label: "Custom",
-        visibleWhen: [{ source: "settings", path: "allow_custom_tag", truthy: true }]
-      }
-    ]
-  },
-  {
-    key: "custom_tag",
-    type: "text",
-    label: "Custom tag",
-    placeholder: "Type a custom tag",
-    visibleWhen: [{ source: "values", path: "tag_mode", equals: "custom" }]
-  },
-  { key: "notes", type: "textarea", label: "Notes", placeholder: "Notes" }
-];
-
-const defaultDeliverySettings: DeliverySettings = {
-  enable_depot_tag: true,
-  enable_retour_tag: true,
-  allow_custom_tag: true
-};
 
 const vehicleSchema = z.object({
   vehicles: z.array(
@@ -152,10 +63,6 @@ const staffSchema = z.object({
       notes: z.string()
     })
   )
-});
-
-const notesSchema = z.object({
-  text: z.string()
 });
 
 const contactSchema = z.object({
@@ -189,9 +96,9 @@ export const moduleRegistry: { [K in ModuleKey]: ModuleRegistryEntry<K> } = {
     description: { fr: "Lieu et accès", en: "Venue access" },
     defaultEnabled: true,
     schema: accessSchema,
-    defaultData: { address: "", parking: "", entrance: "", on_site_contact: "" },
+    defaultData: defaultAccessData,
     FormComponent: AccessForm,
-    PreviewComponent: AccessPreview
+    PreviewComponent: AccessModulePreview
   },
   delivery: {
     key: "delivery",
@@ -200,11 +107,11 @@ export const moduleRegistry: { [K in ModuleKey]: ModuleRegistryEntry<K> } = {
     description: { fr: "Planning des livraisons", en: "Delivery planning" },
     defaultEnabled: false,
     schema: deliverySchema,
-    defaultData: { deliveries: [] },
+    defaultData: defaultDeliveryData,
     settingsSchema: deliverySettingsSchema as unknown as ModuleRegistryEntry<"delivery">["settingsSchema"],
     defaultSettings: defaultDeliverySettings,
     FormComponent: DeliveryForm,
-    PreviewComponent: DeliveryPreview
+    PreviewComponent: DeliveryModulePreview
   },
   vehicle: {
     key: "vehicle",
@@ -246,9 +153,9 @@ export const moduleRegistry: { [K in ModuleKey]: ModuleRegistryEntry<K> } = {
     description: { fr: "Informations libres", en: "Free text" },
     defaultEnabled: true,
     schema: notesSchema,
-    defaultData: { text: "" },
+    defaultData: defaultNotesData,
     FormComponent: NotesForm,
-    PreviewComponent: NotesPreview
+    PreviewComponent: NotesModulePreview
   },
   contact: {
     key: "contact",
@@ -270,3 +177,5 @@ export const moduleEntries = (Object.values(moduleRegistry) as ModuleRegistryEnt
 export function parseModuleData<K extends ModuleKey>(key: K, value: unknown): ModuleDataMap[K] {
   return moduleRegistry[key].schema.parse(value);
 }
+
+export { deliveryFieldDefinitions, deliverySettingsDefinitions };
