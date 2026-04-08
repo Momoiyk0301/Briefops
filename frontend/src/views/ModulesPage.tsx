@@ -1,16 +1,29 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Store } from "lucide-react";
+import { Boxes, ChevronDown, Settings2, Store } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { getRegistryModules, toApiMessage, updateWorkspaceModuleEnabled } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { RegistryModule } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Toggle } from "@/components/ui/Toggle";
+
+function getModuleSettingsLabels(module: RegistryModule) {
+  if (!Array.isArray(module.settings_schema)) return [];
+
+  return module.settings_schema
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const label = "label" in entry ? entry.label : null;
+      return typeof label === "string" && label.trim() ? label.trim() : null;
+    })
+    .filter((label): label is string => Boolean(label));
+}
 
 export default function ModulesPage() {
   const { t } = useTranslation();
@@ -88,35 +101,64 @@ export default function ModulesPage() {
             onCta={() => toast(t("modulesPage.marketplaceSoon"))}
           />
         ) : null}
-        {filteredModules.map((module) => (
-          <div
-            key={module.id}
-            className="flex items-center justify-between rounded-[24px] border border-[#e8eaf3] bg-white/90 px-4 py-4 dark:border-white/10"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-brand-500/10 text-brand-600 dark:text-brand-300">
-                <Boxes size={16} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{module.name}</p>
-                <p className="truncate text-xs text-[#6f748a] dark:text-[#a8afc6]">
-                  {module.category} · {module.type} · v{module.version}
-                </p>
-              </div>
-            </div>
+        {filteredModules.map((module) => {
+          const settingsLabels = getModuleSettingsLabels(module);
+          const hasSettings = settingsLabels.length > 0;
 
-            <div className="flex items-center gap-3">
-              <span className={`text-xs font-semibold ${module.enabled ? "text-emerald-600 dark:text-emerald-300" : "text-[#7b849d] dark:text-[#a8afc6]"}`}>
-                {module.enabled ? t("modulesPage.enabled") : t("modulesPage.disabled")}
-              </span>
-              <Toggle
-                checked={module.enabled}
-                onChange={(enabled) => toggleMutation.mutate({ id: module.id, enabled })}
-                disabled={toggleMutation.isPending}
-              />
+          return (
+            <div
+              key={module.id}
+              className="rounded-[24px] border border-[#e8eaf3] bg-white/90 px-4 py-4 dark:border-white/10"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-brand-500/10 text-brand-600 dark:text-brand-300">
+                    <Boxes size={16} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{module.name}</p>
+                    <p className="truncate text-xs text-[#6f748a] dark:text-[#a8afc6]">
+                      {module.category} · {module.type} · v{module.version}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-semibold ${module.enabled ? "text-emerald-600 dark:text-emerald-300" : "text-[#7b849d] dark:text-[#a8afc6]"}`}>
+                    {module.enabled ? t("modulesPage.enabled") : t("modulesPage.disabled")}
+                  </span>
+                  <Toggle
+                    checked={module.enabled}
+                    onChange={(enabled) => toggleMutation.mutate({ id: module.id, enabled })}
+                    disabled={toggleMutation.isPending}
+                  />
+                </div>
+              </div>
+
+              {hasSettings ? (
+                <details className="mt-3 rounded-[18px] border border-[#edf0f7] bg-[#f8fafd] px-3 py-2 text-sm dark:border-white/10 dark:bg-[#141518]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[#334155] marker:content-none dark:text-[#d6deef]">
+                    <span className="inline-flex items-center gap-2 font-medium">
+                      <Settings2 size={15} />
+                      {t("modulesPage.settingsDisclosure", { count: settingsLabels.length })}
+                    </span>
+                    <ChevronDown size={15} className="shrink-0 text-[#7b849d]" />
+                  </summary>
+                  <div className="mt-2 space-y-1 border-t border-[#e7ecf5] pt-2 dark:border-white/10">
+                    {settingsLabels.map((label) => (
+                      <div
+                        key={label}
+                        className="rounded-xl bg-white/90 px-3 py-2 text-xs text-[#52607a] dark:bg-white/5 dark:text-[#b9c4d8]"
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </Card>
     </div>
   );

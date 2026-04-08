@@ -73,7 +73,9 @@
     "emptyTitle": "No module found",
     "emptyHint": "Try another keyword.",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "settingsDisclosure": "{{count}} setting",
+    "settingsDisclosure_other": "{{count}} settings"
   },
   "notificationsPage": {
     "kicker": "Operational Alerts",

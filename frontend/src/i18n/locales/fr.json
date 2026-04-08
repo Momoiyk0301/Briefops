@@ -73,7 +73,9 @@
     "emptyTitle": "Aucun module trouvé",
     "emptyHint": "Essaie un autre mot-clé.",
     "enabled": "Activé",
-    "disabled": "Désactivé"
+    "disabled": "Désactivé",
+    "settingsDisclosure": "{{count}} paramètre",
+    "settingsDisclosure_other": "{{count}} paramètres"
   },
   "notificationsPage": {
     "kicker": "Operational Alerts",
