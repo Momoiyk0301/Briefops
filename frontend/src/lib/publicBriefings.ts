@@ -1,7 +1,7 @@
 import { parseModuleRow } from "@/lib/moduleCanonical";
-import { moduleEntries } from "@/lib/moduleRegistry";
+import { moduleEntries } from "@/lib/moduleCatalog";
 import { Briefing, BriefingModuleRow, ContactData, DeliveryData, EquipmentData, NotesData, StaffData, AccessData, MetadataExtra } from "@/lib/types";
-import { hasModulePresentation, modulePresentations } from "@/modules";
+import { hasServerModulePresentation, serverModulePresentations } from "@/modules/server";
 
 type PublicSection = {
   id: "access" | "schedule" | "mission" | "contacts" | "material" | "notes";
@@ -69,9 +69,9 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
     : null;
 
   const presentationSections = visibleModules.flatMap((module) => {
-    if (!hasModulePresentation(module.module_key)) return [];
+    if (!hasServerModulePresentation(module.module_key)) return [];
     const entry = moduleEntries.find((item) => item.key === module.module_key);
-    const builder = modulePresentations[module.module_key].buildPublicSection;
+    const builder = serverModulePresentations[module.module_key].buildPublicSection;
     if (!entry || !builder) return [];
     const parsed = parseModuleRow({ key: module.module_key, row: module, entry });
     const section = builder(parsed.data as never);

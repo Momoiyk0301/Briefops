@@ -2,10 +2,10 @@ import {
   BriefingModuleRow,
   ModuleAudience,
   ModuleDataMap,
+  ModuleDefinitionEntry,
   ModuleKey,
   ModuleLayout,
   ModuleMetadata,
-  ModuleRegistryEntry,
   RegistryModule
 } from "@/lib/types";
 
@@ -77,7 +77,7 @@ function parseLayout(value: unknown): ModuleLayout {
 
 export function buildDefaultMetadata<K extends ModuleKey>(
   key: K,
-  entry: ModuleRegistryEntry<K>,
+  entry: ModuleDefinitionEntry<K>,
   registryModule?: RegistryModule | null
 ): ModuleMetadata {
   const now = new Date().toISOString();
@@ -98,7 +98,7 @@ export function buildDefaultMetadata<K extends ModuleKey>(
 export function parseModuleRow<K extends ModuleKey>(params: {
   key: K;
   row?: BriefingModuleRow;
-  entry: ModuleRegistryEntry<K>;
+  entry: ModuleDefinitionEntry<K>;
   registryModule?: RegistryModule | null;
 }): {
   module_id: string | null;

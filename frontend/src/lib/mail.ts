@@ -24,6 +24,23 @@ export const EMAIL_FLOW_MAP = {
 
 export type AppEmailKind = "billing_checkout_confirmation" | "billing_account_activated" | "support" | "welcome" | "onboarding";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeAppUrl() {
+  return env.APP_URL.replace(/\/$/, "");
+}
+
+function buildAppMailUrl(path: string) {
+  return `${normalizeAppUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 function getMailConfig(): MailConfig | null {
   const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
   const from = String(process.env.MAIL_FROM ?? "").trim();
@@ -69,7 +86,16 @@ export async function sendTransactionalEmail(input: SendMailInput & { kind?: App
 
 function renderMailShell(title: string, content: string, ctaLabel?: string, ctaHref?: string) {
   const action = ctaLabel && ctaHref
-    ? `<p style="margin-top:24px;"><a href="${ctaHref}" style="display:inline-block;border-radius:9999px;background:#1d4ed8;color:#fff;text-decoration:none;padding:12px 18px;font-weight:600;">${ctaLabel}</a></p>`
+    ? `
+      <p style="margin-top:24px;">
+        <a href="${ctaHref}" style="display:inline-block;border-radius:9999px;background:#1d4ed8;color:#fff;text-decoration:none;padding:12px 18px;font-weight:600;">${escapeHtml(ctaLabel)}</a>
+      </p>
+      <p style="margin-top:12px;font-size:13px;color:#6b7280;">
+        Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :
+        <br />
+        <a href="${ctaHref}" style="color:#1d4ed8;word-break:break-all;">${escapeHtml(ctaHref)}</a>
+      </p>
+    `
     : "";
 
   return `
@@ -86,7 +112,8 @@ function renderMailShell(title: string, content: string, ctaLabel?: string, ctaH
 }
 
 export async function sendCheckoutConfirmationEmails(email: string, plan: BillingPlan, session: Stripe.Checkout.Session) {
-  const appUrl = env.APP_URL.replace(/\/$/, "");
+  const dashboardUrl = buildAppMailUrl("/briefings");
+  const loginUrl = buildAppMailUrl("/login");
   const sessionId = session.id ?? "n/a";
   const amount = typeof session.amount_total === "number" ? (session.amount_total / 100).toFixed(2) : null;
   const currency = (session.currency ?? "eur").toUpperCase();
@@ -104,7 +131,7 @@ export async function sendCheckoutConfirmationEmails(email: string, plan: Billin
         <p>Les reçus et factures Stripe restent gérés par Stripe selon la configuration de ton compte.</p>
       `,
       "Accéder à BriefOPS",
-      `${appUrl}/briefings`
+      dashboardUrl
     ),
     tags: {
       source: "briefops-app",
@@ -121,10 +148,10 @@ export async function sendCheckoutConfirmationEmails(email: string, plan: Billin
       "Compte activé",
       `
         <p>Ton paiement a été validé et ton compte BriefOPS est bien actif.</p>
-        <p>Tu peux reprendre ton onboarding ou accéder directement à ton espace.</p>
+        <p>Tu peux maintenant te connecter pour reprendre ton onboarding ou accéder directement à ton espace.</p>
       `,
-      "Ouvrir mon espace",
-      `${appUrl}/auth/confirmed`
+      "Se connecter à BriefOPS",
+      loginUrl
     ),
     tags: {
       source: "briefops-app",

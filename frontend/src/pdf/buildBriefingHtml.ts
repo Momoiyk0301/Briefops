@@ -1,5 +1,5 @@
 import { getDesktopPage, getPageCountFromLayouts } from "@/lib/briefingPages";
-import { hasModulePresentation, modulePresentations } from "@/modules";
+import { hasServerModulePresentation, serverModulePresentations } from "@/modules/server";
 import { escapeHtml, humanizeModuleKey, renderPdfRows } from "@/modules/shared";
 import { gridRectToInlineStyle } from "@/pdf/layoutToHtml";
 
@@ -118,8 +118,8 @@ function normalizeTeamKey(team?: string | null) {
 }
 
 function renderModuleBody(moduleKey: string, data: Record<string, unknown>) {
-  if (hasModulePresentation(moduleKey)) {
-    return modulePresentations[moduleKey].renderPdf(data as never, { moduleKey });
+  if (hasServerModulePresentation(moduleKey)) {
+    return serverModulePresentations[moduleKey].renderPdf(data as never, { moduleKey });
   }
 
   return renderObjectRows(data);

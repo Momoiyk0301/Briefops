@@ -33,7 +33,9 @@ describe("mail service", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.resend.com/emails");
     expect(fetchMock.mock.calls[0][1].body).toContain("Commande BriefOPS confirm");
+    expect(fetchMock.mock.calls[0][1].body).toContain("https://events-ops.be/briefings");
     expect(fetchMock.mock.calls[1][1].body).toContain("Compte BriefOPS activ");
+    expect(fetchMock.mock.calls[1][1].body).toContain("https://events-ops.be/login");
   });
 
   it("does not send app emails when mail config is missing", async () => {

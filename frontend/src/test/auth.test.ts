@@ -6,6 +6,7 @@ const setSessionMock = vi.fn();
 const getSessionMock = vi.fn();
 const signOutMock = vi.fn();
 const resetPasswordForEmailMock = vi.fn();
+const resendMock = vi.fn();
 const refreshSessionMock = vi.fn();
 const setRememberMePreferenceMock = vi.fn();
 const getRememberMePreferenceMock = vi.fn(() => true);
@@ -20,6 +21,7 @@ vi.mock("@/lib/supabase", () => ({
       getSession: getSessionMock,
       refreshSession: refreshSessionMock,
       signOut: signOutMock,
+      resend: resendMock,
       resetPasswordForEmail: resetPasswordForEmailMock
     }
   },
@@ -102,6 +104,41 @@ describe("auth helpers", () => {
 
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith("ops@briefops.app", {
       redirectTo: `${window.location.origin}/auth/reset-password`
+    });
+  });
+
+  it("uses the confirmation route as signup redirect target", async () => {
+    signUpMock.mockResolvedValueOnce({
+      data: { session: null },
+      error: null
+    });
+    window.history.replaceState({}, "", "/login");
+
+    const { signUpWithPassword } = await import("@/lib/auth");
+    await signUpWithPassword("new@example.com", "secret12");
+
+    expect(signUpMock).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "secret12",
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirmed`
+      }
+    });
+  });
+
+  it("uses the confirmation route when resending signup emails", async () => {
+    resendMock.mockResolvedValueOnce({ error: null });
+    window.history.replaceState({}, "", "/auth/check-email?email=ops%40briefops.app");
+
+    const { resendSignupConfirmation } = await import("@/lib/auth");
+    await resendSignupConfirmation("ops@briefops.app");
+
+    expect(resendMock).toHaveBeenCalledWith({
+      type: "signup",
+      email: "ops@briefops.app",
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirmed`
+      }
     });
   });
 
