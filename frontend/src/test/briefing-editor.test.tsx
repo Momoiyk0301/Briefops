@@ -74,6 +74,17 @@ describe("BriefingEditor", () => {
     expect(screen.getByRole("button", { name: "Paramètres" })).toBeInTheDocument();
   });
 
+  it("can hide preview anchors from the modules sidebar", async () => {
+    const user = userEvent.setup();
+    render(<BriefingEditor briefing={briefing} modules={modules} />);
+
+    expect(screen.getByLabelText("move-access")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Modules$/i }));
+    await user.click(screen.getByRole("button", { name: /Afficher les ancres d’édition|Show editing anchors/i }));
+
+    expect(screen.queryByLabelText("move-access")).not.toBeInTheDocument();
+  });
+
   it("shows loading then displays the PDF icon link after generation", async () => {
     const user = userEvent.setup();
     let resolveGeneration: ((value: { pdf_path: string; pdf_url: string; generated_at: string; filename: string }) => void) | null = null;

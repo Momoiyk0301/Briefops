@@ -279,6 +279,10 @@
     "pdfFailed": "La génération PDF a échoué.",
     "briefingLoading": "Chargement du briefing...",
     "downloadReady": "Télécharger le PDF prêt",
+    "previewTools": "Aperçu",
+    "previewToolsHint": "Contrôle les repères visibles dans la zone de mise en page.",
+    "previewHandles": "Afficher les ancres d’édition",
+    "previewHandlesHint": "Affiche ou masque les points de déplacement et de redimensionnement sur l’aperçu.",
     "modules": {
       "access": {
         "fields": {

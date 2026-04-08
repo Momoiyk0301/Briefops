@@ -279,6 +279,10 @@
     "pdfFailed": "PDF generation failed.",
     "briefingLoading": "Loading briefing...",
     "downloadReady": "Download ready PDF",
+    "previewTools": "Preview",
+    "previewToolsHint": "Control the visible guides in the layout area.",
+    "previewHandles": "Show editing anchors",
+    "previewHandlesHint": "Show or hide the move and resize points on the preview.",
     "modules": {
       "access": {
         "fields": {
