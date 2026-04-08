@@ -39,7 +39,7 @@ describe("HelpPage", () => {
 
     await user.type(screen.getByLabelText("help-message"), "Besoin d’aide sur le plan Enterprise.");
     await user.click(screen.getByRole("button", { name: /Envoyer/i }));
-    expect(await screen.findByText(/Message prepare/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Message préparé/i)).toBeInTheDocument();
   });
 
   it("preselects enterprise subject from query string", async () => {

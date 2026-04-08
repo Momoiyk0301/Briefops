@@ -36,7 +36,7 @@ describe("AppShell", () => {
     );
 
     const notifications = await screen.findAllByText(/Notifications/i);
-    const settings = await screen.findAllByText(/Settings/i);
+    const settings = await screen.findAllByText(/Paramètres/i);
 
     expect(notifications.length).toBeGreaterThan(0);
     expect(settings.length).toBeGreaterThan(0);

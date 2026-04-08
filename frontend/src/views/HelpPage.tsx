@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
@@ -8,16 +9,21 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { getMe } from "@/lib/api";
 
-const SUBJECTS = ["Question générale", "Bug", "Demande de fonctionnalité", "Demande Enterprise"] as const;
-
 export default function HelpPage() {
+  const { t } = useTranslation();
   const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
   const [params] = useSearchParams();
   const requestedSubject = params.get("subject");
+  const subjects = [
+    t("help.subjects.general"),
+    t("help.subjects.bug"),
+    t("help.subjects.feature"),
+    t("help.subjects.enterprise")
+  ] as const;
   const defaultSubject = useMemo(() => {
-    if (requestedSubject === "enterprise") return "Demande Enterprise";
-    return "Question générale";
-  }, [requestedSubject]);
+    if (requestedSubject === "enterprise") return t("help.subjects.enterprise");
+    return t("help.subjects.general");
+  }, [requestedSubject, t]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -44,44 +50,44 @@ export default function HelpPage() {
   return (
     <section className="stack-page">
       <Card className="page-hero card-pad">
-        <p className="section-kicker">Support</p>
-        <h1 className="section-title mt-2">Aide</h1>
-        <p className="section-copy mt-2">Pose une question, remonte un bug ou envoie une demande enterprise. Le formulaire confirme visuellement l’envoi pour ce MVP.</p>
+        <p className="section-kicker">{t("help.kicker")}</p>
+        <h1 className="section-title mt-2">{t("help.title")}</h1>
+        <p className="section-copy mt-2">{t("help.subtitle")}</p>
       </Card>
 
       <Card className="card-pad">
         {submitted ? (
           <div className="rounded-[24px] border border-[#d8e8dd] bg-[#f4fbf6] p-4 text-sm text-[#256146] dark:border-[#28543d] dark:bg-[#102419] dark:text-[#92d3a9]">
-            Message prepare. Nous reviendrons vers toi bientot.
+            {t("help.success")}
           </div>
         ) : null}
 
         <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
           <Input
             aria-label="help-name"
-            placeholder="Nom"
+            placeholder={t("help.placeholders.name")}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-          {showErrors && !effectiveName.trim() ? <p className="text-sm text-red-600">Le nom est requis.</p> : null}
+          {showErrors && !effectiveName.trim() ? <p className="text-sm text-red-600">{t("help.errors.name")}</p> : null}
 
           <Input
             aria-label="help-email"
-            placeholder="Email"
+            placeholder={t("help.placeholders.email")}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-          {showErrors && !effectiveEmail.trim() ? <p className="text-sm text-red-600">L’email est requis.</p> : null}
+          {showErrors && !effectiveEmail.trim() ? <p className="text-sm text-red-600">{t("help.errors.email")}</p> : null}
 
           <label className="grid gap-2 text-sm font-medium text-[#42506a] dark:text-[#c8d2ea]">
-            Sujet
+            {t("help.subjectLabel")}
             <select
               aria-label="help-subject"
               className="rounded-[22px] border border-[#dce3f1] bg-white/96 px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-[#151515]"
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
             >
-              {SUBJECTS.map((entry) => (
+              {subjects.map((entry) => (
                 <option key={entry} value={entry}>
                   {entry}
                 </option>
@@ -91,15 +97,15 @@ export default function HelpPage() {
 
           <Textarea
             aria-label="help-message"
-            placeholder="Message"
+            placeholder={t("help.placeholders.message")}
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             rows={6}
           />
-          {showErrors && !message.trim() ? <p className="text-sm text-red-600">Le message est requis.</p> : null}
+          {showErrors && !message.trim() ? <p className="text-sm text-red-600">{t("help.errors.message")}</p> : null}
 
           <div className="flex justify-end">
-            <Button type="submit">Envoyer</Button>
+            <Button type="submit">{t("help.submit")}</Button>
           </div>
         </form>
       </Card>

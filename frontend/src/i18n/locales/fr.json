@@ -24,12 +24,39 @@
   },
   "nav": {
     "briefings": "Briefings",
+    "documents": "Documents",
     "modules": "Modules",
+    "staff": "Staff",
     "account": "Compte",
     "billing": "Facturation",
+    "notifications": "Notifications",
     "settings": "Paramètres",
+    "help": "Aide",
     "onboarding": "Onboarding",
     "plan": "Plan"
+  },
+  "shell": {
+    "dashboardLink": "Aller au dashboard",
+    "logout": "Déconnexion",
+    "alertsShort": "Alertes",
+    "exit": "Quitter",
+    "demoData": "Données de démo",
+    "workspaceLabel": "Workspace",
+    "userLabel": "Utilisateur",
+    "userFallback": "Utilisateur",
+    "planLabel": "Plan {{plan}}"
+  },
+  "navbar": {
+    "pageTitles": {
+      "briefingDetail": "Détail briefing"
+    },
+    "searchLabel": "Recherche",
+    "searchPlaceholder": "Rechercher...",
+    "notificationsPreview": "Aperçu",
+    "viewAll": "Voir tout",
+    "emptyNotifications": "Aucune alerte.",
+    "dismissNotification": "Supprimer la notification",
+    "dashboard": "Dashboard"
   },
   "onboarding": {
     "title": "Bienvenue",
@@ -143,6 +170,72 @@
     "timezone": "Fuseau",
     "dateFormat": "Format date"
   },
+  "help": {
+    "kicker": "Support",
+    "title": "Aide",
+    "subtitle": "Pose une question, remonte un bug ou envoie une demande enterprise. Le formulaire confirme visuellement l’envoi pour ce MVP.",
+    "success": "Message préparé. Nous reviendrons vers toi bientôt.",
+    "subjectLabel": "Sujet",
+    "subjects": {
+      "general": "Question générale",
+      "bug": "Bug",
+      "feature": "Demande de fonctionnalité",
+      "enterprise": "Demande Enterprise"
+    },
+    "placeholders": {
+      "name": "Nom",
+      "email": "Email",
+      "message": "Message"
+    },
+    "errors": {
+      "name": "Le nom est requis.",
+      "email": "L’email est requis.",
+      "message": "Le message est requis."
+    },
+    "submit": "Envoyer"
+  },
+  "authFlow": {
+    "confirmed": {
+      "title": "Email confirmé",
+      "loading": "Validation de la session en cours...",
+      "ready": "Ton email a été validé. Connecte-toi pour terminer la création du workspace.",
+      "error": "Le lien a bien été ouvert, mais la session n'a pas pu être activée automatiquement.",
+      "backToLogin": "Retour à la connexion",
+      "signIn": "Se connecter",
+      "finalizeError": "Impossible de finaliser la connexion"
+    },
+    "checkEmail": {
+      "title": "Email de confirmation envoyé",
+      "introWithEmail": "Nous avons envoyé un lien à {{email}}.",
+      "introWithoutEmail": "Nous avons envoyé un lien de confirmation.",
+      "openMail": "Ouvre ton mail puis clique sur le lien pour activer ton compte.",
+      "subtitle": "Confirme ton email puis reviens ici pour terminer l’activation de ton espace.",
+      "back": "Retour connexion",
+      "checking": "Vérification...",
+      "confirmed": "J’ai confirmé mon email",
+      "resending": "Envoi...",
+      "resend": "Renvoyer l’email",
+      "missingEmail": "Adresse email manquante.",
+      "sent": "Email envoyé",
+      "noSession": "Aucune session confirmée n’a été détectée. Ouvre le lien complet reçu par email puis reviens ici."
+    }
+  },
+  "resetPassword": {
+    "eyebrow": "Sécurité",
+    "title": "Définir un nouveau mot de passe",
+    "description": "Utilise ce lien une seule fois pour enregistrer un mot de passe neuf et reprendre l’accès à ton espace.",
+    "backToLogin": "Retour à la connexion",
+    "requestNewLink": "Demander un nouveau lien",
+    "checking": "Vérification du lien de récupération en cours...",
+    "invalidLink": "Le lien de réinitialisation est invalide ou expiré. Demande un nouvel email puis réessaie.",
+    "noActiveLink": "Aucun lien de récupération actif n’a été détecté sur cette page. Retourne sur l’email reçu puis clique à nouveau sur le lien complet.",
+    "activateError": "Impossible d’activer la session de récupération pour le moment.",
+    "success": "Ton nouveau mot de passe est enregistré. Redirection vers la page de connexion...",
+    "helperText": "Choisis un mot de passe d’au moins 8 caractères. Tu pourras ensuite te reconnecter immédiatement.",
+    "pendingLabel": "Enregistrement...",
+    "submitLabel": "Enregistrer le nouveau mot de passe",
+    "updatedToast": "Mot de passe mis à jour."
+  },
   "editor": {
     "saved": "Enregistré",
     "saveError": "Échec de l'enregistrement",
@@ -151,6 +244,110 @@
     "savedAt": "Sauvegardé à {{time}}",
     "pdfFailed": "La génération PDF a échoué.",
     "briefingLoading": "Chargement du briefing...",
-    "downloadReady": "Télécharger le PDF prêt"
+    "downloadReady": "Télécharger le PDF prêt",
+    "modules": {
+      "access": {
+        "fields": {
+          "address": "Adresse",
+          "parking": "Parking",
+          "entrance": "Entrée",
+          "onSiteContact": "Contact sur site"
+        }
+      },
+      "contact": {
+        "title": "Contact",
+        "addPerson": "Ajouter une personne",
+        "fields": {
+          "name": "Nom",
+          "role": "Rôle",
+          "phone": "Téléphone",
+          "email": "Email"
+        }
+      },
+      "equipment": {
+        "placeholder": "Un élément par ligne"
+      },
+      "notes": {
+        "title": "Notes",
+        "placeholder": "Notes"
+      },
+      "staff": {
+        "addRole": "Ajouter un rôle",
+        "fields": {
+          "role": "Rôle",
+          "count": "Quantité",
+          "notes": "Notes"
+        }
+      },
+      "vehicle": {
+        "title": "Véhicule",
+        "addVehicle": "Ajouter un véhicule",
+        "fields": {
+          "type": "Type",
+          "plate": "Plaque",
+          "pickupAddress": "Adresse de départ",
+          "pickupTime": "Heure de départ",
+          "returnAddress": "Adresse de retour",
+          "notes": "Notes"
+        },
+        "preview": {
+          "pickup": "Départ",
+          "return": "Retour"
+        }
+      }
+    },
+    "delivery": {
+      "addPoint": "Ajouter un point de destination",
+      "previewTitle": "Planning des livraisons",
+      "empty": "Aucun point de destination renseigné",
+      "pointLabel": "Point {{count}}",
+      "destinationLabel": "Point de destination",
+      "tags": {
+        "depot": "Dépôt",
+        "return": "Retour",
+        "custom": "Personnalisé"
+      },
+      "settings": {
+        "title": "Paramètres de livraison",
+        "enableDepotTag": {
+          "label": "Afficher le tag dépôt",
+          "description": "Permet d'identifier rapidement les passages au dépôt."
+        },
+        "enableReturnTag": {
+          "label": "Afficher le tag retour",
+          "description": "Ajoute l'option retour dans la liste des tags."
+        },
+        "allowCustomTag": {
+          "label": "Autoriser un tag personnalisé",
+          "description": "Laisse l'équipe saisir un tag libre pour chaque point."
+        }
+      },
+      "fields": {
+        "time": {
+          "label": "Horaire",
+          "placeholder": "Horaire"
+        },
+        "place": {
+          "label": "Point de destination",
+          "placeholder": "Adresse ou lieu de destination"
+        },
+        "contact": {
+          "label": "Contact sur place",
+          "placeholder": "Nom ou numéro du contact sur place"
+        },
+        "tag": {
+          "label": "Tag trajet",
+          "placeholder": "Choisir un tag"
+        },
+        "customTag": {
+          "label": "Tag personnalisé",
+          "placeholder": "Saisir un tag personnalisé"
+        },
+        "notes": {
+          "label": "Consignes",
+          "placeholder": "Consignes terrain ou remarques"
+        }
+      }
+    }
   }
 }

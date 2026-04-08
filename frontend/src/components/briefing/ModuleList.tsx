@@ -35,7 +35,7 @@ export function ModuleList({ state, selected, onSelect, onToggle }: Props) {
       <Input
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder={i18n.language === "fr" ? "Rechercher un module..." : "Search module..."}
+        placeholder={i18n.language === "fr" ? "Rechercher un module" : "Search a module"}
       />
       {filteredModules.map((entry) => {
         const module = state.modules[entry.key];

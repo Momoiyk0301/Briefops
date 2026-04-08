@@ -1,6 +1,7 @@
 import { ModuleFieldsRenderer } from "@/components/briefing/runtime/ModuleFieldsRenderer";
 import { ModuleSettingsRenderer } from "@/components/briefing/runtime/ModuleSettingsRenderer";
 import { DeliveryData, DeliverySettings, ModuleFieldDefinition, ModuleSettingDefinition } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   value: DeliveryData;
@@ -12,11 +13,13 @@ type Props = {
 };
 
 export function DeliveryForm({ value, settings, settingsSchema, fieldSchema, onChange, onSettingsChange }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-3">
       <ModuleSettingsRenderer settings={settings} settingsSchema={settingsSchema} onChange={onSettingsChange} />
       <ModuleFieldsRenderer
-        title="Add delivery"
+        title={t("editor.delivery.addPoint")}
         fields={fieldSchema}
         items={value.deliveries as Record<string, unknown>[]}
         settings={settings}

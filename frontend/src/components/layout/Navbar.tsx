@@ -31,13 +31,13 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
 
   const pageTitle = (() => {
-    if (pathname.startsWith("/briefings/")) return "Détail briefing";
+    if (pathname.startsWith("/briefings/")) return t("navbar.pageTitles.briefingDetail");
     if (pathname.startsWith("/briefings")) return t("nav.briefings");
-    if (pathname.startsWith("/modules")) return "Modules";
-    if (pathname.startsWith("/staff")) return "Staff";
-    if (pathname.startsWith("/account")) return "Compte";
-    if (pathname.startsWith("/notifications")) return "Notifications";
-    if (pathname.startsWith("/settings/billing")) return "Compte";
+    if (pathname.startsWith("/modules")) return t("nav.modules");
+    if (pathname.startsWith("/staff")) return t("nav.staff");
+    if (pathname.startsWith("/account")) return t("nav.account");
+    if (pathname.startsWith("/notifications")) return t("nav.notifications");
+    if (pathname.startsWith("/settings/billing")) return t("nav.account");
     if (pathname.startsWith("/settings")) return t("nav.settings");
     if (pathname.startsWith("/onboarding")) return t("nav.onboarding");
     return t("app.name");
@@ -55,7 +55,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
         return {
           id: item.id,
           title: item.title,
-          location: item.location_text ?? "Lieu non défini",
+          location: item.location_text ?? t("notificationsPage.locationFallback"),
           diffDays
         };
       })
@@ -138,19 +138,19 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
       <div className="flex h-[74px] items-center justify-between pl-3 pr-4 lg:pl-5 lg:pr-6">
         <div className="min-w-0 flex items-center gap-2">
           {showBackButton ? (
-            <Button variant="ghost" aria-label="Retour" onClick={() => navigate(-1)}>
+            <Button variant="ghost" aria-label={t("routeError.back")} onClick={() => navigate(-1)}>
               <ArrowLeft size={16} />
             </Button>
           ) : null}
           <div className="min-w-0">
             <div className="hidden items-center gap-2 md:flex">
               <AvatarBadge
-                label="Workspace"
+                label={t("shell.workspaceLabel")}
                 imageUrl={workspaceLogoUrl}
                 initials={meQuery.data?.workspace?.initials || getInitials(meQuery.data?.workspace?.name, "WS")}
                 className="h-10 w-10 rounded-2xl"
               />
-              <p className="section-kicker">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? "BriefOps"}</p>
+              <p className="section-kicker">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? t("app.name")}</p>
             </div>
             <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
           </div>
@@ -163,15 +163,15 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             />
             <input
               type="search"
-              aria-label="Recherche"
-              placeholder="Rechercher..."
+              aria-label={t("navbar.searchLabel")}
+              placeholder={t("navbar.searchPlaceholder")}
               className="h-11 w-full rounded-full border border-[#e4e9f4] bg-white/88 pl-11 pr-4 text-sm text-[#172033] shadow-[0_10px_24px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-[#8b93a7] focus:border-brand-500/40 dark:border-white/10 dark:bg-[#171717] dark:text-white dark:placeholder:text-[#8f98b0]"
             />
           </label>
           <div className="relative" ref={notificationsRef}>
             <Button
               variant="ghost"
-              aria-label="Notifications"
+              aria-label={t("nav.notifications")}
               onClick={() => setNotificationsOpen((value) => !value)}
             >
               <Bell size={16} />
@@ -179,7 +179,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             {notificationsOpen ? (
               <div className="absolute right-0 top-[calc(100%+10px)] w-[min(360px,calc(100vw-1.5rem))] rounded-[28px] border border-[#e4e9f4] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)] p-4 shadow-[0_26px_70px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#151515]">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Aperçu</p>
+                  <p className="text-sm font-semibold">{t("navbar.notificationsPreview")}</p>
                   <button
                     type="button"
                     className="text-xs text-brand-500"
@@ -188,12 +188,12 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
                       navigate("/notifications");
                     }}
                   >
-                    Voir tout
+                    {t("navbar.viewAll")}
                   </button>
                 </div>
                 <div className="mt-3 space-y-2">
                   {previewNotifications.length === 0 ? (
-                    <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Aucune alerte.</p>
+                    <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">{t("navbar.emptyNotifications")}</p>
                   ) : (
                     previewNotifications.map((item) => (
                       <div key={item.id} className="rounded-[22px] border border-[#e7ecf5] bg-white/85 p-3 dark:border-white/10">
@@ -201,12 +201,12 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
                           <div>
                             <p className="text-sm font-medium">{item.title}</p>
                             <p className="text-xs text-[#6f748a] dark:text-[#a8afc6]">
-                              {item.location} · {item.diffDays <= 0 ? "Aujourd'hui / passé" : `Dans ${item.diffDays} jour(s)`}
+                              {item.location} · {item.diffDays <= 0 ? t("notificationsPage.todayOrPast") : t("notificationsPage.inDays", { count: item.diffDays })}
                             </p>
                           </div>
                           <button
                             type="button"
-                            aria-label="Supprimer la notification"
+                            aria-label={t("navbar.dismissNotification")}
                             className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                             onClick={() => dismissNotification(item.id)}
                           >
@@ -226,14 +226,14 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               onClick={() => navigate("/briefings")}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname.startsWith("/briefings") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
             >
-              Dashboard
+              {t("navbar.dashboard")}
             </button>
             <button
               type="button"
               onClick={() => navigate("/account")}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname.startsWith("/account") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
             >
-              Compte
+              {t("nav.account")}
             </button>
           </div>
           <button
@@ -242,21 +242,21 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
             className="hidden max-w-[280px] items-center gap-2 rounded-full border border-[#e4e9f3] bg-white/88 px-3 py-2 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-brand-500/40 md:flex dark:border-white/10 dark:bg-[#171717]"
           >
             <AvatarBadge
-              label="Utilisateur"
+              label={t("shell.userLabel")}
               imageUrl={avatarUrl}
               initials={meQuery.data?.user?.initials || getInitials(meQuery.data?.user?.full_name || meQuery.data?.user?.email, "US")}
               className="h-7 w-7 shrink-0"
             />
             <span className="min-w-0">
               <span className="block truncate text-xs font-semibold text-[#21263a] dark:text-[#dbe3ff]">
-                {meQuery.data?.user?.email ?? "Utilisateur"}
+                {meQuery.data?.user?.email ?? t("shell.userFallback")}
               </span>
               <span className="block truncate text-[11px] text-[#767c91] dark:text-[#9da5bf]">
-                Plan {meQuery.data?.plan ?? "starter"}
+                {t("shell.planLabel", { plan: meQuery.data?.plan ?? "starter" })}
               </span>
             </span>
           </button>
-          {demoData && <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-900/20 dark:text-orange-200">Demo data</Badge>}
+          {demoData && <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-900/20 dark:text-orange-200">{t("shell.demoData")}</Badge>}
         </div>
       </div>
     </header>
