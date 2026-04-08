@@ -38,7 +38,7 @@ check_env_file() {
   local missing=0
   while IFS= read -r key; do
     local pattern="^${key}=.+"
-    if [[ "$label" == "frontend" && "$key" == "NEXT_PUBLIC_API_URL" ]]; then
+    if [[ "$key" == "NEXT_PUBLIC_API_URL" ]]; then
       # Single-project mode allows empty API URL to use same-origin /api.
       pattern="^${key}="
     fi
@@ -61,7 +61,6 @@ check_env_file() {
 }
 
 status=0
-check_env_file "frontend" "frontend/.env.example" "frontend/.env.local" "frontend/.env" || status=1
-check_env_file "backend" "backend/.env.example" "backend/.env.local" "backend/.env" || status=1
+check_env_file "app" ".env.example" ".env.local" ".env" || status=1
 
 exit "$status"
