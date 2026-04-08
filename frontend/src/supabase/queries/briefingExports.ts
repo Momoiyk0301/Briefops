@@ -72,7 +72,7 @@ export async function listBriefingExportsByWorkspace(client: SupabaseClient, wor
 export async function getBriefingExportById(client: SupabaseClient, exportId: string) {
   const { data, error } = await client
     .from("briefing_exports")
-    .select(`${SELECT_BRIEFING_EXPORT_FIELDS}, briefings!inner(id, workspace_id, title)`)
+    .select(`${SELECT_BRIEFING_EXPORT_FIELDS}, briefings!inner(id, workspace_id, title, event_date)`)
     .eq("id", exportId)
     .maybeSingle();
 

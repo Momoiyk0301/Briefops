@@ -1,5 +1,5 @@
-import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Share2 } from "lucide-react";
+import { PointerEvent as ReactPointerEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, FileText, LayoutGrid, Loader2, Settings2, Share2, SlidersHorizontal, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +16,7 @@ import { ModulePanel } from "@/components/briefing/ModulePanel";
 import { SharePanel } from "@/components/briefing/SharePanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Toggle } from "@/components/ui/Toggle";
 
 const CANVAS_COLS = 12;
 const CANVAS_ROWS = 24;
@@ -146,12 +147,82 @@ const MODULE_TONE_CLASS: Record<ModuleKey, string> = {
   contact: "border-orange-200/90 bg-orange-50/80"
 };
 
+type SidebarTab = "content" | "modules" | "settings";
+
+function SidebarTabButton({
+  active,
+  icon,
+  label,
+  onClick
+}: {
+  active: boolean;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 border-b-2 px-1 pb-3 pt-1 text-sm font-semibold transition ${
+        active
+          ? "border-brand-500 text-[#172033] dark:text-white"
+          : "border-transparent text-[#737b92] hover:text-[#172033] dark:text-[#a8afc6] dark:hover:text-white"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function SidebarDisclosure({
+  title,
+  description,
+  icon,
+  defaultOpen = false,
+  children
+}: {
+  title: string;
+  description?: string;
+  icon: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="rounded-[22px] border border-[#dfe5f0] bg-white/96 shadow-sm dark:border-white/10 dark:bg-[#161616]">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7d849a] dark:text-[#98a0b7]">
+            {icon}
+            <span>{title}</span>
+          </div>
+          {description ? (
+            <p className="mt-1 text-sm text-[#6f7890] dark:text-[#a9b0c6]">{description}</p>
+          ) : null}
+        </div>
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-[#8890a6] transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? <div className="border-t border-[#e8edf5] px-4 py-4 dark:border-white/10">{children}</div> : null}
+    </section>
+  );
+}
+
 export function BriefingEditor({ briefing, modules, registryModules = [] }: Props) {
   const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [saving, setSaving] = useState(false);
   const [hoveredModuleKey, setHoveredModuleKey] = useState<ModuleKey | null>(null);
-  const [mobilePanel, setMobilePanel] = useState<"meta" | "modules" | "edit">("modules");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("content");
   const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
   const [shareOpen, setShareOpen] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"hidden" | "saving" | "saved" | "timestamp">("hidden");
@@ -161,6 +232,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [teamPdfPaths, setTeamPdfPaths] = useState<Record<string, string>>({});
   const [teamPdfFiles, setTeamPdfFiles] = useState<Record<string, { path: string; url: string; filename: string }>>({});
   const [selectedPdfTeam, setSelectedPdfTeam] = useState<string>("all");
+  const [showPreviewAnchors, setShowPreviewAnchors] = useState(true);
   const [pageCountOverride, setPageCountOverride] = useState<number>(() => getEnabledPageCount(buildInitialState(briefing, modules, registryModules).modules));
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const canvasRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -305,7 +377,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     [state.modules]
   );
 
-  const handleSave = async (manual = true) => {
+  const handleSave = async (_manual = true) => {
     try {
       setSaving(true);
       setSaveIndicator("saving");
@@ -401,7 +473,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       setPdfButtonState("ready");
       generated = true;
       toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
-      downloadGeneratedPdf(result.pdf_url, result.filename);
     } catch (error) {
       const msg = toApiMessage(error);
       toast.error(msg.includes("limit") ? t("editor.pdfDenied") : `${t("editor.pdfFailed")} ${msg}`, { id: toastId });
@@ -481,13 +552,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         modules: {
           ...prev.modules,
           [key]: {
-              ...prev.modules[key],
-              layout: {
-                ...prev.modules[key].layout,
-                desktop: { ...nextRect, page }
-              }
+            ...prev.modules[key],
+            layout: {
+              ...prev.modules[key].layout,
+              desktop: { ...nextRect, page }
             }
           }
+        }
       }));
     };
 
@@ -505,7 +576,9 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   };
 
   const visibleModules = moduleEntries.filter((entry) => state.modules[entry.key].enabled);
+  const configurableModules = moduleEntries.filter((entry) => entry.key !== "metadata");
   const selectedModule = state.modules[state.selectedModuleKey];
+  const selectedModuleEntry = moduleEntries.find((entry) => entry.key === state.selectedModuleKey);
   const selectedAudienceTeams = selectedModule.audience.teams;
   const pageCount = Math.max(pageCountOverride, getEnabledPageCount(state.modules));
   const saveStatusLabel = saveIndicator === "saving"
@@ -578,431 +651,386 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     setPageCountOverride((prev) => prev + 1);
   };
 
+  const updateMetadata = (core: EditorState["core"], metadata: EditorState["modules"]["metadata"]["data"]) => {
+    setState((prev) => ({
+      ...prev,
+      core,
+      modules: {
+        ...prev.modules,
+        metadata: { ...prev.modules.metadata, data: metadata }
+      }
+    }));
+  };
+
+  const setModuleEnabled = (key: ModuleKey, enabled: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      modules: normalizeLayouts({
+        ...prev.modules,
+        [key]: {
+          ...prev.modules[key],
+          enabled,
+          metadata: { ...prev.modules[key].metadata, enabled }
+        }
+      })
+    }));
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_390px]">
-      <Card className="flex justify-center border-sky-100 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-1.5 dark:border-white/10 dark:bg-[#121212]">
-        <div className="a4-frame w-full max-w-[820px] space-y-3 rounded-xl border border-slate-200 bg-white p-1.5 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          {visibleModulesByPage.map(({ pageIndex, items }) => (
-            <div key={pageIndex} className="space-y-1.5">
-              <div className="flex items-center justify-between px-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {t("editor.page", { count: pageIndex + 1 })}
-                </p>
-                {pageIndex === selectedModule.layout.desktop.page ? (
-                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-900/20 dark:text-brand-300">
-                    {t("briefings.pageCurrent")}
-                  </span>
-                ) : null}
-              </div>
-              <div
-                ref={(node) => {
-                  canvasRefs.current[pageIndex] = node;
-                }}
-                className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
-              >
-                {items.map((entry) => {
-                  const module = state.modules[entry.key];
-                  const style = toCanvasStyle(module.layout);
-                  const isSelected = state.selectedModuleKey === entry.key;
-                  const isActive = hoveredModuleKey === entry.key || isSelected;
-                  const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
-
-                  return (
-                    <section
-                      key={entry.key}
-                      style={style}
-                      className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
-                        MODULE_TONE_CLASS[entry.key]
-                      } ${
-                        isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
-                      }`}
-                      onMouseEnter={() => setHoveredModuleKey(entry.key)}
-                      onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
-                      onClick={() => {
-                        if (entry.key !== "metadata") {
-                          setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
-                        }
-                      }}
-                    >
-                      <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                        {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
-                      </p>
-
-                      <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
-                        {entry.key === "metadata" ? (
-                          <MetadataPreview
-                            title={state.core.title}
-                            eventDate={state.core.event_date}
-                            location={state.core.location_text}
-                            metadata={state.modules.metadata.data}
-                          />
-                        ) : (
-                          <PreviewComponent value={module.data as never} />
-                        )}
-                      </div>
-
-                      {isActive ? (
-                        <>
-                          <button
-                            type="button"
-                            aria-label={`move-${entry.key}`}
-                            className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
-                            onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "move")}
-                          />
-
-                          {RESIZE_HANDLES.map((handle) => (
-                            <button
-                              key={handle.key}
-                              type="button"
-                              aria-label={`resize-${entry.key}-${handle.key}`}
-                              className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
-                              style={{ cursor: handle.cursor }}
-                              onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "resize", handle.key)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                    </section>
-                  );
-                })}
-              </div>
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.28fr)_332px]">
+      <Card className="overflow-hidden border-[#dce4f3] bg-[linear-gradient(180deg,#f6f8fc_0%,#eef2fa_100%)] p-0 dark:border-white/10 dark:bg-[#111214]">
+        <div className="border-b border-[#e2e7f2] bg-white/88 px-4 py-3 dark:border-white/10 dark:bg-[#161616]">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#79819a] dark:text-[#8d97b0]">
+                {t("editor.previewEyebrow")}
+              </p>
+              <h2 className="mt-1 truncate text-lg font-semibold text-[#172033] dark:text-white">
+                {state.core.title || t("editor.untitled")}
+              </h2>
             </div>
-          ))}
-          <div className="flex justify-center pt-1">
-            <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleAddPage}>
-              {t("editor.addPage")}
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="space-y-2.5 border-sky-100 bg-gradient-to-br from-white via-sky-50/50 to-amber-50/30 p-2.5 dark:border-white/10 dark:bg-[#121212]">
-        <div className="grid grid-cols-3 gap-2 xl:hidden">
-          <Button variant={mobilePanel === "meta" ? "primary" : "secondary"} onClick={() => setMobilePanel("meta")}>Meta</Button>
-          <Button variant={mobilePanel === "modules" ? "primary" : "secondary"} onClick={() => setMobilePanel("modules")}>Modules</Button>
-          <Button variant={mobilePanel === "edit" ? "primary" : "secondary"} onClick={() => setMobilePanel("edit")}>Edition</Button>
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "meta" ? "hidden" : ""}`}>
-          <MetadataForm
-            core={state.core}
-            metadata={state.modules.metadata.data}
-            onChange={(core, metadata) => {
-              setState((prev) => ({
-                ...prev,
-                core,
-                modules: {
-                  ...prev.modules,
-                  metadata: { ...prev.modules.metadata, data: metadata }
-                }
-              }));
-            }}
-          />
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "modules" ? "hidden" : ""}`}>
-          <ModuleList
-            state={state}
-            selected={state.selectedModuleKey}
-            onSelect={(key) => {
-              setState((prev) => ({ ...prev, selectedModuleKey: key }));
-              setMobilePanel("edit");
-            }}
-            onToggle={(key, enabled) =>
-              setState((prev) => ({
-                ...prev,
-                modules: normalizeLayouts({
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    enabled,
-                    metadata: { ...prev.modules[key].metadata, enabled }
-                  }
-                })
-              }))
-            }
-          />
-        </div>
-
-        <div className={`rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:hidden ${mobilePanel !== "edit" ? "hidden" : ""}`}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.moduleEdit")}</p>
-          <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
-            <div className="flex items-center gap-2">
-              <select
-                aria-label="page-selector-mobile"
-                className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-                value={selectedModule.layout.desktop.page}
-                onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
-              >
-                {Array.from({ length: pageCount }, (_, pageIndex) => (
-                  <option key={pageIndex} value={pageIndex}>
-                    {t("editor.page", { count: pageIndex + 1 })}
-                  </option>
-                ))}
-              </select>
-              <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
-                {t("editor.addPage")}
-              </Button>
+            <div className="hidden items-center gap-2 rounded-full border border-[#dbe3f1] bg-white/90 px-3 py-1.5 text-xs text-[#667089] shadow-sm dark:border-white/10 dark:bg-[#101010] dark:text-[#9da5bf] sm:flex">
+              <LayoutGrid size={14} />
+              <span>{t("editor.canvasHint")}</span>
             </div>
           </div>
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  className={`rounded-full border px-2 py-1 text-[11px] ${
-                    selectedAudienceTeams.length === 0
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                      : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                  }`}
-                  onClick={() =>
-                    setState((prev) => ({
-                      ...prev,
-                      modules: {
-                        ...prev.modules,
-                        [prev.selectedModuleKey]: {
-                          ...prev.modules[prev.selectedModuleKey],
-                          audience: {
-                            ...prev.modules[prev.selectedModuleKey].audience,
-                            mode: "all",
-                            teams: []
-                          }
-                        }
-                      }
-                    }))
-                  }
-                >
-                  {t("editor.allTeams")}
-                </button>
-                {definedTeams.map((team) => {
-                  const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
-                  return (
-                    <button
-                      key={team}
-                      type="button"
-                      className={`rounded-full border px-2 py-1 text-[11px] ${
-                        selected
-                          ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                          : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                      }`}
-                      onClick={() => toggleTeamForSelectedModule(team)}
-                    >
-                      {team}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-          <ModulePanel
-            state={state}
-            selected={state.selectedModuleKey}
-            onChange={(key, patch) =>
-              setState((prev) => ({
-                ...prev,
-                modules: {
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    settings: patch.settings ?? prev.modules[key].settings,
-                    data: (patch.data ?? prev.modules[key].data) as ModuleDataMap[typeof key]
-                  }
-                }
-              }))
-            }
-          />
         </div>
 
-        <div className={`hidden xl:grid xl:gap-2 ${teamModeEnabled && definedTeams.length > 0 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
-          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.edit")}</p>
-            <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="page-selector-desktop"
-                  className="h-9 min-w-[110px] rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-                  value={selectedModule.layout.desktop.page}
-                  onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
-                >
-                  {Array.from({ length: pageCount }, (_, pageIndex) => (
-                    <option key={pageIndex} value={pageIndex}>
+        <div className="p-2.5 sm:p-3">
+          <div className="rounded-[28px] border border-[#dce4f1] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)] p-2.5 shadow-[0_26px_70px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#151515]">
+            <div className="a4-frame w-full space-y-3 rounded-[24px] border border-slate-200 bg-white p-3 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+              {visibleModulesByPage.map(({ pageIndex, items }) => (
+                <div key={pageIndex} className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t("editor.page", { count: pageIndex + 1 })}
-                    </option>
-                  ))}
-                </select>
-                <Button variant="secondary" className="h-9 px-3 text-xs" onClick={handleAddPage}>
+                    </p>
+                    {pageIndex === selectedModule.layout.desktop.page ? (
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 dark:bg-brand-900/20 dark:text-brand-300">
+                        {t("briefings.pageCurrent")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    ref={(node) => {
+                      canvasRefs.current[pageIndex] = node;
+                    }}
+                    className="relative mx-auto aspect-[210/297] w-full touch-none overflow-hidden rounded-lg border border-[#e8eaf3] bg-white dark:border-white/10 dark:bg-[#0f0f10]"
+                  >
+                    {items.map((entry) => {
+                      const module = state.modules[entry.key];
+                      const style = toCanvasStyle(module.layout);
+                      const isSelected = state.selectedModuleKey === entry.key;
+                      const isActive = hoveredModuleKey === entry.key || isSelected;
+                      const PreviewComponent = moduleRegistry[entry.key].PreviewComponent;
+
+                      return (
+                        <section
+                          key={entry.key}
+                          style={style}
+                          className={`absolute touch-none overflow-hidden rounded-md border p-1.5 shadow-sm transition dark:bg-[#151515] ${
+                            MODULE_TONE_CLASS[entry.key]
+                          } ${
+                            isActive ? "border-brand-500 ring-1 ring-brand-500/20" : "border-[#dfe3ef] dark:border-white/10"
+                          }`}
+                          onMouseEnter={() => setHoveredModuleKey(entry.key)}
+                          onMouseLeave={() => setHoveredModuleKey((prev) => (prev === entry.key ? null : prev))}
+                          onClick={() => {
+                            if (entry.key !== "metadata") {
+                              setState((prev) => ({ ...prev, selectedModuleKey: entry.key as Exclude<ModuleKey, "metadata"> }));
+                              setSidebarTab("settings");
+                            }
+                          }}
+                        >
+                          <p className="mb-0.5 truncate text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                            {entry.labels[i18n.language === "fr" ? "fr" : "en"]}
+                          </p>
+
+                          <div className="max-h-[calc(100%-16px)] overflow-auto text-[11px]">
+                            {entry.key === "metadata" ? (
+                              <MetadataPreview
+                                title={state.core.title}
+                                eventDate={state.core.event_date}
+                                location={state.core.location_text}
+                                metadata={state.modules.metadata.data}
+                              />
+                            ) : (
+                              <PreviewComponent value={module.data as never} />
+                            )}
+                          </div>
+
+                          {showPreviewAnchors && isActive ? (
+                            <>
+                              <button
+                                type="button"
+                                aria-label={`move-${entry.key}`}
+                                className="absolute left-1/2 top-0 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-500 bg-cyan-400 shadow md:h-3 md:w-3"
+                                onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "move")}
+                              />
+
+                              {RESIZE_HANDLES.map((handle) => (
+                                <button
+                                  key={handle.key}
+                                  type="button"
+                                  aria-label={`resize-${entry.key}-${handle.key}`}
+                                  className={`absolute z-20 h-4 w-4 rounded-full border border-brand-700 bg-brand-500 shadow md:h-3 md:w-3 ${handle.className}`}
+                                  style={{ cursor: handle.cursor }}
+                                  onPointerDown={(event) => startPointerInteraction(event, entry.key, pageIndex, "resize", handle.key)}
+                                />
+                              ))}
+                            </>
+                          ) : null}
+                        </section>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-center pt-1">
+                <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleAddPage}>
                   {t("editor.addPage")}
                 </Button>
               </div>
             </div>
-            {teamModeEnabled && definedTeams.length > 0 ? (
-              <div className="mb-2 rounded-xl border border-[#e6e8f2] p-2 dark:border-white/10">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.audienceTags")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    className={`rounded-full border px-2 py-1 text-[11px] ${
-                      selectedAudienceTeams.length === 0
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                        : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                    }`}
-                    onClick={() =>
-                      setState((prev) => ({
-                        ...prev,
-                        modules: {
-                          ...prev.modules,
-                          [prev.selectedModuleKey]: {
-                            ...prev.modules[prev.selectedModuleKey],
-                            audience: {
-                              ...prev.modules[prev.selectedModuleKey].audience,
-                              mode: "all",
-                              teams: []
-                            }
-                          }
-                        }
-                      }))
-                    }
-                  >
-                    {t("editor.allTeams")}
-                  </button>
-                  {definedTeams.map((team) => {
-                    const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
-                    return (
-                      <button
-                        key={team}
-                        type="button"
-                        className={`rounded-full border px-2 py-1 text-[11px] ${
-                          selected
-                            ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                            : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                        }`}
-                        onClick={() => toggleTeamForSelectedModule(team)}
-                      >
-                        {team}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-            <ModulePanel
-              state={state}
-              selected={state.selectedModuleKey}
-              onChange={(key, patch) =>
-                setState((prev) => ({
-                  ...prev,
-                  modules: {
-                    ...prev.modules,
-                    [key]: {
-                      ...prev.modules[key],
-                      settings: patch.settings ?? prev.modules[key].settings,
-                      data: (patch.data ?? prev.modules[key].data) as ModuleDataMap[typeof key]
-                    }
-                  }
-                }))
-              }
+          </div>
+        </div>
+      </Card>
+
+      <Card className="flex min-h-[720px] flex-col overflow-hidden border-[#dce4f3] bg-[linear-gradient(180deg,#f8faff_0%,#eef3fb_100%)] p-0 shadow-[0_22px_60px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#121212]">
+        <div className="border-b border-[#e1e7f1] bg-white/94 px-4 py-3 dark:border-white/10 dark:bg-[#151515]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7d849a] dark:text-[#98a0b7]">
+                {t("editor.sidebarEyebrow")}
+              </p>
+              <p className="mt-1 text-sm text-[#6f7890] dark:text-[#a9b0c6]">
+                {selectedModuleEntry?.labels[i18n.language === "fr" ? "fr" : "en"] ?? t("editor.tabs.content")}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {teamModeEnabled && definedTeams.length > 0 ? (
+                <select
+                  className="h-10 max-w-[160px] rounded-2xl border border-slate-300 bg-white px-3 text-sm dark:border-white/10 dark:bg-[#101010]"
+                  value={selectedPdfTeam}
+                  onChange={(event) => setSelectedPdfTeam(event.target.value)}
+                >
+                  <option value="all">{t("editor.pdfAllModules")}</option>
+                  {definedTeams.map((team) => (
+                    <option key={team} value={team}>
+                      PDF: {team}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              <Button className="h-10 px-4" onClick={() => void handleSave(true)} disabled={saving}>
+                {saving ? t("app.loading") : t("app.save")}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void handlePdf()}
+                disabled={pdfButtonState === "loading"}
+                className={`h-10 px-4 ${pdfButtonState === "ready" ? "border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300" : ""}`}
+                aria-label={pdfButtonState === "ready" ? t("editor.downloadReady") : undefined}
+              >
+                {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
+                {pdfButtonState === "ready" ? <Check size={14} /> : null}
+                {pdfButtonState === "idle"
+                  ? t("editor.pdf")
+                  : pdfButtonState === "loading"
+                    ? t("editor.loadingShort")
+                    : t("editor.downloadReady")}
+              </Button>
+              <Button variant="secondary" className="h-10 px-4" onClick={() => setShareOpen(true)}>
+                <Share2 size={14} />
+                {t("editor.share")}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <SidebarTabButton
+              active={sidebarTab === "content"}
+              icon={<FileText size={14} />}
+              label={t("editor.tabs.content")}
+              onClick={() => setSidebarTab("content")}
+            />
+            <SidebarTabButton
+              active={sidebarTab === "modules"}
+              icon={<LayoutGrid size={14} />}
+              label={t("editor.tabs.modules")}
+              onClick={() => setSidebarTab("modules")}
+            />
+            <SidebarTabButton
+              active={sidebarTab === "settings"}
+              icon={<Settings2 size={14} />}
+              label={t("editor.tabs.settings")}
+              onClick={() => setSidebarTab("settings")}
             />
           </div>
+        </div>
 
-          <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-            <MetadataForm
-              core={state.core}
-              metadata={state.modules.metadata.data}
-              onChange={(core, metadata) => {
-                setState((prev) => ({
-                  ...prev,
-                  core,
-                  modules: {
-                    ...prev.modules,
-                    metadata: { ...prev.modules.metadata, data: metadata }
-                  }
-                }));
-              }}
-            />
-          </div>
-
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <div className="rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("editor.editTeams")}</p>
-              <div className="space-y-2">
-                {definedTeams.map((team) => (
-                  <div key={team} className="flex items-center justify-between rounded-lg border border-[#e8eaf3] px-2 py-1.5 text-xs dark:border-white/10">
-                    <span className="font-medium">{team}</span>
-                    <span className="text-slate-500">
-                      {t("editor.taggedModules", {
-                        count: Object.values(state.modules)
-                          .filter((mod) => mod.key !== "metadata" && mod.audience.teams.some((value) => value.toLowerCase() === team.toLowerCase()))
-                          .length
-                      })}
-                    </span>
-                  </div>
-                ))}
+        <div className="flex-1 space-y-3 overflow-y-auto p-3">
+          {sidebarTab === "content" ? (
+            <div className="rounded-[24px] border border-[#dfe5f0] bg-white/96 p-4 shadow-sm dark:border-white/10 dark:bg-[#161616]">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7d849a] dark:text-[#98a0b7]">
+                <FileText size={14} />
+                <span>{t("editor.contentDetails")}</span>
               </div>
+              <MetadataForm core={state.core} metadata={state.modules.metadata.data} onChange={updateMetadata} />
             </div>
           ) : null}
-        </div>
 
-        <div className="hidden rounded-2xl border border-[#e8eaf3] bg-white/90 p-2 dark:border-white/10 dark:bg-[#151515] xl:block">
-          <ModuleList
-            state={state}
-            selected={state.selectedModuleKey}
-            onSelect={(key) => {
-              setState((prev) => ({ ...prev, selectedModuleKey: key }));
-              setMobilePanel("edit");
-            }}
-            onToggle={(key, enabled) =>
-              setState((prev) => ({
-                ...prev,
-                modules: normalizeLayouts({
-                  ...prev.modules,
-                  [key]: {
-                    ...prev.modules[key],
-                    enabled,
-                    metadata: { ...prev.modules[key].metadata, enabled }
-                  }
-                })
-              }))
-            }
-          />
-        </div>
+          {sidebarTab === "modules" ? (
+            <>
+              <SidebarDisclosure
+                title={t("editor.previewTools")}
+                description={t("editor.previewToolsHint")}
+                icon={<SlidersHorizontal size={14} />}
+                defaultOpen
+              >
+                <div className="flex items-center justify-between gap-3 rounded-[18px] border border-[#e3e9f3] bg-[#fbfcff] px-3 py-3 dark:border-white/10 dark:bg-[#101010]">
+                  <div>
+                    <p className="text-sm font-medium text-[#273047] dark:text-white">{t("editor.previewHandles")}</p>
+                    <p className="mt-1 text-xs text-[#6f7890] dark:text-[#a9b0c6]">{t("editor.previewHandlesHint")}</p>
+                  </div>
+                  <Toggle
+                    checked={showPreviewAnchors}
+                    onChange={setShowPreviewAnchors}
+                    ariaLabel={t("editor.previewHandles")}
+                  />
+                </div>
+              </SidebarDisclosure>
 
-        <div className="flex items-center gap-2">
-          {teamModeEnabled && definedTeams.length > 0 ? (
-            <select
-              className="h-9 rounded-xl border border-slate-300 bg-white px-2 text-xs dark:border-white/10 dark:bg-[#101010]"
-              value={selectedPdfTeam}
-              onChange={(event) => setSelectedPdfTeam(event.target.value)}
-            >
-              <option value="all">{t("editor.pdfAllModules")}</option>
-              {definedTeams.map((team) => (
-                <option key={team} value={team}>
-                  PDF: {team}
-                </option>
-              ))}
-            </select>
+              <SidebarDisclosure
+                title={t("editor.tabs.modules")}
+                description={t("editor.modulesOverview")}
+                icon={<LayoutGrid size={14} />}
+                defaultOpen
+              >
+                <ModuleList
+                  state={state}
+                  selected={state.selectedModuleKey}
+                  onSelect={(key) => {
+                    setState((prev) => ({ ...prev, selectedModuleKey: key }));
+                    setSidebarTab("settings");
+                  }}
+                  onToggle={setModuleEnabled}
+                />
+              </SidebarDisclosure>
+            </>
           ) : null}
-          <Button onClick={() => void handleSave(true)} disabled={saving}>{saving ? t("app.loading") : t("app.save")}</Button>
-          <Button
-            variant="secondary"
-            onClick={() => void handlePdf()}
-            disabled={pdfButtonState === "loading"}
-            className={pdfButtonState === "ready" ? "border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300" : ""}
-            aria-label={pdfButtonState === "ready" ? t("editor.downloadReady") : undefined}
-          >
-            {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
-            {pdfButtonState === "ready" ? <Check size={14} /> : null}
-            {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.ready")}
-          </Button>
-          <Button variant="secondary" onClick={() => setShareOpen(true)}>
-            <Share2 size={14} />
-            {t("editor.share")}
-          </Button>
-          <span className="ml-auto text-xs text-slate-500">
-            {saveStatusLabel}
-          </span>
+
+          {sidebarTab === "settings" ? (
+            <>
+              <SidebarDisclosure
+                title={t("editor.layoutSettings")}
+                description={selectedModuleEntry?.labels[i18n.language === "fr" ? "fr" : "en"]}
+                icon={<LayoutGrid size={14} />}
+                defaultOpen
+              >
+                <div className="rounded-xl border border-[#e6e8f2] p-3 dark:border-white/10">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t("editor.pageLabel")}</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label="page-selector-sidebar"
+                      className="h-10 min-w-[130px] rounded-xl border border-slate-300 bg-white px-3 text-sm dark:border-white/10 dark:bg-[#101010]"
+                      value={selectedModule.layout.desktop.page}
+                      onChange={(event) => updateSelectedModulePage(Number(event.target.value))}
+                    >
+                      {Array.from({ length: pageCount }, (_, pageIndex) => (
+                        <option key={pageIndex} value={pageIndex}>
+                          {t("editor.page", { count: pageIndex + 1 })}
+                        </option>
+                      ))}
+                    </select>
+                    <Button variant="secondary" className="h-10 px-3 text-xs" onClick={handleAddPage}>
+                      {t("editor.addPage")}
+                    </Button>
+                  </div>
+                </div>
+              </SidebarDisclosure>
+
+              {teamModeEnabled && definedTeams.length > 0 ? (
+                <SidebarDisclosure
+                  title={t("editor.audienceTags")}
+                  icon={<User size={14} />}
+                  defaultOpen
+                >
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      className={`rounded-full border px-2 py-1 text-[11px] ${
+                        selectedAudienceTeams.length === 0
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
+                          : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                      }`}
+                      onClick={() =>
+                        setState((prev) => ({
+                          ...prev,
+                          modules: {
+                            ...prev.modules,
+                            [prev.selectedModuleKey]: {
+                              ...prev.modules[prev.selectedModuleKey],
+                              audience: {
+                                ...prev.modules[prev.selectedModuleKey].audience,
+                                mode: "all",
+                                teams: []
+                              }
+                            }
+                          }
+                        }))
+                      }
+                    >
+                      {t("editor.allTeams")}
+                    </button>
+                    {definedTeams.map((team) => {
+                      const selected = selectedAudienceTeams.some((value) => value.toLowerCase() === team.toLowerCase());
+                      return (
+                        <button
+                          key={team}
+                          type="button"
+                          className={`rounded-full border px-2 py-1 text-[11px] ${
+                            selected
+                              ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
+                              : "border-[#d9dcea] bg-white text-slate-600 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
+                          }`}
+                          onClick={() => toggleTeamForSelectedModule(team)}
+                        >
+                          {team}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </SidebarDisclosure>
+              ) : null}
+
+              <SidebarDisclosure
+                title={t("editor.moduleEdit")}
+                icon={<Settings2 size={14} />}
+                defaultOpen
+              >
+                <ModulePanel
+                  state={state}
+                  selected={state.selectedModuleKey}
+                  onChange={(key, patch) =>
+                    setState((prev) => ({
+                      ...prev,
+                      modules: {
+                        ...prev.modules,
+                        [key]: {
+                          ...prev.modules[key],
+                          settings: patch.settings ?? prev.modules[key].settings,
+                          data: (patch.data ?? prev.modules[key].data) as ModuleDataMap[typeof key]
+                        }
+                      }
+                    }))
+                  }
+                />
+              </SidebarDisclosure>
+            </>
+          ) : null}
+        </div>
+        <div className="border-t border-[#e1e7f1] bg-white/94 px-4 py-3 dark:border-white/10 dark:bg-[#151515]">
+          <span className="block text-xs text-slate-500">{saveStatusLabel}</span>
         </div>
       </Card>
       <SharePanel

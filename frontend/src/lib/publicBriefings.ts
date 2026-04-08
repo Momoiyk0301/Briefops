@@ -1,6 +1,7 @@
 import { parseModuleRow } from "@/lib/moduleCanonical";
-import { moduleEntries } from "@/lib/moduleRegistry";
+import { moduleEntries } from "@/lib/moduleCatalog";
 import { Briefing, BriefingModuleRow, ContactData, DeliveryData, EquipmentData, NotesData, StaffData, AccessData, MetadataExtra } from "@/lib/types";
+import { hasServerModulePresentation, serverModulePresentations } from "@/modules/server";
 
 type PublicSection = {
   id: "access" | "schedule" | "mission" | "contacts" | "material" | "notes";
@@ -67,8 +68,20 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
     ? parseModuleRow({ key: "notes", row: byKey.get("notes"), entry: notesEntry }).data as NotesData
     : null;
 
+  const presentationSections = visibleModules.flatMap((module) => {
+    if (!hasServerModulePresentation(module.module_key)) return [];
+    const entry = moduleEntries.find((item) => item.key === module.module_key);
+    const builder = serverModulePresentations[module.module_key].buildPublicSection;
+    if (!entry || !builder) return [];
+    const parsed = parseModuleRow({ key: module.module_key, row: module, entry });
+    const section = builder(parsed.data as never);
+    return section ? [section] : [];
+  });
+
+  const presentationSectionById = new Map(presentationSections.map((section) => [section.id, section]));
+
   const sections: PublicSection[] = [
-    {
+    presentationSectionById.get("access") ?? {
       id: "access",
       title: "Access",
       items: compact([
@@ -78,7 +91,7 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
         access?.on_site_contact ? `Contact sur site: ${access.on_site_contact}` : null
       ])
     },
-    {
+    presentationSectionById.get("schedule") ?? {
       id: "schedule",
       title: "Schedule",
       items: delivery?.deliveries.flatMap((item) =>
@@ -115,11 +128,21 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
       title: "Material",
       items: compact([equipment?.items_text])
     },
-    {
-      id: "notes",
-      title: "Notes",
-      items: compact([notes?.text, metadata?.global_notes])
-    }
+    (() => {
+      const presentationNotes = presentationSectionById.get("notes");
+      if (!presentationNotes) {
+        return {
+          id: "notes",
+          title: "Notes",
+          items: compact([notes?.text, metadata?.global_notes])
+        };
+      }
+
+      return {
+        ...presentationNotes,
+        items: compact([...presentationNotes.items, metadata?.global_notes])
+      };
+    })()
   ];
 
   return sections.filter((section) => section.items.length > 0);

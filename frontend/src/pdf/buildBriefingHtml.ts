@@ -1,4 +1,6 @@
 import { getDesktopPage, getPageCountFromLayouts } from "@/lib/briefingPages";
+import { hasServerModulePresentation, serverModulePresentations } from "@/modules/server";
+import { escapeHtml, humanizeModuleKey, renderPdfRows } from "@/modules/shared";
 import { gridRectToInlineStyle } from "@/pdf/layoutToHtml";
 
 type CanonicalModulePayload = {
@@ -37,23 +39,6 @@ type BriefingHtmlInput = {
   modules: ModuleInput[];
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function humanizeModuleKey(key: string): string {
-  return key
-    .split(/[._-]/g)
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function moduleDataToObject(data: unknown): Record<string, unknown> {
   if (!data || typeof data !== "object") return {};
   if (Array.isArray(data)) return { items: data };
@@ -81,29 +66,18 @@ function flattenData(value: unknown, prefix = ""): Array<{ key: string; value: u
 
 function renderObjectRows(value: Record<string, unknown>): string {
   const entries = flattenData(value);
-  if (entries.length === 0) return '<p class="muted">No data</p>';
-
-  return entries
-    .map(({ key, value: val }) => {
-      const label = humanizeModuleKey(key);
-      const printed = typeof val === "string"
-        ? val
-        : val == null
-          ? "-"
-          : Array.isArray(val)
-            ? val.length
-              ? val.map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry))).join(", ")
-              : "-"
-            : JSON.stringify(val);
-
-      return `
-        <div class="row">
-          <div class="label">${escapeHtml(label)}</div>
-          <div class="value">${escapeHtml(String(printed || "-"))}</div>
-        </div>
-      `;
-    })
-    .join("\n");
+  return renderPdfRows(entries.map(({ key, value: val }) => ({
+    label: humanizeModuleKey(key),
+    value: typeof val === "string"
+      ? val
+      : val == null
+        ? "-"
+        : Array.isArray(val)
+          ? val.length
+            ? val.map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry))).join(", ")
+            : "-"
+          : JSON.stringify(val)
+  })));
 }
 
 function parseModuleShape(module: ModuleInput): {
@@ -143,6 +117,14 @@ function normalizeTeamKey(team?: string | null) {
   return normalized || null;
 }
 
+function renderModuleBody(moduleKey: string, data: Record<string, unknown>) {
+  if (hasServerModulePresentation(moduleKey)) {
+    return serverModulePresentations[moduleKey].renderPdf(data as never, { moduleKey });
+  }
+
+  return renderObjectRows(data);
+}
+
 export function buildBriefingHtml(input: BriefingHtmlInput): string {
   const targetTeam = normalizeTeamKey(input.team);
   const activeModules = input.modules
@@ -174,7 +156,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
             return `
               <section class="module" data-page="${pageIndex + 1}" data-module-index="${index + 1}" style="${gridRectToInlineStyle(module.layoutDesktop)}">
                 <div class="module-title">${escapeHtml(humanizeModuleKey(module.moduleKey))}</div>
-                ${renderObjectRows(module.data)}
+                ${renderModuleBody(module.moduleKey, module.data)}
               </section>
             `;
           })
@@ -291,6 +273,66 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
       color: #111827;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+    .pdf-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 8px;
+      background: #f8fafc;
+    }
+    .pdf-card:first-child {
+      margin-top: 0;
+    }
+    .pdf-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .pdf-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .pdf-destination {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .pdf-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .pdf-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: #e2e8f0;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .pdf-badge-accent {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .pdf-card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .pdf-card-panel {
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
     }
     .muted { color: #6b7280; }
     .module-empty {

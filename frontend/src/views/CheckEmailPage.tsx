@@ -1,5 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, MailCheck } from "lucide-react";
 
@@ -10,6 +11,7 @@ import { getPostAuthRedirect } from "@/lib/authRedirect";
 import { revalidateCurrentSession, resendSignupConfirmation } from "@/lib/auth";
 
 export default function CheckEmailPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email");
@@ -19,14 +21,14 @@ export default function CheckEmailPage() {
 
   const handleResend = async () => {
     if (!email) {
-      toast.error("Adresse email manquante.");
+      toast.error(t("authFlow.checkEmail.missingEmail"));
       return;
     }
 
     setResending(true);
     try {
       await resendSignupConfirmation(email);
-      toast.success("Email envoyé");
+      toast.success(t("authFlow.checkEmail.sent"));
     } catch (error) {
       toast.error(toApiMessage(error));
     } finally {
@@ -40,7 +42,7 @@ export default function CheckEmailPage() {
     try {
       const session = await revalidateCurrentSession();
       if (!session) {
-        setStatusMessage("Aucune session confirmée n’a été détectée. Ouvre le lien complet reçu par email puis reviens ici.");
+        setStatusMessage(t("authFlow.checkEmail.noSession"));
         return;
       }
 
@@ -56,13 +58,13 @@ export default function CheckEmailPage() {
   return (
     <div className="flex min-h-full items-center justify-center p-6">
       <Card className="card-pad w-full max-w-lg">
-        <h1 className="text-2xl font-semibold">Email de confirmation envoye</h1>
+        <h1 className="text-2xl font-semibold">{t("authFlow.checkEmail.title")}</h1>
         <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          {email ? `Nous avons envoye un lien a ${email}.` : "Nous avons envoye un lien de confirmation."} Ouvre ton
-          mail puis clique sur le lien pour activer ton compte.
+          {email ? t("authFlow.checkEmail.introWithEmail", { email }) : t("authFlow.checkEmail.introWithoutEmail")}{" "}
+          {t("authFlow.checkEmail.openMail")}
         </p>
         <p className="mt-2 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-          Confirme ton email puis reviens ici pour terminer l’activation de ton espace.
+          {t("authFlow.checkEmail.subtitle")}
         </p>
         {statusMessage ? (
           <div className="mt-4 rounded-[22px] border border-[#dbe4f3] bg-[#f7fafe] p-4 text-sm text-[#36507a] dark:border-white/10 dark:bg-[#121826] dark:text-[#d4e4ff]">
@@ -74,16 +76,16 @@ export default function CheckEmailPage() {
             to="/login"
             className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#1954c9_0%,#2870ff_55%,#55a4ff_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(32,78,185,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(32,78,185,0.34)]"
           >
-            Retour connexion
+            {t("authFlow.checkEmail.back")}
           </Link>
           <Button variant="secondary" onClick={() => void handleConfirmed()} disabled={checking}>
             <CheckCircle2 size={16} />
-            {checking ? "Vérification..." : "J’ai confirmé mon email"}
+            {checking ? t("authFlow.checkEmail.checking") : t("authFlow.checkEmail.confirmed")}
           </Button>
           {email ? (
             <Button variant="secondary" onClick={() => void handleResend()} disabled={resending}>
               <MailCheck size={16} />
-              {resending ? "Envoi..." : "Renvoyer l’email"}
+              {resending ? t("authFlow.checkEmail.resending") : t("authFlow.checkEmail.resend")}
             </Button>
           ) : null}
         </div>

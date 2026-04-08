@@ -328,6 +328,19 @@ export type ModuleRegistryEntry<K extends ModuleKey> = {
   PreviewComponent: ComponentType<any>;
 };
 
+export type ModuleDefinitionEntry<K extends ModuleKey> = {
+  key: K;
+  order: number;
+  labels: { fr: string; en: string };
+  description: { fr: string; en: string };
+  defaultEnabled: boolean;
+  isMandatory?: boolean;
+  schema: ZodType<ModuleDataMap[K], ZodTypeDef, unknown>;
+  defaultData: ModuleDataMap[K];
+  settingsSchema?: ZodType<Record<string, unknown>, ZodTypeDef, unknown>;
+  defaultSettings?: Record<string, unknown>;
+};
+
 export type ModuleVisibilityRule = {
   source: "settings" | "values";
   path: string;

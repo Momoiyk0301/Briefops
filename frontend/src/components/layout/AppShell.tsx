@@ -1,5 +1,6 @@
 import { Bell, Boxes, CircleUser, Files, FileText, HelpCircle, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
@@ -44,6 +45,7 @@ function SidebarItem({ to, title, icon, end = false }: ItemProps) {
 }
 
 export function AppShell({ plan, demoData = false, children }: Props) {
+  const { t } = useTranslation();
   const iconButton =
     "relative flex h-11 w-full items-center rounded-2xl px-3 text-white/80 transition-all duration-300 hover:bg-white/12 hover:text-white";
 
@@ -53,7 +55,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
         <aside className="group/sidebar sticky top-0 z-30 hidden h-screen w-16 flex-col overflow-hidden rounded-r-[30px] bg-[linear-gradient(180deg,#112f61_0%,#1954c9_42%,#2f7cff_100%)] px-2 py-4 transition-all duration-300 hover:w-56 dark:bg-[#1A1A1A] lg:flex">
           <Link
             to="/briefings"
-            title="Aller au dashboard"
+            title={t("shell.dashboardLink")}
             className="mb-5 flex h-14 w-full items-center justify-center rounded-[22px] border border-white/35 bg-white/16 px-2 text-white shadow-[0_18px_40px_rgba(10,20,60,0.25)] backdrop-blur-xl transition-all duration-300 hover:bg-white/22 group-hover/sidebar:justify-start"
           >
             <BrandLogo compact size="md" className="shrink-0" />
@@ -63,22 +65,22 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           </Link>
           <div className="flex h-full flex-col justify-between">
             <nav className="space-y-3">
-              <SidebarItem to="/briefings" title="Briefings" icon={<FileText size={18} />} />
-              <SidebarItem to="/documents" title="Documents" icon={<Files size={18} />} />
-              <SidebarItem to="/modules" title="Modules" icon={<Boxes size={18} />} />
-              <SidebarItem to="/staff" title="Staff" icon={<Users size={18} />} />
-              <SidebarItem to="/account" title="Compte" icon={<CircleUser size={18} />} />
+              <SidebarItem to="/briefings" title={t("nav.briefings")} icon={<FileText size={18} />} />
+              <SidebarItem to="/documents" title={t("nav.documents")} icon={<Files size={18} />} />
+              <SidebarItem to="/modules" title={t("nav.modules")} icon={<Boxes size={18} />} />
+              <SidebarItem to="/staff" title={t("nav.staff")} icon={<Users size={18} />} />
+              <SidebarItem to="/account" title={t("nav.account")} icon={<CircleUser size={18} />} />
             </nav>
             <div className="space-y-2 pt-3">
-              <SidebarItem to="/notifications" title="Notifications" icon={<Bell size={18} />} />
-              <SidebarItem to="/settings" title="Settings" icon={<Settings size={18} />} end />
-              <SidebarItem to="/help" title="Aide" icon={<HelpCircle size={18} />} end />
-              <button type="button" title="Logout" onClick={() => void signOut()} className={iconButton}>
+              <SidebarItem to="/notifications" title={t("nav.notifications")} icon={<Bell size={18} />} />
+              <SidebarItem to="/settings" title={t("nav.settings")} icon={<Settings size={18} />} end />
+              <SidebarItem to="/help" title={t("nav.help")} icon={<HelpCircle size={18} />} end />
+              <button type="button" title={t("shell.logout")} onClick={() => void signOut()} className={iconButton}>
                 <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
                   <LogOut size={18} />
                 </span>
                 <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
-                  Logout
+                  {t("shell.logout")}
                 </span>
               </button>
             </div>
@@ -98,7 +100,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <FileText size={16} />
-            Briefings
+            {t("nav.briefings")}
           </NavLink>
           <NavLink
             to="/documents"
@@ -107,7 +109,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <Files size={16} />
-            Documents
+            {t("nav.documents")}
           </NavLink>
           <NavLink
             to="/notifications"
@@ -116,7 +118,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <Bell size={16} />
-            Alerts
+            {t("shell.alertsShort")}
           </NavLink>
           <NavLink
             to="/settings"
@@ -125,7 +127,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <Settings size={16} />
-            Settings
+            {t("nav.settings")}
           </NavLink>
           <NavLink
             to="/account"
@@ -134,7 +136,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <CircleUser size={16} />
-            Compte
+            {t("nav.account")}
           </NavLink>
           <NavLink
             to="/help"
@@ -143,7 +145,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             }
           >
             <HelpCircle size={16} />
-            Aide
+            {t("nav.help")}
           </NavLink>
           <button
             type="button"
@@ -151,7 +153,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
             className="flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium text-[#6f748a] dark:text-[#a8afc6]"
           >
             <LogOut size={16} />
-            Exit
+            {t("shell.exit")}
           </button>
         </div>
       </nav>

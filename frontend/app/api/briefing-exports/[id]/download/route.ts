@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { buildBriefingPdfFilename } from "@/lib/pdfFilename";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { getBriefingExportById } from "@/supabase/queries/briefingExports";
@@ -9,14 +10,6 @@ import { getBriefingExportById } from "@/supabase/queries/briefingExports";
 export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
-
-function slugifyFilename(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "briefing";
-}
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -46,7 +39,11 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const briefing = Array.isArray(exportRow.briefings) ? exportRow.briefings[0] : exportRow.briefings;
-    const filename = `${slugifyFilename(briefing?.title ?? "briefing")}-v${exportRow.version}.pdf`;
+    const filename = buildBriefingPdfFilename({
+      title: briefing?.title ?? "briefing",
+      eventDate: briefing?.event_date ?? null,
+      version: exportRow.version
+    });
     return new NextResponse(data, {
       status: 200,
       headers: {
