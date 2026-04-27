@@ -27,9 +27,17 @@ export async function GET(request: Request) {
   } catch (error) {
     ctx.captureException("failed to list briefings", error, {
       origin: "server",
-      step: "list-briefings"
+      step: "list-briefings",
+      area: "supabase",
+      action: "read",
+      errorCode: "BRIEFING_LOAD_FAILED"
     });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "supabase",
+      action: "read",
+      errorCode: "BRIEFING_LOAD_FAILED",
+      route: "GET /api/briefings"
+    });
   }
 }
 
@@ -41,13 +49,13 @@ export async function POST(request: Request) {
     const body = createSchema.parse(await request.json());
     const workspaceId = await getUserWorkspaceId(client, userId);
     if (!workspaceId || workspaceId !== body.workspace_id) {
-      throw new HttpError(403, "Forbidden");
+      throw new HttpError(403, "Forbidden", "SUPABASE_RLS_DENIED");
     }
     const plan = await getUserPlan(client, userId);
     const workspace = await getWorkspaceById(client, workspaceId);
     const quota = checkQuota({ ...workspace, plan }, "create_briefing");
     if (!quota.allowed) {
-      throw new HttpError(402, quota.message ?? "Briefing limit reached for this plan.");
+      throw new HttpError(402, quota.message ?? "Briefing limit reached for this plan.", "BRIEFING_CREATE_FAILED");
     }
     const briefing = await createBriefing(client, userId, body);
     const service = createServiceRoleClient();
@@ -63,8 +71,16 @@ export async function POST(request: Request) {
   } catch (error) {
     ctx.captureException("failed to create briefing", error, {
       origin: "server",
-      step: "create-briefing"
+      step: "create-briefing",
+      area: "supabase",
+      action: "create",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_CREATE_FAILED"
     });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "supabase",
+      action: "create",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_CREATE_FAILED",
+      route: "POST /api/briefings"
+    });
   }
 }

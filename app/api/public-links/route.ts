@@ -40,6 +40,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: withBriefing });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "public_share",
+      action: "read",
+      errorCode: "PUBLIC_SHARE_LOAD_FAILED",
+      route: "GET /api/public-links"
+    });
   }
 }

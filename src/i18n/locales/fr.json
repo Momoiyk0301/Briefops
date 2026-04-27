@@ -6,6 +6,43 @@
     "downloadPdf": "Télécharger PDF",
     "soon": "Bientôt disponible"
   },
+  "actions": {
+    "REPORT_ISSUE": "Signaler un souci"
+  },
+  "success": {
+    "SUPPORT_SENT": "Merci, votre signalement a bien été envoyé."
+  },
+  "errors": {
+    "AUTH_LOGIN_FAILED": "Impossible de vous connecter. Vérifiez vos identifiants puis réessayez.",
+    "AUTH_SIGNUP_FAILED": "Impossible de créer le compte. Réessayez plus tard.",
+    "AUTH_EMAIL_NOT_CONFIRMED": "Votre email n’est pas encore confirmé. Vérifiez votre boîte mail.",
+    "AUTH_RESET_PASSWORD_FAILED": "Impossible de réinitialiser le mot de passe. Réessayez plus tard.",
+    "BRIEFING_CREATE_FAILED": "Impossible de créer le briefing. Réessayez dans quelques instants.",
+    "BRIEFING_UPDATE_FAILED": "Impossible d’enregistrer le briefing. Réessayez dans quelques instants.",
+    "BRIEFING_DELETE_FAILED": "Impossible de supprimer le briefing. Réessayez plus tard.",
+    "BRIEFING_LOAD_FAILED": "Impossible de charger le briefing. Réessayez plus tard.",
+    "BRIEFING_MODULE_SAVE_FAILED": "Impossible d’enregistrer le module. Réessayez plus tard.",
+    "SUPABASE_QUERY_FAILED": "Impossible de charger les données. Réessayez plus tard.",
+    "SUPABASE_RLS_DENIED": "Vous n’avez pas accès à cette ressource.",
+    "SUPABASE_NOT_FOUND": "Ressource introuvable.",
+    "SUPABASE_STORAGE_UPLOAD_FAILED": "Impossible d’envoyer le fichier. Réessayez plus tard.",
+    "STRIPE_CHECKOUT_FAILED": "Impossible d’ouvrir le paiement. Réessayez plus tard.",
+    "STRIPE_PORTAL_FAILED": "Impossible d’ouvrir le portail de facturation. Réessayez plus tard.",
+    "STRIPE_WEBHOOK_SIGNATURE_FAILED": "Impossible de vérifier l’événement Stripe.",
+    "STRIPE_WEBHOOK_FAILED": "Impossible de traiter l’événement Stripe.",
+    "STRIPE_SUBSCRIPTION_SYNC_FAILED": "Impossible de synchroniser l’abonnement.",
+    "PDF_EXPORT_FAILED": "Impossible de générer le PDF. Réessayez plus tard.",
+    "PDF_RENDER_FAILED": "Impossible de préparer le PDF. Réessayez plus tard.",
+    "PDF_BROWSER_FAILED": "Impossible de lancer le moteur PDF. Réessayez plus tard.",
+    "PDF_STORAGE_UPLOAD_FAILED": "Impossible d’enregistrer le PDF. Réessayez plus tard.",
+    "PDF_EXPORT_DB_FAILED": "Impossible d’enregistrer l’export PDF. Réessayez plus tard.",
+    "PDF_EXPORT_TIMEOUT": "La génération du PDF a pris trop de temps. Réessayez plus tard.",
+    "EMAIL_SEND_FAILED": "Impossible d’envoyer l’email. Réessayez plus tard.",
+    "SUPPORT_REQUEST_FAILED": "Impossible d’envoyer votre demande. Réessayez plus tard.",
+    "PUBLIC_SHARE_LOAD_FAILED": "Impossible de charger le lien partagé.",
+    "PUBLIC_LINK_CREATE_FAILED": "Impossible de créer le lien de partage.",
+    "UNKNOWN_ERROR": "Une erreur est survenue. Réessayez plus tard."
+  },
   "auth": {
     "login": "Se connecter",
     "register": "Créer un compte",
@@ -65,7 +102,36 @@
     "title": "Bienvenue",
     "orgName": "Nom de l'organisation",
     "submit": "Continuer",
-    "fallback": "L'endpoint onboarding n'est pas encore disponible."
+    "fallback": "L'endpoint onboarding n'est pas encore disponible.",
+    "steps": {
+      "workspace": "Étape 1/5",
+      "products": "Étape 2/5",
+      "demo": "Étape 3/5"
+    },
+    "workspace": {
+      "title": "Crée ton workspace",
+      "subtitle": "Commence avec les informations clés de ton équipe.",
+      "name": "Nom du workspace",
+      "country": "Pays",
+      "teamSize": "Taille d'équipe (optionnel)",
+      "vatNumber": "Numéro de TVA (optionnel)",
+      "saving": "Enregistrement...",
+      "continue": "Continuer"
+    },
+    "products": {
+      "title": "Choisis ton plan",
+      "subtitle": "Sélectionne une offre puis continue vers Stripe Checkout.",
+      "loading": "Chargement des offres...",
+      "custom": "Sur mesure",
+      "contact": "Nous contacter",
+      "subscribe": "S'abonner",
+      "redirecting": "Redirection...",
+      "back": "Retour"
+    },
+    "messages": {
+      "workspaceCreated": "Workspace créé",
+      "workspaceRequired": "Crée d'abord ton workspace"
+    }
   },
   "documents": {
     "kicker": "Exports & Share",
@@ -171,7 +237,14 @@
     "preferencesHint": "Format heure, fuseau et format date pour l'affichage.",
     "hourFormat": "Format heure",
     "timezone": "Fuseau",
-    "dateFormat": "Format date"
+    "dateFormat": "Format date",
+    "kicker": "Préférences",
+    "subtitle": "Réglages utiles du workspace et de l’interface pour le MVP.",
+    "workspace": "Workspace",
+    "interface": "Interface",
+    "notifications": "Notifications",
+    "operationalEmails": "Emails opérationnels",
+    "weeklyDigest": "Digest hebdo"
   },
   "help": {
     "kicker": "Support",
@@ -195,7 +268,8 @@
       "email": "L’email est requis.",
       "message": "Le message est requis."
     },
-    "submit": "Envoyer"
+    "submit": "Envoyer",
+    "submitting": "Envoi en cours..."
   },
   "authFlow": {
     "confirmed": {

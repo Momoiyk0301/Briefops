@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { getSession } from "@/lib/auth";
+import { AppErrorCode, isAppErrorCode } from "@/lib/errorCodes";
+import { getErrorMessage } from "@/lib/errorMessages";
 import {
   Briefing,
   BriefingModuleRow,
@@ -22,6 +24,7 @@ export class ApiClientError extends Error {
   method: string;
   path: string;
   requestId: string | null;
+  errorCode: AppErrorCode;
   safeDetails: Record<string, unknown> | null;
 
   constructor(input: {
@@ -30,6 +33,7 @@ export class ApiClientError extends Error {
     method: string;
     path: string;
     requestId?: string | null;
+    errorCode?: AppErrorCode;
     safeDetails?: Record<string, unknown> | null;
   }) {
     super(input.message);
@@ -38,6 +42,7 @@ export class ApiClientError extends Error {
     this.method = input.method;
     this.path = input.path;
     this.requestId = input.requestId ?? null;
+    this.errorCode = input.errorCode ?? "UNKNOWN_ERROR";
     this.safeDetails = input.safeDetails ?? null;
   }
 }
@@ -82,6 +87,7 @@ function captureClientApiError(error: ApiClientError) {
     scope.setTag("api_method", error.method);
     scope.setTag("api_path", error.path);
     scope.setTag("api_status", String(error.status));
+    scope.setTag("errorCode", error.errorCode);
     if (error.requestId) {
       scope.setTag("request_id", error.requestId);
     }
@@ -90,6 +96,7 @@ function captureClientApiError(error: ApiClientError) {
       path: error.path,
       status: error.status,
       request_id: error.requestId,
+      errorCode: error.errorCode,
       ...error.safeDetails
     });
     Sentry.captureException(error);
@@ -102,6 +109,7 @@ function toApiClientError(input: {
   method: string;
   path: string;
   requestId?: string | null;
+  errorCode?: AppErrorCode;
   safeDetails?: Record<string, unknown> | null;
 }) {
   const error = new ApiClientError(input);
@@ -115,9 +123,10 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   if (!token) {
     throw toApiClientError({
       status: 401,
-      message: "Unauthorized",
+      message: "SUPABASE_RLS_DENIED",
       method: "AUTH",
-      path: "session"
+      path: "session",
+      errorCode: "SUPABASE_RLS_DENIED"
     });
   }
   return { Authorization: `Bearer ${token}` };
@@ -146,9 +155,10 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     logApiError(method, path, "NETWORK", message, startedAt);
     throw toApiClientError({
       status: 0,
-      message: `Failed to fetch backend (${message})`,
+      message: "UNKNOWN_ERROR",
       method,
       path,
+      errorCode: "UNKNOWN_ERROR",
       safeDetails: {
         origin: "client",
         step: "fetch"
@@ -167,15 +177,18 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    let message =
+    let rawError =
       typeof payload === "object" && payload !== null && "error" in payload
         ? String((payload as { error: string }).error)
         : `HTTP ${response.status}`;
+    const errorCode = isAppErrorCode(rawError) ? rawError : "UNKNOWN_ERROR";
+    let message = errorCode;
 
-    if (/<!doctype html>|<html/i.test(message)) {
-      message = "Backend error: HTML response received (check backend env and server logs)";
+    if (/<!doctype html>|<html/i.test(rawError)) {
+      rawError = "HTML response received";
+      message = "UNKNOWN_ERROR";
     }
-    logApiError(method, path, response.status, message, startedAt);
+    logApiError(method, path, response.status, rawError, startedAt);
     const responsePayload = typeof payload === "object" && payload !== null ? (payload as ApiResponseErrorPayload) : {};
     throw toApiClientError({
       status: response.status,
@@ -183,6 +196,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       method,
       path,
       requestId: responsePayload.request_id ?? null,
+      errorCode,
       safeDetails: {
         origin: "client",
         step: "response",
@@ -196,10 +210,14 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
 }
 
 export function toApiMessage(error: unknown): string {
-  if (typeof error === "object" && error !== null && "message" in error) {
-    return String((error as { message: string }).message);
+  if (error instanceof ApiClientError) {
+    return getErrorMessage(error.errorCode);
   }
-  return "Unexpected error";
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = String((error as { message: string }).message);
+    return isAppErrorCode(message) ? getErrorMessage(message) : getErrorMessage("UNKNOWN_ERROR");
+  }
+  return getErrorMessage("UNKNOWN_ERROR");
 }
 
 function getApiErrorStatus(error: unknown) {
@@ -432,9 +450,10 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
     logApiError("GET", path, "NETWORK", message, startedAt);
     throw toApiClientError({
       status: 0,
-      message: `Failed to fetch backend (${message})`,
+      message: "UNKNOWN_ERROR",
       method: "GET",
       path,
+      errorCode: "UNKNOWN_ERROR",
       safeDetails: {
         origin: "client",
         step: "download"
@@ -444,15 +463,19 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
 
   if (!response.ok) {
     const text = await response.text();
-    let message = `HTTP ${response.status}`;
+    let message = "UNKNOWN_ERROR";
+    let errorCode: AppErrorCode = "UNKNOWN_ERROR";
     let requestId: string | null = null;
     if (text) {
       try {
         const parsed = JSON.parse(text) as ApiResponseErrorPayload;
-        if (parsed.error) message = parsed.error;
+        if (parsed.error && isAppErrorCode(parsed.error)) {
+          errorCode = parsed.error;
+          message = parsed.error;
+        }
         requestId = parsed.request_id ?? null;
       } catch {
-        message = text;
+        message = "UNKNOWN_ERROR";
       }
     }
     logApiError("GET", path, response.status, message, startedAt);
@@ -462,6 +485,7 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
       method: "GET",
       path,
       requestId,
+      errorCode,
       safeDetails: {
         origin: "client",
         step: "download-response",
@@ -514,7 +538,8 @@ export async function uploadStorageFile(
 
   const payload = (await response.json()) as { bucket?: string; path?: string; error?: string; request_id?: string };
   if (!response.ok) {
-    const message = payload.error ?? `HTTP ${response.status}`;
+    const errorCode = isAppErrorCode(payload.error) ? payload.error : "UNKNOWN_ERROR";
+    const message = errorCode;
     logApiError("POST", path, response.status, message, startedAt);
     throw toApiClientError({
       status: response.status,
@@ -522,6 +547,7 @@ export async function uploadStorageFile(
       method: "POST",
       path,
       requestId: payload.request_id ?? null,
+      errorCode,
       safeDetails: { origin: "client", step: "upload", response_status: response.status }
     });
   }
@@ -614,15 +640,19 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
 
   if (!response.ok) {
     const text = await response.text();
-    let message = `HTTP ${response.status}`;
+    let message = "UNKNOWN_ERROR";
+    let errorCode: AppErrorCode = "UNKNOWN_ERROR";
     let requestId: string | null = null;
     if (text) {
       try {
         const parsed = JSON.parse(text) as ApiResponseErrorPayload;
-        if (parsed.error) message = parsed.error;
+        if (parsed.error && isAppErrorCode(parsed.error)) {
+          errorCode = parsed.error;
+          message = parsed.error;
+        }
         requestId = parsed.request_id ?? null;
       } catch {
-        message = text;
+        message = "UNKNOWN_ERROR";
       }
     }
     logApiError("GET", path, response.status, message, startedAt);
@@ -632,6 +662,7 @@ export async function downloadBriefingExport(exportId: string): Promise<{ blob: 
       method: "GET",
       path,
       requestId,
+      errorCode,
       safeDetails: { origin: "client", step: "download-export", response_status: response.status }
     });
   }

@@ -27,6 +27,9 @@ function renderPage(initialPath = "/help") {
 
 describe("HelpPage", () => {
   it("validates required fields and shows fake success after submit", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true
+    } as Response);
     apiMocks.getMe.mockResolvedValue({
       user: { id: "u1", email: "ops@briefops.app" },
       workspace: { id: "w1", name: "Peak Events" }
@@ -39,7 +42,7 @@ describe("HelpPage", () => {
 
     await user.type(screen.getByLabelText("help-message"), "Besoin d’aide sur le plan Enterprise.");
     await user.click(screen.getByRole("button", { name: /Envoyer/i }));
-    expect(await screen.findByText(/Message préparé/i)).toBeInTheDocument();
+    expect(await screen.findByText(/signalement a bien été envoyé/i)).toBeInTheDocument();
   });
 
   it("preselects enterprise subject from query string", async () => {

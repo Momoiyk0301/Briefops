@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, upsertBriefingModules } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errorMessages";
 import { getEnabledPageCount } from "@/lib/briefingPages";
 import { GridRect, ResizeHandle, tryMoveModuleRect, tryResizeModuleRect } from "@/lib/moduleLayout";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
@@ -391,7 +392,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       setSavedIndicator(new Date());
     } catch (error) {
       setSaveIndicator(lastSavedAt ? "timestamp" : "hidden");
-      toast.error(`${t("editor.saveError")}: ${toApiMessage(error)}`);
+      toast.error(getErrorMessage("BRIEFING_UPDATE_FAILED"));
     } finally {
       setSaving(false);
     }
@@ -474,8 +475,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       generated = true;
       toast.success(targetTeam ? t("editor.pdfReadyTeam", { team: targetTeam }) : t("editor.pdfReady"), { id: toastId });
     } catch (error) {
-      const msg = toApiMessage(error);
-      toast.error(msg.includes("limit") ? t("editor.pdfDenied") : `${t("editor.pdfFailed")} ${msg}`, { id: toastId });
+      toast.error(toApiMessage(error), { id: toastId });
       setPdfButtonState("idle");
     } finally {
       if (!generated) setPdfButtonState("idle");

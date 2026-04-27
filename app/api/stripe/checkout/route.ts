@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const priceId = body.stripe_price_id ?? (body.plan ? getStripePriceIdForPlan(body.plan) : null);
 
     if (!priceId) {
-      throw new HttpError(400, "Missing price identifier");
+      throw new HttpError(400, "Missing price identifier", "STRIPE_CHECKOUT_FAILED");
     }
 
     const { error: profileUpsertError } = await admin
@@ -56,11 +56,11 @@ export async function POST(request: Request) {
       .eq("id", userId)
       .maybeSingle();
     if (profileError) throw profileError;
-    if (!profile) throw new HttpError(500, "Profile not found after upsert");
+    if (!profile) throw new HttpError(500, "Profile not found after upsert", "STRIPE_CHECKOUT_FAILED");
 
     const currentPlan = profile?.plan ?? "free";
     if (requestedPlan && (planRank[requestedPlan] ?? 0) <= (planRank[currentPlan] ?? 0)) {
-      throw new HttpError(409, `Already on ${currentPlan} plan or higher`);
+      throw new HttpError(409, `Already on ${currentPlan} plan or higher`, "STRIPE_CHECKOUT_FAILED");
     }
 
     const { data: membership, error: membershipError } = await admin
@@ -109,13 +109,19 @@ export async function POST(request: Request) {
     });
 
     if (!session.url) {
-      throw new HttpError(500, "Missing checkout session URL");
+      throw new HttpError(500, "Missing checkout session URL", "STRIPE_CHECKOUT_FAILED");
     }
 
     ctx.info("created checkout session", { userId, sessionId: session.id });
     return NextResponse.json({ url: session.url });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "stripe",
+      action: "create",
+      errorCode: "STRIPE_CHECKOUT_FAILED",
+      severity: "high",
+      route: "POST /api/stripe/checkout"
+    });
   }
 }

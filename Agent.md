@@ -58,6 +58,16 @@ Deployment:
 
 Vercel
 
+Security and observability:
+
+Supabase RLS
+
+Stripe webhook signatures
+
+Sentry
+
+Vercel Analytics / Speed Insights
+
 📦 Architecture Rules
 
 Keep database schema simple.
@@ -69,6 +79,12 @@ One organization per user for MVP.
 Use server-side routes for sensitive operations (PDF generation, Stripe webhooks).
 
 Always implement RLS policies.
+
+Never expose private Supabase storage paths through signed URLs without checking ownership or workspace membership.
+
+Service role is allowed only inside server code and only after app-level authorization.
+
+Public sharing must use random tokens, expiration/revocation checks, and least-data public rendering.
 
 ⚙️ Coding Rules
 
@@ -88,6 +104,21 @@ Environment files rule:
 - Do not modify existing environment variables (values already defined).
 - Creating `.env` files is allowed.
 - Adding new environment variables is allowed.
+- Never commit real `.env` files or secret values.
+
+Security rules:
+- Validate all API input with Zod or an equivalent schema.
+- Keep Stripe webhook verification on raw request text.
+- Escape user-controlled HTML in emails.
+- Do not log secrets, bearer tokens, signatures, raw emails, passwords, Stripe IDs, or API keys.
+- Prefer short-lived signed URLs.
+- Add or update tests when changing auth, storage, billing, sharing, PDF, or RLS-adjacent logic.
+
+Validation before handoff:
+- Run focused tests for the changed surface.
+- Run `npm test` for broad changes.
+- Run `npm run build` before release/deploy changes.
+- Run `npm audit` during security work and document unresolved findings.
 
 🧩 How AI Should Work
 
@@ -109,5 +140,7 @@ don't delete SQL file
 
 ## Points d’attention
 - architecture hybride Next App Router + SPA React Router
-- duplication encore présente avec `backend/`
+- legacy archivé dans `archive/`; ne pas modifier sauf demande explicite
 - vocabulaire parfois mixte `org` / `workspace`
+- i18n app centralisée dans `src/i18n/locales` avec `fr`, `nl`, `en`
+- pages marketing SEO localisées dans `app/{fr,nl,en}/...` et contenu dans `src/i18n/marketing.ts`

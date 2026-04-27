@@ -5,9 +5,10 @@ import { AlertTriangle } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { captureClientError } from "@/lib/monitoring";
+import { AppErrorArea } from "@/lib/errorCodes";
 
 type BoundaryProps = {
-  area: string;
+  area: AppErrorArea;
   tokenPresent: boolean;
   children: ReactNode;
 };

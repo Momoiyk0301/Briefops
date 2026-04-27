@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (membershipError) throw membershipError;
     if (!membership?.workspace_id) {
-      throw new HttpError(409, "Aucun workspace actif trouve pour ce compte.");
+      throw new HttpError(409, "No active workspace for this account.", "STRIPE_PORTAL_FAILED");
     }
 
     const { data: workspace, error: workspaceError } = await client
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     if (workspaceError) throw workspaceError;
 
     if (!workspace?.stripe_customer_id) {
-      throw new HttpError(409, "Aucune facturation Stripe active pour ce compte. Choisis une offre pour commencer.");
+      throw new HttpError(409, "No active Stripe billing for this account.", "STRIPE_PORTAL_FAILED");
     }
 
     const session = await getStripe().billingPortal.sessions.create({
@@ -50,6 +50,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "stripe",
+      action: "read",
+      errorCode: "STRIPE_PORTAL_FAILED",
+      severity: "medium",
+      route: "POST /api/stripe/portal"
+    });
   }
 }

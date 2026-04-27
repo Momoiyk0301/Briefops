@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Button } from "@/components/ui/Button";
 import type { Product } from "@/lib/types";
 
@@ -15,14 +17,16 @@ function formatPrice(amount: number, currency: string, interval: string) {
 }
 
 export function ProductsStep({ products, isLoading, submittingProductId, onBack, onSelect }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-semibold">Choose your plan</h2>
-        <p className="mt-1 text-sm text-[#70758d]">Select a product and continue to Stripe checkout.</p>
+        <h2 className="text-2xl font-semibold">{t("onboarding.products.title")}</h2>
+        <p className="mt-1 text-sm text-[#70758d]">{t("onboarding.products.subtitle")}</p>
       </div>
 
-      {isLoading ? <p className="text-sm text-[#70758d]">Loading products...</p> : null}
+      {isLoading ? <p className="text-sm text-[#70758d]">{t("onboarding.products.loading")}</p> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         {products.map((product) => (
@@ -35,7 +39,7 @@ export function ProductsStep({ products, isLoading, submittingProductId, onBack,
             <p className="mt-1 text-sm text-[#70758d]">{product.description ?? "Built for event teams."}</p>
             <p className="mt-3 text-xl font-bold">
               {product.slug === "enterprise" || product.price_amount == null || !product.price_currency || !product.billing_interval
-                ? "Sur mesure"
+                ? t("onboarding.products.custom")
                 : formatPrice(product.price_amount, product.price_currency, product.billing_interval)}
             </p>
             <ul className="mt-3 space-y-1 text-sm text-[#3a3f56]">
@@ -48,7 +52,11 @@ export function ProductsStep({ products, isLoading, submittingProductId, onBack,
               disabled={Boolean(submittingProductId)}
               onClick={() => void onSelect(product)}
             >
-              {submittingProductId === product.id ? "Redirecting..." : product.slug === "enterprise" ? "Contact us" : "Subscribe"}
+              {submittingProductId === product.id
+                ? t("onboarding.products.redirecting")
+                : product.slug === "enterprise"
+                  ? t("onboarding.products.contact")
+                  : t("onboarding.products.subscribe")}
             </Button>
           </article>
           ) : null
@@ -56,7 +64,7 @@ export function ProductsStep({ products, isLoading, submittingProductId, onBack,
       </div>
 
       <Button type="button" variant="ghost" onClick={onBack}>
-        Back
+        {t("onboarding.products.back")}
       </Button>
     </div>
   );

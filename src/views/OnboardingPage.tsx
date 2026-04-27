@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
@@ -24,6 +25,7 @@ function normalizeStep(raw?: string | null): OnboardingStepKey {
 }
 
 export default function OnboardingPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
@@ -76,7 +78,7 @@ export default function OnboardingPage() {
     onSuccess: async () => {
       updateCachedOnboardingStep("products");
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      toast.success("Workspace created");
+      toast.success(t("onboarding.messages.workspaceCreated"));
       navigate("/onboarding?step=products");
     },
     onError: (error) => toast.error(toApiMessage(error))
@@ -130,7 +132,7 @@ export default function OnboardingPage() {
 
   const handleProductSelect = async (product: Product) => {
     if (!workspace?.id) {
-      toast.error("Create your workspace first");
+      toast.error(t("onboarding.messages.workspaceRequired"));
       return;
     }
 

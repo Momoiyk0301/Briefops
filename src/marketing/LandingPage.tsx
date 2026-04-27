@@ -196,6 +196,12 @@ export function LandingPage({ locale }: LandingPageProps) {
             <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={loginUrl}>
               {dictionary.footer.app}
             </a>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
+              {dictionary.seoPages.eventBriefingTemplate.navLabel}
+            </a>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.briefingGenerator.slug}`}>
+              {dictionary.seoPages.briefingGenerator.navLabel}
+            </a>
             <span className="text-[#cbd5e1]">·</span>
             <span className="text-xs text-[#8a97b0]">{dictionary.footer.language}:</span>
             {marketingLocales.map((entry) => (

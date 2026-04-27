@@ -33,13 +33,13 @@ export async function POST(request: Request, { params }: Params) {
     ]);
 
     if (!workspaceId || briefing.workspace_id !== workspaceId) {
-      throw new HttpError(403, "Forbidden");
+      throw new HttpError(403, "Forbidden", "SUPABASE_RLS_DENIED");
     }
 
     const service = createServiceRoleClient();
     const exportRow = await getBriefingExportById(service, normalizedExportId);
     if (!exportRow || exportRow.workspace_id !== workspaceId || exportRow.briefing_id !== briefingId) {
-      throw new HttpError(404, "Export not found");
+      throw new HttpError(404, "Export not found", "SUPABASE_NOT_FOUND");
     }
 
     if (exportRow.status === "ready") {
@@ -55,7 +55,7 @@ export async function POST(request: Request, { params }: Params) {
     const workspace = await getWorkspaceById(client, workspaceId);
     const quota = checkQuota({ ...workspace, plan }, "export_pdf");
     if (!quota.allowed) {
-      throw new HttpError(402, quota.message ?? `Monthly PDF export limit reached for ${plan} plan`);
+      throw new HttpError(402, quota.message ?? `Monthly PDF export limit reached for ${plan} plan`, "PDF_EXPORT_FAILED");
     }
 
     const { error: quotaUpdateError } = await service
@@ -67,7 +67,7 @@ export async function POST(request: Request, { params }: Params) {
       .eq("id", workspace.id);
 
     if (quotaUpdateError) {
-      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
+      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`, "PDF_EXPORT_DB_FAILED");
     }
 
     await updateBriefingExport(service, normalizedExportId, {
@@ -98,7 +98,7 @@ export async function POST(request: Request, { params }: Params) {
         });
 
       if (uploadError) {
-        throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
+        throw new HttpError(500, `Storage upload failed: ${uploadError.message}`, "PDF_STORAGE_UPLOAD_FAILED");
       }
 
       await updateBriefingExport(service, normalizedExportId, {
@@ -112,7 +112,7 @@ export async function POST(request: Request, { params }: Params) {
         .eq("id", briefing.id);
 
       if (persistError) {
-        throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`);
+        throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`, "PDF_EXPORT_DB_FAILED");
       }
 
       return NextResponse.json({
@@ -130,6 +130,12 @@ export async function POST(request: Request, { params }: Params) {
     }
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "pdf",
+      action: "export",
+      errorCode: error instanceof HttpError ? error.code : "PDF_EXPORT_FAILED",
+      severity: "high",
+      route: "POST /api/briefings/:id/export/:exportId/generate"
+    });
   }
 }

@@ -23,7 +23,7 @@ export default async function StaffBriefingPage({ params }: Props) {
     const sections = buildPublicBriefingSections(resolved.modules);
 
     return (
-      <PublicBriefingErrorBoundary area="public-briefing" tokenPresent={Boolean(token)}>
+      <PublicBriefingErrorBoundary area="public_share" tokenPresent={Boolean(token)}>
         <PublicBriefingView title={header.title} date={header.date} location={header.location} sections={sections} updatedAt={header.updatedAt} />
       </PublicBriefingErrorBoundary>
     );

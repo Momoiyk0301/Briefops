@@ -93,7 +93,7 @@ describe("BriefingsPage", () => {
     await user.click(await screen.findByRole("button", { name: /Partager le briefing/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Share briefing/i)).toBeInTheDocument();
+      expect(screen.getByText(/Share briefing|Partager le briefing/i)).toBeInTheDocument();
       expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith("demo-1");
     });
     expect(routerMocks.navigate).not.toHaveBeenCalledWith("/briefings/demo-1");
