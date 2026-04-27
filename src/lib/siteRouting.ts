@@ -106,6 +106,14 @@ export function resolveSiteRouting({
   }
 
   if (isAppHost(normalizedHost)) {
+    if (normalizedPathname === "/") {
+      return {
+        action: "redirect",
+        destination: buildAppUrl("/login"),
+        reason: "app-root-login"
+      };
+    }
+
     if (isLocalizedMarketingPath(normalizedPathname)) {
       return {
         action: "redirect",
@@ -139,4 +147,3 @@ export function resolveSiteRouting({
 
   return { action: "next" };
 }
-

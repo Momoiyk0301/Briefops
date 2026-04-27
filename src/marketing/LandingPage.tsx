@@ -12,10 +12,10 @@ export function LandingPage({ locale }: LandingPageProps) {
   const alternateLocale = locale === "fr" ? "nl" : "fr";
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
+    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
       <LocaleHtmlSync locale={locale} />
 
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 pb-10 pt-6 sm:px-8 lg:px-12">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-10 xl:px-12">
         <header className="flex flex-col gap-4 rounded-[30px] border border-white/70 bg-white/80 px-5 py-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2b65ff_0%,#55b4ff_100%)] text-lg font-semibold text-white shadow-[0_16px_32px_rgba(43,101,255,0.24)]">
@@ -27,7 +27,7 @@ export function LandingPage({ locale }: LandingPageProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 md:justify-end">
             <a
               className="rounded-full border border-[#d6def1] px-4 py-2 text-sm font-medium text-[#28436b] transition hover:border-[#b9c8e4] hover:bg-white"
               href={buildAppUrl("/login")}
@@ -57,7 +57,7 @@ export function LandingPage({ locale }: LandingPageProps) {
           </div>
         </header>
 
-        <section className="grid flex-1 gap-8 py-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-center">
+        <section className="grid flex-1 gap-8 py-8 lg:gap-10 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] xl:items-center xl:py-10">
           <div className="space-y-7">
             <div className="space-y-4">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#5870a8]">{dictionary.hero.kicker}</p>
@@ -84,7 +84,7 @@ export function LandingPage({ locale }: LandingPageProps) {
               </a>
             </div>
 
-            <ul className="grid gap-3 sm:grid-cols-3">
+            <ul className="grid gap-3 md:grid-cols-3">
               {dictionary.hero.bullets.map((bullet) => (
                 <li
                   key={bullet}
@@ -96,9 +96,9 @@ export function LandingPage({ locale }: LandingPageProps) {
             </ul>
           </div>
 
-          <div className="rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,#163a78_0%,#275ab5_45%,#5fb7ff_100%)] p-5 text-white shadow-[0_40px_120px_rgba(34,76,167,0.28)]">
-            <div className="rounded-[28px] border border-white/15 bg-white/10 p-5 backdrop-blur">
-              <div className="rounded-[24px] bg-white/95 p-5 text-[#10203a]">
+          <div className="w-full min-w-0 rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,#163a78_0%,#275ab5_45%,#5fb7ff_100%)] p-4 text-white shadow-[0_40px_120px_rgba(34,76,167,0.28)] sm:p-5">
+            <div className="rounded-[28px] border border-white/15 bg-white/10 p-4 backdrop-blur sm:p-5">
+              <div className="rounded-[24px] bg-white/95 p-4 text-[#10203a] sm:p-5">
                 <div className="rounded-[20px] bg-[linear-gradient(135deg,#66748f_0%,#44536f_100%)] px-5 py-5 text-white">
                   <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">Briefing</p>
                   <h2 className="mt-3 text-2xl font-semibold">Municipalia - Ethias</h2>
