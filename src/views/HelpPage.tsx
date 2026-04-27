@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
+import { getMe, toApiMessage } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { getMe } from "@/lib/api";
 
 export default function HelpPage() {
   const { t } = useTranslation();
@@ -30,21 +31,45 @@ export default function HelpPage() {
   const [subject, setSubject] = useState(defaultSubject);
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
 
   const effectiveName = name || meQuery.data?.workspace?.name || "";
   const effectiveEmail = email || meQuery.data?.user?.email || "";
   const isValid = Boolean(effectiveName.trim() && effectiveEmail.trim() && subject.trim() && message.trim());
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isValid) {
       setShowErrors(true);
       return;
     }
 
-    setSubmitted(true);
-    setShowErrors(false);
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: effectiveName,
+          email: effectiveEmail,
+          subject,
+          message
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { message?: string };
+        throw new Error(data.message ?? "Erreur lors de l'envoi");
+      }
+
+      setSubmitted(true);
+      setShowErrors(false);
+    } catch (error) {
+      toast.error(toApiMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -105,7 +130,9 @@ export default function HelpPage() {
           {showErrors && !message.trim() ? <p className="text-sm text-red-600">{t("help.errors.message")}</p> : null}
 
           <div className="flex justify-end">
-            <Button type="submit">{t("help.submit")}</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Envoi en cours..." : t("help.submit")}
+            </Button>
           </div>
         </form>
       </Card>

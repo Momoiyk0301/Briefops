@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { getPlanLimits } from "@/lib/quotas";
 import { getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { requireAuthContext } from "@/supabase/server";
 
@@ -41,9 +42,10 @@ export async function GET(request: Request) {
 
     const usage = await getCurrentMonthUsage(client, userId);
     const rawPlan = String(profile?.plan ?? "").toLowerCase();
-    const plan = rawPlan === "start" ? "starter" : rawPlan || null;
+    const plan = rawPlan || null;
     const used = Number(usage?.pdf_exports ?? 0);
-    const planLimit = plan === "free" ? 3 : plan === "starter" ? 100 : plan === "plus" ? 300 : null;
+    const pdfLimit = getPlanLimits(plan).pdf_month;
+    const planLimit = Number.isFinite(pdfLimit) ? pdfLimit : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
     const hasMembership = Boolean(membership?.workspace_id);
 

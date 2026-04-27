@@ -1,9 +1,11 @@
 const LIMITS = {
-  starter:    { briefings: 5,        pdf_month: 10,       storage: 20 * 1024 * 1024,       watermark: true  },
-  pro:        { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024, watermark: false },
-  guest:      { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024, watermark: false },
-  funder:     { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024, watermark: false },
-  enterprise: { briefings: Infinity, pdf_month: Infinity, storage: Infinity,               watermark: false },
+  free:       { briefings: 1,        pdf_month: 3,        storage: 5  * 1024 * 1024,        watermark: true  },
+  starter:    { briefings: 5,        pdf_month: 10,       storage: 20 * 1024 * 1024,        watermark: true  },
+  plus:       { briefings: 100,      pdf_month: 300,      storage: 500 * 1024 * 1024,       watermark: false },
+  pro:        { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024,  watermark: false },
+  guest:      { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024,  watermark: false },
+  funder:     { briefings: Infinity, pdf_month: Infinity, storage: 1 * 1024 * 1024 * 1024,  watermark: false },
+  enterprise: { briefings: Infinity, pdf_month: Infinity, storage: Infinity,                watermark: false },
 } as const;
 
 export type PlanKey = keyof typeof LIMITS;
@@ -36,6 +38,9 @@ export function normalizePlan(plan: string | null | undefined): PlanKey {
   if (value === "funder") return "funder";
   if (value === "enterprise") return "enterprise";
   if (value === "pro") return "pro";
+  if (value === "plus") return "plus";
+  if (value === "starter" || value === "start") return "starter";
+  if (value === "free" || value === "") return "free";
   return "starter";
 }
 

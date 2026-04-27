@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { createBriefing, deleteBriefing, getBriefingsWithFallback, getMe, toApiMessage } from "@/lib/api";
+import { getPlanLimits } from "@/lib/quotas";
 import { queryKeys } from "@/lib/queryKeys";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -60,7 +61,8 @@ export default function BriefingsPage() {
   const plan = meQuery.data?.plan ?? "free";
   const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
   const isCreateReady = !meQuery.isLoading && !meQuery.isFetching && !meQuery.data?.degraded && Boolean(workspaceId);
-  const briefingLimit = plan === "free" ? 1 : plan === "starter" ? 20 : plan === "plus" ? 100 : null;
+  const planBriefingsLimit = getPlanLimits(plan).briefings;
+  const briefingLimit = Number.isFinite(planBriefingsLimit) ? planBriefingsLimit : null;
   const remainingBriefings = briefingLimit === null ? null : Math.max(briefingLimit - briefings.length, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -300,7 +302,16 @@ export default function BriefingsPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-medium">{briefing.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{briefing.title}</p>
+                  {briefing.status === "ready" ? (
+                    <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200">Prêt</Badge>
+                  ) : briefing.status === "archived" ? (
+                    <Badge className="border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-500/20 dark:bg-slate-800/60 dark:text-slate-300">Archivé</Badge>
+                  ) : (
+                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-900/20 dark:text-orange-200">Brouillon</Badge>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500">{briefing.event_date ?? "—"} · {briefing.location_text ?? "—"}</p>
               </div>
               <div className="flex items-center gap-1">
