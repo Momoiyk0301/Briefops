@@ -24,6 +24,7 @@ export default function BriefingsPage() {
   const [search, setSearch] = useState("");
   const [briefingToDelete, setBriefingToDelete] = useState<{ id: string; title: string } | null>(null);
   const [shareBriefing, setShareBriefing] = useState<{ id: string; hasPdf: boolean } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"today" | "upcoming" | "past" | "undated" | null>(null);
 
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: getMe });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
@@ -51,12 +52,6 @@ export default function BriefingsPage() {
 
   const briefings = briefingsQuery.data?.data ?? [];
   const normalizedSearch = search.trim().toLowerCase();
-  const filteredBriefings = useMemo(() => {
-    if (!normalizedSearch) return briefings;
-    return briefings.filter((briefing) =>
-      [briefing.title, briefing.location_text ?? "", briefing.event_date ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
-    );
-  }, [briefings, normalizedSearch]);
   const isDemo = Boolean(briefingsQuery.data?.demo);
   const plan = meQuery.data?.plan ?? "free";
   const workspaceId = meQuery.data?.workspace?.id ?? meQuery.data?.org?.id ?? null;
@@ -72,6 +67,26 @@ export default function BriefingsPage() {
   const monthEnd = new Date(currentYear, currentMonth + 1, 0);
   const firstWeekday = (monthStart.getDay() + 6) % 7;
   const daysInMonth = monthEnd.getDate();
+
+  const searchFilteredBriefings = useMemo(() => {
+    if (!normalizedSearch) return briefings;
+    return briefings.filter((briefing) =>
+      [briefing.title, briefing.location_text ?? "", briefing.event_date ?? ""].join(" ").toLowerCase().includes(normalizedSearch)
+    );
+  }, [briefings, normalizedSearch]);
+
+  const filteredBriefings = useMemo(() => {
+    if (!statusFilter) return searchFilteredBriefings;
+    return searchFilteredBriefings.filter((briefing) => {
+      if (!briefing.event_date) return statusFilter === "undated";
+      const d = new Date(`${briefing.event_date}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return statusFilter === "undated";
+      if (statusFilter === "today") return d.getTime() === today.getTime();
+      if (statusFilter === "upcoming") return d.getTime() > today.getTime();
+      if (statusFilter === "past") return d.getTime() < today.getTime();
+      return false;
+    });
+  }, [searchFilteredBriefings, statusFilter, today]);
 
   const briefingsByDay = useMemo(() => {
     const map = new Map<number, typeof filteredBriefings>();
@@ -95,7 +110,7 @@ export default function BriefingsPage() {
     let pastCount = 0;
     let undatedCount = 0;
 
-    filteredBriefings.forEach((briefing) => {
+    searchFilteredBriefings.forEach((briefing) => {
       if (!briefing.event_date) {
         undatedCount += 1;
         return;
@@ -115,14 +130,14 @@ export default function BriefingsPage() {
     });
 
     return { todayCount, upcomingCount, pastCount, undatedCount };
-  }, [filteredBriefings, today]);
+  }, [searchFilteredBriefings, today]);
 
   const createdThisMonth = useMemo(() => {
-    return filteredBriefings.filter((briefing) => {
+    return searchFilteredBriefings.filter((briefing) => {
       const createdAt = new Date(briefing.created_at);
       return createdAt.getFullYear() === currentYear && createdAt.getMonth() === currentMonth;
     }).length;
-  }, [filteredBriefings, currentMonth, currentYear]);
+  }, [searchFilteredBriefings, currentMonth, currentYear]);
 
   const handleCreateBriefing = () => {
     if (!isCreateReady) {
@@ -190,24 +205,91 @@ export default function BriefingsPage() {
       </Card>
 
       <div className="cards-grid-3">
+        {/* ── Briefings par statut ── */}
         <Card>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings par statut</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Badge className="w-fit border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/20 dark:bg-blue-900/20 dark:text-blue-200">Aujourd'hui: {statusCounts.todayCount}</Badge>
-            <Badge className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:text-emerald-200">A venir: {statusCounts.upcomingCount}</Badge>
-            <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/20 dark:bg-orange-900/20 dark:text-orange-200">Passes: {statusCounts.pastCount}</Badge>
-            <Badge className="w-fit border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-500/20 dark:bg-slate-800/60 dark:text-slate-200">Sans date: {statusCounts.undatedCount}</Badge>
+          {statusFilter ? (
+            <button
+              type="button"
+              className="mt-2 text-xs font-medium text-brand-500 hover:underline"
+              onClick={() => setStatusFilter(null)}
+            >
+              × Effacer le filtre
+            </button>
+          ) : null}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {([
+              { key: "today",    label: "Aujourd'hui", count: statusCounts.todayCount,    numCls: "text-blue-600 dark:text-blue-300",    cardCls: "border-blue-200/70 bg-blue-50/80 hover:bg-blue-100/80 dark:border-blue-500/20 dark:bg-blue-900/20 dark:hover:bg-blue-900/30" },
+              { key: "upcoming", label: "À venir",     count: statusCounts.upcomingCount, numCls: "text-emerald-600 dark:text-emerald-300", cardCls: "border-emerald-200/70 bg-emerald-50/80 hover:bg-emerald-100/80 dark:border-emerald-500/20 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30" },
+              { key: "past",     label: "Passés",      count: statusCounts.pastCount,     numCls: "text-red-500 dark:text-red-300",      cardCls: "border-red-200/70 bg-red-50/80 hover:bg-red-100/80 dark:border-red-500/20 dark:bg-red-900/20 dark:hover:bg-red-900/30" },
+              { key: "undated",  label: "Sans date",   count: statusCounts.undatedCount,  numCls: "text-slate-500 dark:text-slate-300",  cardCls: "border-slate-200/70 bg-slate-50/80 hover:bg-slate-100/80 dark:border-slate-500/20 dark:bg-slate-800/40 dark:hover:bg-slate-800/60" },
+            ] as const).map(({ key, label, count, numCls, cardCls }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === key ? null : key)}
+                className={`rounded-2xl border px-4 py-3 text-left transition hover:scale-[1.02] hover:shadow-md ${cardCls} ${statusFilter === key ? "ring-2 ring-brand-500/40" : ""}`}
+              >
+                <p className={`text-3xl font-bold leading-none ${numCls}`}>{count}</p>
+                <p className="mt-1.5 text-xs font-medium text-[#6a778f] dark:text-[#9ba4be]">{label}</p>
+              </button>
+            ))}
           </div>
         </Card>
-        <Card>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings crees</p>
-          <p className="mt-2 text-3xl font-bold">{briefings.length}</p>
-          <Badge className="mt-3 w-fit">Ce mois: {createdThisMonth}</Badge>
+
+        {/* ── Briefings créés ── */}
+        <Card className="flex flex-col">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings créés</p>
+          <div className="mt-2 flex items-end gap-3">
+            <p className="text-4xl font-bold leading-none text-[#111827] dark:text-white">{briefings.length}</p>
+            <p className="mb-0.5 text-sm text-[#7b849d]">total</p>
+          </div>
+          <p className="mt-2 text-sm text-[#7b849d]">
+            Ce mois-ci&nbsp;: <span className="font-semibold text-[#374151] dark:text-[#d1d8f0]">{createdThisMonth}</span>
+          </p>
+          {briefingLimit !== null ? (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-[#7b849d]">
+                <span>{briefings.length} / {briefingLimit} utilisés</span>
+                <span>{remainingBriefings} restants</span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#eef0f8] dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-brand-500 transition-all"
+                  style={{ width: `${Math.min((briefings.length / briefingLimit) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-[#7b849d]">Illimité</p>
+          )}
+          <Button
+            className="mt-auto pt-4"
+            withArrow
+            onClick={handleCreateBriefing}
+            disabled={!isCreateReady || createMutation.isPending}
+          >
+            {createMutation.isPending ? t("app.loading") : "+ Créer un briefing"}
+          </Button>
         </Card>
+
+        {/* ── Plan ── */}
         <Card>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Briefings restants</p>
-          <p className="mt-2 text-3xl font-bold">{remainingBriefings === null ? "Illimite" : remainingBriefings}</p>
-          <Badge className="mt-3 w-fit">Plan: {plan}</Badge>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7b849d]">Plan actuel</p>
+          <p className="mt-2 text-4xl font-bold capitalize leading-none text-[#111827] dark:text-white">{plan}</p>
+          <p className="mt-2 text-sm text-[#7b849d]">
+            {briefingLimit === null
+              ? "Briefings illimités"
+              : `${briefingLimit} briefing${briefingLimit > 1 ? "s" : ""} max`}
+          </p>
+          <p className="mt-1 text-sm text-[#7b849d]">
+            PDF&nbsp;: {Number.isFinite(getPlanLimits(plan).pdf_month) ? `${getPlanLimits(plan).pdf_month}/mois` : "illimités"}
+          </p>
+          <div className="mt-4">
+            <Badge className="border-brand-200/60 bg-brand-50 text-brand-700 dark:border-brand-500/20 dark:bg-brand-900/20 dark:text-brand-200 capitalize">
+              {plan}
+            </Badge>
+          </div>
         </Card>
       </div>
 

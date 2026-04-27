@@ -5,14 +5,14 @@ import { getMarketingSiteUrl } from "@/lib/sites";
 import { LandingPage } from "@/marketing/LandingPage";
 
 export function generateMetadata(): Metadata {
-  const dictionary = getMarketingDictionary("fr");
+  const dictionary = getMarketingDictionary("en");
   const base = getMarketingSiteUrl();
 
   return {
     title: dictionary.meta.title,
     description: dictionary.meta.description,
     alternates: {
-      canonical: `${base}/fr`,
+      canonical: `${base}/en`,
       languages: {
         fr: `${base}/fr`,
         nl: `${base}/nl`,
@@ -22,6 +22,6 @@ export function generateMetadata(): Metadata {
   };
 }
 
-export default function FrenchMarketingPage() {
-  return <LandingPage locale="fr" />;
+export default function EnglishMarketingPage() {
+  return <LandingPage locale="en" />;
 }
