@@ -180,8 +180,8 @@ export function SharePanel({
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Share briefing</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Crew view first, then Team view and PDF export.</p>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Partager le briefing</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Lien équipe, puis lien par groupe et export PDF.</p>
           </div>
           <button type="button" aria-label="Fermer" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
             <X size={16} />
@@ -189,44 +189,44 @@ export function SharePanel({
         </div>
 
         <div className="space-y-4">
-          <SectionCard title="Crew view" description="This is the main mobile-friendly staff link.">
+          <SectionCard title="Lien équipe" description="Le lien principal optimisé mobile pour tout le staff.">
             <div className="space-y-3">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Link duration</p>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Durée du lien</p>
                 <select
                   aria-label="crew-duration"
                   className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
                   value={duration}
                   onChange={(event) => setDuration(event.target.value as ShareDuration)}
                 >
-                  <option value="24h">24 hours</option>
-                  <option value="3d">3 days</option>
-                  <option value="1w">1 week</option>
-                  <option value="30d">30 days</option>
-                  <option value="never">No expiration</option>
+                  <option value="24h">24 heures</option>
+                  <option value="3d">3 jours</option>
+                  <option value="1w">1 semaine</option>
+                  <option value="30d">30 jours</option>
+                  <option value="never">Sans expiration</option>
                 </select>
               </div>
               <Button className="w-full justify-start" onClick={() => void handleCreateCrew()} disabled={creatingCrew}>
                 <Users size={16} />
-                {creatingCrew ? "Generating..." : "Generate crew link"}
+                {creatingCrew ? "Génération..." : "Créer le lien équipe"}
               </Button>
 
               {latestCrewLink ? (
                 <div className="rounded-xl border border-[#dce3f1] bg-white p-3 dark:border-white/10 dark:bg-[#121212]">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Generated link</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lien généré</p>
                   <p className="mt-2 break-all text-sm text-slate-700 dark:text-slate-200">{latestCrewLink.url}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="secondary" className="h-9 px-3" onClick={() => void handleCopy(latestCrewLink.url)}>
                       <Copy size={14} />
-                      Copy
+                      Copier
                     </Button>
-                    <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(latestCrewLink.url, "Crew view")}>
+                    <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(latestCrewLink.url, "Lien équipe BriefOps")}>
                       <MessageCircle size={14} />
                       WhatsApp
                     </Button>
                     <Button variant="secondary" className="h-9 px-3" onClick={() => setShowCrewQr((value) => !value)}>
                       <QrCode size={14} />
-                      {showCrewQr ? "Hide QR" : "Show QR"}
+                      {showCrewQr ? "Masquer QR" : "Afficher QR"}
                     </Button>
                   </div>
                   {showCrewQr ? (
@@ -240,17 +240,17 @@ export function SharePanel({
           </SectionCard>
 
           {teams.length > 0 ? (
-            <SectionCard title="Team view" description="Generate a team-specific link when teams are enabled.">
+            <SectionCard title="Lien par groupe" description="Génère un lien filtré pour un groupe spécifique.">
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Team</p>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Groupe</p>
                   <select
                     aria-label="team-select"
                     className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
                     value={teamValue}
                     onChange={(event) => setTeamValue(event.target.value)}
                   >
-                    <option value="all">Choose a team</option>
+                    <option value="all">Choisir un groupe</option>
                     {teams.map((team) => (
                       <option key={team} value={team}>
                         {team}
@@ -261,25 +261,25 @@ export function SharePanel({
 
                 <Button variant="secondary" className="w-full justify-start" onClick={() => void handleCreateTeam()} disabled={creatingTeam}>
                   <QrCode size={16} />
-                  {creatingTeam ? "Generating..." : "Generate team link"}
+                  {creatingTeam ? "Génération..." : "Créer le lien groupe"}
                 </Button>
 
                 {latestTeamLink ? (
                   <div className="rounded-xl border border-[#dce3f1] bg-white p-3 dark:border-white/10 dark:bg-[#121212]">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Generated team link</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Lien groupe généré</p>
                     <p className="mt-2 break-all text-sm text-slate-700 dark:text-slate-200">{latestTeamLink.url}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button variant="secondary" className="h-9 px-3" onClick={() => void handleCopy(latestTeamLink.url)}>
                         <Copy size={14} />
-                        Copy
+                        Copier
                       </Button>
-                      <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(latestTeamLink.url, `${latestTeamLink.team ?? "Team"} team view`)}>
+                      <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(latestTeamLink.url, `Groupe ${latestTeamLink.team ?? "terrain"} — BriefOps`)}>
                         <MessageCircle size={14} />
                         WhatsApp
                       </Button>
                       <Button variant="secondary" className="h-9 px-3" onClick={() => setShowTeamQr((value) => !value)}>
                         <QrCode size={14} />
-                        {showTeamQr ? "Hide QR" : "Show QR"}
+                        {showTeamQr ? "Masquer QR" : "Afficher QR"}
                       </Button>
                     </div>
                     {showTeamQr ? (
@@ -293,18 +293,18 @@ export function SharePanel({
             </SectionCard>
           ) : null}
 
-          <SectionCard title="PDF export" description="Export the full briefing or a team-specific PDF.">
+          <SectionCard title="Export PDF" description="Exporte le briefing complet ou filtré par groupe.">
             <div className="space-y-3">
               {teams.length > 0 ? (
                 <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Team</p>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Groupe</p>
                   <select
                     aria-label="pdf-team-select"
                     className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-[#121212]"
                     value={pdfTeam}
                     onChange={(event) => setPdfTeam(event.target.value)}
                   >
-                    <option value="all">All teams</option>
+                    <option value="all">Tous les groupes</option>
                     {teams.map((team) => (
                       <option key={team} value={team}>
                         {team}
@@ -316,33 +316,33 @@ export function SharePanel({
 
               <Button variant="secondary" className="w-full justify-start" onClick={() => onExportPdf?.(pdfTeam === "all" ? null : pdfTeam)} disabled={!onExportPdf}>
                 <Link2 size={16} />
-                Export PDF
+                Exporter le PDF
               </Button>
             </div>
           </SectionCard>
         </div>
 
         <div className="mt-5 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active links</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Liens actifs</p>
           {loading ? <p className="text-sm text-slate-500">Chargement...</p> : null}
           {!loading && activeLinks.length === 0 ? <p className="text-sm text-slate-500">Aucun lien actif.</p> : null}
 
           {activeLinks.map((link) => (
             <div key={link.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#171717]">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                {link.link_type === "staff" ? "Crew view" : `${link.team ?? link.audience_tag ?? "Team"} team`}
+                {link.link_type === "staff" ? "Lien équipe" : `Groupe ${link.team ?? link.audience_tag ?? "terrain"}`}
               </p>
               <p className="mt-2 break-all text-sm text-slate-600 dark:text-slate-300">{link.url}</p>
               <p className="mt-2 text-xs text-slate-500">{formatExpiryLabel(link)}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="secondary" className="h-9 px-3" onClick={() => void handleCopy(link.url)}>
-                  Copy
+                  Copier
                 </Button>
-                <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(link.url, link.link_type === "staff" ? "Crew view" : `${link.team ?? "Team"} team`)}>
+                <Button variant="secondary" className="h-9 px-3" onClick={() => handleWhatsapp(link.url, link.link_type === "staff" ? "Lien équipe BriefOps" : `Groupe ${link.team ?? "terrain"} — BriefOps`)}>
                   WhatsApp
                 </Button>
                 <Button variant="secondary" className="h-9 px-3 text-red-600" onClick={() => void handleRevoke(link.id)}>
-                  Disable
+                  Désactiver
                 </Button>
               </div>
             </div>

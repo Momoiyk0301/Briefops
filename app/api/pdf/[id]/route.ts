@@ -14,6 +14,9 @@ import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 import { checkQuota, getPlanLimits } from "@/lib/quotas";
 import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 const idSchema = z.string().uuid();
 const formatSchema = z.enum(["binary", "json"]);
 const teamSchema = z.string().trim().min(1).max(64).optional();
@@ -92,18 +95,8 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const service = createServiceRoleClient();
-    const { error: quotaUpdateError } = await service
-      .from("workspaces")
-      .update({
-        pdf_exports_month: Number(quota.org.pdf_exports_month ?? workspace.pdf_exports_month ?? 0) + 1,
-        pdf_exports_reset_at: quota.org.pdf_exports_reset_at
-      })
-      .eq("id", workspace.id);
 
-    if (quotaUpdateError) {
-      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
-    }
-
+    // Generate PDF first — quota is only consumed after a successful upload
     const bytes = await renderBriefingPdf({
       id: briefing.id,
       title: briefing.title,
@@ -136,6 +129,19 @@ export async function GET(request: Request, { params }: Params) {
 
     if (uploadError) {
       throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
+    }
+
+    // Increment quota only after generation and upload both succeeded
+    const { error: quotaUpdateError } = await service
+      .from("workspaces")
+      .update({
+        pdf_exports_month: Number(quota.org.pdf_exports_month ?? workspace.pdf_exports_month ?? 0) + 1,
+        pdf_exports_reset_at: quota.org.pdf_exports_reset_at
+      })
+      .eq("id", workspace.id);
+
+    if (quotaUpdateError) {
+      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
     }
 
     const exportRow = await createBriefingExport(service, {

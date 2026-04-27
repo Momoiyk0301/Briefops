@@ -80,7 +80,7 @@ export default function BriefingDetailPage() {
   return (
     <div className="relative">
       <div className="mb-4 flex items-center justify-between">
-        <Button variant="secondary" onClick={() => navigate(-1)}>Retour</Button>
+        <Button variant="secondary" onClick={() => navigate("/briefings")}>Retour</Button>
         <div className="text-right">
           <p className="text-xs uppercase tracking-[0.18em] text-[#7b849d]">Briefing</p>
           <p className="text-sm font-medium text-[#111827] dark:text-white">
