@@ -22,7 +22,7 @@ type Params = { params: Promise<{ id: string }> };
 async function assertCanManagePublicLinks(briefingId: string, userId: string, client: SupabaseClient) {
   const { data: briefing, error: briefingError } = await client
     .from("briefings")
-    .select("org_id")
+    .select("workspace_id")
     .eq("id", briefingId)
     .single();
 
@@ -33,7 +33,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
   const { data: membership, error: membershipError } = await client
     .from("memberships")
     .select("role")
-    .eq("workspace_id", briefing.org_id)
+    .eq("workspace_id", briefing.workspace_id)
     .eq("user_id", userId)
     .in("role", ["owner", "admin"])
     .maybeSingle();
