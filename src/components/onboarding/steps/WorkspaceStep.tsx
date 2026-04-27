@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,6 +23,7 @@ type FormValues = {
 };
 
 export function WorkspaceStep({ isLoading, onSubmit, defaultWorkspaceName = "" }: Props) {
+  const { t } = useTranslation();
   const form = useForm<FormValues>({
     defaultValues: {
       workspace_name: defaultWorkspaceName,
@@ -43,17 +45,17 @@ export function WorkspaceStep({ isLoading, onSubmit, defaultWorkspaceName = "" }
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div>
-        <h2 className="text-2xl font-semibold">Create your workspace</h2>
-        <p className="mt-1 text-sm text-[#70758d]">Start with your core team details.</p>
+        <h2 className="text-2xl font-semibold">{t("onboarding.workspace.title")}</h2>
+        <p className="mt-1 text-sm text-[#70758d]">{t("onboarding.workspace.subtitle")}</p>
       </div>
 
-      <Input placeholder="Workspace name" {...form.register("workspace_name", { required: true, minLength: 2 })} />
-      <Input placeholder="Country" {...form.register("country", { required: true, minLength: 2 })} />
-      <Input placeholder="Team size (optional)" type="number" min={1} {...form.register("team_size")} />
-      <Input placeholder="VAT number (optional)" {...form.register("vat_number")} />
+      <Input placeholder={t("onboarding.workspace.name")} {...form.register("workspace_name", { required: true, minLength: 2 })} />
+      <Input placeholder={t("onboarding.workspace.country")} {...form.register("country", { required: true, minLength: 2 })} />
+      <Input placeholder={t("onboarding.workspace.teamSize")} type="number" min={1} {...form.register("team_size")} />
+      <Input placeholder={t("onboarding.workspace.vatNumber")} {...form.register("vat_number")} />
 
       <Button type="submit" withArrow disabled={isLoading}>
-        {isLoading ? "Saving..." : "Continue"}
+        {isLoading ? t("onboarding.workspace.saving") : t("onboarding.workspace.continue")}
       </Button>
     </form>
   );

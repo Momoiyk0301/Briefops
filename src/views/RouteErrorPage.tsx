@@ -12,12 +12,8 @@ export default function RouteErrorPage() {
 
   const message = (() => {
     if (isRouteErrorResponse(error)) {
-      if (error.data && typeof error.data === "object" && "error" in error.data) {
-        return String((error.data as { error?: string }).error ?? error.statusText);
-      }
-      return `${error.status} ${error.statusText}`;
+      return t("errors.UNKNOWN_ERROR");
     }
-    if (error instanceof Error) return error.message;
     return t("routeError.fallback");
   })();
 

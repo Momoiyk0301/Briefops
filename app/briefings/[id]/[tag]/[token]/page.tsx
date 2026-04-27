@@ -25,7 +25,7 @@ export default async function AudienceBriefingPage({ params }: Props) {
     const sections = buildPublicBriefingSections(resolved.modules, resolved.audienceTag);
 
     return (
-      <PublicBriefingErrorBoundary area="public-briefing" tokenPresent={Boolean(token)}>
+      <PublicBriefingErrorBoundary area="public_share" tokenPresent={Boolean(token)}>
         <PublicBriefingView
           title={header.title}
           date={header.date}

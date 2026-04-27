@@ -12,8 +12,8 @@ describe("marketing i18n", () => {
   });
 
   it("returns the proper dictionary copy for each locale", () => {
-    expect(getMarketingDictionary("fr").hero.primaryCta).toMatch(/BriefOPS/i);
+    expect(getMarketingDictionary("fr").hero.primaryCta).toBe("Essai gratuit");
     expect(getMarketingDictionary("nl").footer.app).toBe("Applicatie");
+    expect(getMarketingDictionary("en").seoPages.briefingGenerator.meta.title).toMatch(/Briefing generator/i);
   });
 });
-

@@ -27,23 +27,23 @@ export async function POST(request: Request) {
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
-      throw new HttpError(400, "Missing file");
+      throw new HttpError(400, "Missing file", "SUPABASE_STORAGE_UPLOAD_FAILED");
     }
     if ((bucket === "logos" || bucket === "avatars") && !isImageFile(file)) {
-      throw new HttpError(400, "Only image uploads are allowed for avatars and logos.");
+      throw new HttpError(400, "Only image uploads are allowed for avatars and logos.", "SUPABASE_STORAGE_UPLOAD_FAILED");
     }
     if ((bucket === "logos" || bucket === "avatars") && file.size > MAX_IMAGE_BYTES) {
-      throw new HttpError(400, "Image is too large. Maximum size is 2 MB.");
+      throw new HttpError(400, "Image is too large. Maximum size is 2 MB.", "SUPABASE_STORAGE_UPLOAD_FAILED");
     }
 
     const [plan, workspace] = await Promise.all([getUserPlan(client, userId), getWorkspaceForUser(client, userId)]);
     if (!workspace) {
-      throw new HttpError(404, "Workspace not found");
+      throw new HttpError(404, "Workspace not found", "SUPABASE_NOT_FOUND");
     }
 
     const quota = checkQuota({ ...workspace, plan }, "upload", file.size);
     if (!quota.allowed) {
-      throw new HttpError(402, quota.message ?? "Storage limit reached for this workspace.");
+      throw new HttpError(402, quota.message ?? "Storage limit reached for this workspace.", "SUPABASE_STORAGE_UPLOAD_FAILED");
     }
 
     const fileName = sanitizeFileName(file.name || "upload.bin");
@@ -67,13 +67,19 @@ export async function POST(request: Request) {
       .eq("id", workspace.id);
 
     if (workspaceUpdateError) {
-      throw new HttpError(500, `Failed to update workspace storage usage: ${workspaceUpdateError.message}`);
+      throw new HttpError(500, `Failed to update workspace storage usage: ${workspaceUpdateError.message}`, "SUPABASE_QUERY_FAILED");
     }
 
     ctx.info("uploaded file", { userId, bucket, path });
     return NextResponse.json({ bucket, path });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "storage",
+      action: "create",
+      errorCode: error instanceof HttpError ? error.code : "SUPABASE_STORAGE_UPLOAD_FAILED",
+      severity: "medium",
+      route: "POST /api/storage/upload"
+    });
   }
 }

@@ -120,7 +120,7 @@ describe("BriefingEditor", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
     await user.click(screen.getByRole("button", { name: /editor\.share|partager|share/i }));
-    expect(await screen.findByText(/Share briefing|Partager PDF/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Share briefing|Partager le briefing|Partager PDF/i)).toBeInTheDocument();
     expect(apiMocks.listBriefingShareLinks).toHaveBeenCalledWith(briefing.id);
   });
 

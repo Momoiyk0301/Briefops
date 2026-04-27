@@ -127,7 +127,7 @@ describe("OnboardingPage", () => {
       expect(apiMocks.getProducts).toHaveBeenCalled();
     });
 
-    await user.click(await screen.findByRole("button", { name: "Subscribe" }));
+    await user.click(await screen.findByRole("button", { name: "S'abonner" }));
 
     await waitFor(() => {
       expect(apiMocks.activateOnboardingPlan).toHaveBeenCalledWith("starter");
@@ -173,7 +173,7 @@ describe("OnboardingPage", () => {
       expect(apiMocks.getProducts).toHaveBeenCalled();
     });
 
-    await user.click(await screen.findByRole("button", { name: /Contact us/i }));
+    await user.click(await screen.findByRole("button", { name: /Nous contacter/i }));
     expect(routerMocks.navigate).toHaveBeenCalledWith("/help?subject=enterprise");
   });
 });

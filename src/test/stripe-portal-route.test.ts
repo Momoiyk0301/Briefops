@@ -109,6 +109,6 @@ describe("frontend /api/stripe/portal", () => {
     const body = await response.json();
 
     expect(response.status).toBe(409);
-    expect(body.error).toMatch(/facturation Stripe active/i);
+    expect(body.error).toBe("STRIPE_PORTAL_FAILED");
   });
 });

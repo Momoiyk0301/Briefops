@@ -27,7 +27,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
     .single();
 
   if (briefingError || !briefing) {
-    throw new HttpError(404, "Briefing not found");
+    throw new HttpError(404, "Briefing not found", "SUPABASE_NOT_FOUND");
   }
 
   const { data: membership, error: membershipError } = await client
@@ -39,7 +39,7 @@ async function assertCanManagePublicLinks(briefingId: string, userId: string, cl
     .maybeSingle();
 
   if (membershipError || !membership) {
-    throw new HttpError(403, "Forbidden");
+    throw new HttpError(403, "Forbidden", "SUPABASE_RLS_DENIED");
   }
 }
 
@@ -73,7 +73,7 @@ export async function GET(request: Request, { params }: Params) {
     const { client, userId } = await requireUser(request);
     const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "share:create", userId), 20, 60_000);
     if (!rateLimit.allowed) {
-      throw new HttpError(429, "Too many share link requests. Please wait a minute.");
+      throw new HttpError(429, "Too many share link requests. Please wait a minute.", "PUBLIC_SHARE_LOAD_FAILED");
     }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
@@ -94,7 +94,12 @@ export async function GET(request: Request, { params }: Params) {
     });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "public_share",
+      action: "read",
+      errorCode: error instanceof HttpError ? error.code : "PUBLIC_SHARE_LOAD_FAILED",
+      route: "GET /api/briefings/:id/share"
+    });
   }
 }
 
@@ -115,7 +120,7 @@ export async function POST(request: Request, { params }: Params) {
       .eq("id", briefingId)
       .maybeSingle();
     if (!briefing) {
-      throw new HttpError(404, "Briefing not found");
+      throw new HttpError(404, "Briefing not found", "SUPABASE_NOT_FOUND");
     }
 
     const normalizedTeam = normalizeTeamKey(body.team ?? null);
@@ -125,10 +130,10 @@ export async function POST(request: Request, { params }: Params) {
         .from("exports")
         .createSignedUrl(teamPdfPath, 60);
       if (teamPdfError) {
-        throw new HttpError(409, `Generate team PDF first (${normalizedTeam})`);
+        throw new HttpError(409, `Generate team PDF first (${normalizedTeam})`, "PUBLIC_LINK_CREATE_FAILED");
       }
     } else if (!briefing.pdf_path) {
-      throw new HttpError(409, "Generate a PDF before sharing");
+      throw new HttpError(409, "Generate a PDF before sharing", "PUBLIC_LINK_CREATE_FAILED");
     }
 
     const link = await createPublicLink(
@@ -155,7 +160,12 @@ export async function POST(request: Request, { params }: Params) {
     );
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "public_share",
+      action: "share",
+      errorCode: error instanceof HttpError ? error.code : "PUBLIC_LINK_CREATE_FAILED",
+      route: "POST /api/briefings/:id/share"
+    });
   }
 }
 
@@ -172,12 +182,17 @@ export async function DELETE(request: Request, { params }: Params) {
     const admin = createServiceRoleClient();
     const revoked = await revokePublicLink(admin, body.link_id, userId);
     if (!revoked || revoked.briefing_id !== briefingId) {
-      throw new HttpError(404, "Share link not found");
+      throw new HttpError(404, "Share link not found", "SUPABASE_NOT_FOUND");
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "public_share",
+      action: "delete",
+      errorCode: error instanceof HttpError ? error.code : "PUBLIC_LINK_CREATE_FAILED",
+      route: "DELETE /api/briefings/:id/share"
+    });
   }
 }

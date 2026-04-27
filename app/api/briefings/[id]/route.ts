@@ -23,7 +23,7 @@ async function assertBriefingAccess(client: Awaited<ReturnType<typeof requireUse
     getUserWorkspaceId(client, userId)
   ]);
   if (!workspaceId || briefing.workspace_id !== workspaceId) {
-    throw new HttpError(403, "Forbidden");
+    throw new HttpError(403, "Forbidden", "SUPABASE_RLS_DENIED");
   }
   return briefing;
 }
@@ -41,9 +41,17 @@ export async function GET(request: Request, { params }: Params) {
   } catch (error) {
     ctx.captureException("failed to fetch briefing", error, {
       origin: "server",
-      step: "get-briefing"
+      step: "get-briefing",
+      area: "supabase",
+      action: "read",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_LOAD_FAILED"
     });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "supabase",
+      action: "read",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_LOAD_FAILED",
+      route: "GET /api/briefings/:id"
+    });
   }
 }
 
@@ -62,9 +70,17 @@ export async function PATCH(request: Request, { params }: Params) {
   } catch (error) {
     ctx.captureException("failed to update briefing", error, {
       origin: "server",
-      step: "patch-briefing"
+      step: "patch-briefing",
+      area: "supabase",
+      action: "update",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_UPDATE_FAILED"
     });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "supabase",
+      action: "update",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_UPDATE_FAILED",
+      route: "PATCH /api/briefings/:id"
+    });
   }
 }
 
@@ -82,8 +98,16 @@ export async function DELETE(request: Request, { params }: Params) {
   } catch (error) {
     ctx.captureException("failed to delete briefing", error, {
       origin: "server",
-      step: "delete-briefing"
+      step: "delete-briefing",
+      area: "supabase",
+      action: "delete",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_DELETE_FAILED"
     });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "supabase",
+      action: "delete",
+      errorCode: error instanceof HttpError ? error.code : "BRIEFING_DELETE_FAILED",
+      route: "DELETE /api/briefings/:id"
+    });
   }
 }

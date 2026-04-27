@@ -61,7 +61,7 @@ export async function GET(request: Request, { params }: Params) {
     const { client, userId } = await requireUser(request);
     const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "pdf", userId), 12, 60_000);
     if (!rateLimit.allowed) {
-      throw new HttpError(429, "Too many PDF generations. Please wait a minute.");
+      throw new HttpError(429, "Too many PDF generations. Please wait a minute.", "PDF_EXPORT_FAILED");
     }
     const { id } = await params;
     const briefingId = idSchema.parse(id);
@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: Params) {
       getUserWorkspaceId(client, userId)
     ]);
     if (!workspaceId || briefing.workspace_id !== workspaceId) {
-      throw new HttpError(403, "Forbidden");
+      throw new HttpError(403, "Forbidden", "SUPABASE_RLS_DENIED");
     }
     const modules = await listModules(client, briefingId);
 
@@ -128,7 +128,7 @@ export async function GET(request: Request, { params }: Params) {
       });
 
     if (uploadError) {
-      throw new HttpError(500, `Storage upload failed: ${uploadError.message}`);
+      throw new HttpError(500, `Storage upload failed: ${uploadError.message}`, "PDF_STORAGE_UPLOAD_FAILED");
     }
 
     // Increment quota only after generation and upload both succeeded
@@ -141,7 +141,7 @@ export async function GET(request: Request, { params }: Params) {
       .eq("id", workspace.id);
 
     if (quotaUpdateError) {
-      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`);
+      throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`, "PDF_EXPORT_DB_FAILED");
     }
 
     const exportRow = await createBriefingExport(service, {
@@ -159,7 +159,7 @@ export async function GET(request: Request, { params }: Params) {
         .eq("id", briefing.id);
 
       if (persistError) {
-        throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`);
+        throw new HttpError(500, `Failed to persist pdf_path: ${persistError.message}`, "PDF_EXPORT_DB_FAILED");
       }
     }
 
@@ -168,7 +168,7 @@ export async function GET(request: Request, { params }: Params) {
       .createSignedUrl(storagePath, 3600);
 
     if (signedError) {
-      throw new HttpError(500, `Signed URL failed: ${signedError.message}`);
+      throw new HttpError(500, `Signed URL failed: ${signedError.message}`, "PDF_EXPORT_FAILED");
     }
 
     ctx.info("generated and uploaded pdf", { userId, briefingId, storagePath });
@@ -196,6 +196,12 @@ export async function GET(request: Request, { params }: Params) {
     });
   } catch (error) {
     ctx.error("failed", { error: error instanceof Error ? error.message : String(error) });
-    return toErrorResponse(error, ctx.requestId);
+    return toErrorResponse(error, ctx.requestId, {
+      area: "pdf",
+      action: "export",
+      errorCode: error instanceof HttpError ? error.code : "PDF_EXPORT_FAILED",
+      severity: "high",
+      route: "GET /api/pdf/:id"
+    });
   }
 }

@@ -4,7 +4,8 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { getMe, toApiMessage } from "@/lib/api";
+import { getMe } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errorMessages";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -54,22 +55,34 @@ export default function HelpPage() {
           name: effectiveName,
           email: effectiveEmail,
           subject,
-          message
+          message,
+          context: {
+            userId: meQuery.data?.user?.id ?? null,
+            workspaceId: meQuery.data?.workspace?.id ?? null,
+            currentUrl: window.location.href,
+            userAgent: window.navigator.userAgent,
+            timestamp: new Date().toISOString(),
+            appVersion: "0.1.0"
+          }
         })
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({})) as { message?: string };
-        throw new Error(data.message ?? "Erreur lors de l'envoi");
+        throw new Error("SUPPORT_REQUEST_FAILED");
       }
 
       setSubmitted(true);
       setShowErrors(false);
     } catch (error) {
-      toast.error(toApiMessage(error));
+      toast.error(getErrorMessage(error instanceof Error ? error.message : "SUPPORT_REQUEST_FAILED"));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleReportIssue = () => {
+    setSubject(t("help.subjects.bug"));
+    setSubmitted(false);
   };
 
   return (
@@ -78,12 +91,17 @@ export default function HelpPage() {
         <p className="section-kicker">{t("help.kicker")}</p>
         <h1 className="section-title mt-2">{t("help.title")}</h1>
         <p className="section-copy mt-2">{t("help.subtitle")}</p>
+        <div className="mt-5">
+          <Button type="button" onClick={handleReportIssue}>
+            {t("actions.REPORT_ISSUE")}
+          </Button>
+        </div>
       </Card>
 
       <Card className="card-pad">
         {submitted ? (
           <div className="rounded-[24px] border border-[#d8e8dd] bg-[#f4fbf6] p-4 text-sm text-[#256146] dark:border-[#28543d] dark:bg-[#102419] dark:text-[#92d3a9]">
-            {t("help.success")}
+            {t("success.SUPPORT_SENT")}
           </div>
         ) : null}
 
@@ -131,7 +149,7 @@ export default function HelpPage() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Envoi en cours..." : t("help.submit")}
+              {submitting ? t("help.submitting") : t("help.submit")}
             </Button>
           </div>
         </form>

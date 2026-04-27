@@ -6,6 +6,43 @@
     "downloadPdf": "Download PDF",
     "soon": "Coming soon"
   },
+  "actions": {
+    "REPORT_ISSUE": "Report an issue"
+  },
+  "success": {
+    "SUPPORT_SENT": "Thanks, your report has been sent."
+  },
+  "errors": {
+    "AUTH_LOGIN_FAILED": "We could not sign you in. Check your credentials and try again.",
+    "AUTH_SIGNUP_FAILED": "We could not create your account. Try again later.",
+    "AUTH_EMAIL_NOT_CONFIRMED": "Your email is not confirmed yet. Check your inbox.",
+    "AUTH_RESET_PASSWORD_FAILED": "We could not reset your password. Try again later.",
+    "BRIEFING_CREATE_FAILED": "We could not create the briefing. Try again in a moment.",
+    "BRIEFING_UPDATE_FAILED": "We could not save the briefing. Try again in a moment.",
+    "BRIEFING_DELETE_FAILED": "We could not delete the briefing. Try again later.",
+    "BRIEFING_LOAD_FAILED": "We could not load the briefing. Try again later.",
+    "BRIEFING_MODULE_SAVE_FAILED": "We could not save the module. Try again later.",
+    "SUPABASE_QUERY_FAILED": "We could not load the data. Try again later.",
+    "SUPABASE_RLS_DENIED": "You do not have access to this resource.",
+    "SUPABASE_NOT_FOUND": "Resource not found.",
+    "SUPABASE_STORAGE_UPLOAD_FAILED": "We could not upload the file. Try again later.",
+    "STRIPE_CHECKOUT_FAILED": "We could not open payment. Try again later.",
+    "STRIPE_PORTAL_FAILED": "We could not open the billing portal. Try again later.",
+    "STRIPE_WEBHOOK_SIGNATURE_FAILED": "We could not verify the Stripe event.",
+    "STRIPE_WEBHOOK_FAILED": "We could not process the Stripe event.",
+    "STRIPE_SUBSCRIPTION_SYNC_FAILED": "We could not sync the subscription.",
+    "PDF_EXPORT_FAILED": "We could not generate the PDF. Try again later.",
+    "PDF_RENDER_FAILED": "We could not prepare the PDF. Try again later.",
+    "PDF_BROWSER_FAILED": "We could not start the PDF engine. Try again later.",
+    "PDF_STORAGE_UPLOAD_FAILED": "We could not save the PDF. Try again later.",
+    "PDF_EXPORT_DB_FAILED": "We could not save the PDF export. Try again later.",
+    "PDF_EXPORT_TIMEOUT": "PDF generation took too long. Try again later.",
+    "EMAIL_SEND_FAILED": "We could not send the email. Try again later.",
+    "SUPPORT_REQUEST_FAILED": "We could not send your request. Try again later.",
+    "PUBLIC_SHARE_LOAD_FAILED": "We could not load the shared link.",
+    "PUBLIC_LINK_CREATE_FAILED": "We could not create the share link.",
+    "UNKNOWN_ERROR": "Something went wrong. Try again later."
+  },
   "auth": {
     "login": "Sign in",
     "register": "Create account",
@@ -65,7 +102,36 @@
     "title": "Welcome",
     "orgName": "Organization name",
     "submit": "Continue",
-    "fallback": "Onboarding endpoint is not available yet."
+    "fallback": "Onboarding endpoint is not available yet.",
+    "steps": {
+      "workspace": "Step 1/5",
+      "products": "Step 2/5",
+      "demo": "Step 3/5"
+    },
+    "workspace": {
+      "title": "Create your workspace",
+      "subtitle": "Start with your core team details.",
+      "name": "Workspace name",
+      "country": "Country",
+      "teamSize": "Team size (optional)",
+      "vatNumber": "VAT number (optional)",
+      "saving": "Saving...",
+      "continue": "Continue"
+    },
+    "products": {
+      "title": "Choose your plan",
+      "subtitle": "Select a product and continue to Stripe Checkout.",
+      "loading": "Loading products...",
+      "custom": "Custom",
+      "contact": "Contact us",
+      "subscribe": "Subscribe",
+      "redirecting": "Redirecting...",
+      "back": "Back"
+    },
+    "messages": {
+      "workspaceCreated": "Workspace created",
+      "workspaceRequired": "Create your workspace first"
+    }
   },
   "documents": {
     "kicker": "Exports & Share",
@@ -171,7 +237,14 @@
     "preferencesHint": "Time format, timezone and date format for display.",
     "hourFormat": "Time format",
     "timezone": "Timezone",
-    "dateFormat": "Date format"
+    "dateFormat": "Date format",
+    "kicker": "Preferences",
+    "subtitle": "Useful workspace and interface settings for the MVP.",
+    "workspace": "Workspace",
+    "interface": "Interface",
+    "notifications": "Notifications",
+    "operationalEmails": "Operational emails",
+    "weeklyDigest": "Weekly digest"
   },
   "help": {
     "kicker": "Support",
@@ -195,7 +268,8 @@
       "email": "Email is required.",
       "message": "Message is required."
     },
-    "submit": "Send"
+    "submit": "Send",
+    "submitting": "Sending..."
   },
   "authFlow": {
     "confirmed": {

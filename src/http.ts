@@ -3,15 +3,35 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 
+import { AppErrorArea, AppErrorCode, AppErrorSeverity, inferErrorCode } from "@/lib/errorCodes";
 import { logEvent } from "@/lib/logger";
 
 export class HttpError extends Error {
   status: number;
+  code: AppErrorCode;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: AppErrorCode) {
     super(message);
     this.status = status;
+    this.code = code ?? inferHttpErrorCode(status, message);
   }
+}
+
+type ErrorResponseOptions = {
+  area?: AppErrorArea;
+  action?: string;
+  errorCode?: AppErrorCode;
+  severity?: AppErrorSeverity;
+  route?: string;
+  locale?: string;
+  [key: string]: unknown;
+};
+
+function inferHttpErrorCode(status: number, message: string): AppErrorCode {
+  if (status === 401 || status === 403) return "SUPABASE_RLS_DENIED";
+  if (status === 404) return "SUPABASE_NOT_FOUND";
+  if (/storage|bucket|upload/i.test(message)) return "SUPABASE_STORAGE_UPLOAD_FAILED";
+  return "UNKNOWN_ERROR";
 }
 
 export function createRequestContext(route: string, _request?: Request) {
@@ -30,13 +50,22 @@ export function createRequestContext(route: string, _request?: Request) {
     info: (message: string, extra?: Record<string, unknown>) => log("info", message, extra),
     warn: (message: string, extra?: Record<string, unknown>) => log("warn", message, extra),
     error: (message: string, extra?: Record<string, unknown>) => log("error", message, extra),
-    captureException: (message: string, error: unknown, extra?: Record<string, unknown>) => {
+    captureException: (message: string, error: unknown, extra?: ErrorResponseOptions) => {
       const details = describeError(error);
+      const errorCode = extra?.errorCode ?? inferErrorCode(error);
+      const severity = extra?.severity ?? "medium";
       log("error", message, { ...extra, ...details });
       const normalized = error instanceof Error ? error : new Error(details.message ? String(details.message) : "Unknown error");
       Sentry.captureException(normalized, {
-        tags: { area: "api", route },
-        extra: { requestId, ...extra, ...details }
+        tags: {
+          area: extra?.area ?? "api",
+          action: extra?.action,
+          errorCode,
+          severity,
+          route,
+          locale: extra?.locale
+        },
+        extra: { requestId, ...extra, errorCode, severity, ...details }
       });
     }
   };
@@ -100,42 +129,49 @@ function sanitizeUnknownErrorObject(error: object): Record<string, unknown> {
   );
 }
 
-export function toErrorResponse(error: unknown, requestId: string) {
+export function toErrorResponse(error: unknown, requestId: string, options: ErrorResponseOptions = {}) {
   let status = 500;
-  let message = "Internal server error";
   let details: unknown = undefined;
+  let errorCode: AppErrorCode = options.errorCode ?? inferErrorCode(error);
 
   if (error instanceof HttpError) {
     status = error.status;
-    message = error.message;
+    errorCode = options.errorCode ?? error.code;
   } else if (error instanceof z.ZodError) {
     status = 400;
-    message = "Validation failed";
+    errorCode = options.errorCode ?? "UNKNOWN_ERROR";
     details = error.flatten();
   } else if (error instanceof Error && error.message === "Unauthorized") {
     status = 401;
-    message = "Unauthorized";
-  } else if (error instanceof Error) {
-    message = error.message;
-  } else if (typeof error === "object" && error !== null && "message" in error) {
-    message = String((error as { message?: unknown }).message ?? "Internal server error");
+    errorCode = options.errorCode ?? "SUPABASE_RLS_DENIED";
   }
 
   logEvent("error", "[api] response error", {
     requestId,
     status,
+    errorCode,
+    ...options,
     ...describeError(error)
   });
 
+  const shouldCapture = status >= 500 || options.severity === "critical" || options.severity === "high";
   if (status >= 500) {
-    const normalized = error instanceof Error ? error : new Error(message);
+    const normalized = error instanceof Error ? error : new Error(errorCode);
     Sentry.captureException(normalized, {
-      tags: { area: "api", status: String(status) },
-      extra: { requestId, ...describeError(error) }
+      tags: {
+        area: options.area ?? "api",
+        action: options.action,
+        errorCode,
+        severity: options.severity ?? (shouldCapture ? "high" : "medium"),
+        route: options.route,
+        status: String(status),
+        locale: options.locale
+      },
+      extra: { requestId, ...options, errorCode, ...describeError(error) }
     });
   }
 
-  const body: Record<string, unknown> = { error: message, request_id: requestId };
+  const body: Record<string, unknown> = { error: errorCode, request_id: requestId };
   if (details !== undefined) {
     body.details = details;
   }

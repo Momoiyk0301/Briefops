@@ -43,9 +43,9 @@ describe("SharePanel", () => {
   it("renders the 3 share sections and hides team view when no teams exist", async () => {
     render(<SharePanel open briefingId="b1" onClose={vi.fn()} onExportPdf={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "Crew view" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "PDF export" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Team view" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Lien équipe" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Export PDF" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Lien par groupe" })).not.toBeInTheDocument();
   });
 
   it("renders the team section and QR behavior when teams are enabled", async () => {
@@ -68,10 +68,10 @@ describe("SharePanel", () => {
 
     render(<SharePanel open briefingId="b1" teams={["Audio"]} selectedTeam="Audio" onClose={vi.fn()} onExportPdf={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "Team view" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Generate team link/i }));
+    expect(await screen.findByRole("heading", { name: "Lien par groupe" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Créer le lien groupe/i }));
     await waitFor(() => expect(apiMocks.createBriefingShareLink).toHaveBeenCalled());
-    await user.click(screen.getAllByRole("button", { name: /Show QR/i })[1]);
+    await user.click(screen.getAllByRole("button", { name: /Afficher QR/i })[1]);
 
     expect(screen.getByTestId("team-qr-code")).toBeInTheDocument();
   });
@@ -80,7 +80,7 @@ describe("SharePanel", () => {
     const user = userEvent.setup();
     render(<SharePanel open briefingId="b1" onClose={vi.fn()} onExportPdf={vi.fn()} />);
 
-    expect(await screen.findByText(/Active links/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Liens actifs/i)).toBeInTheDocument();
     expect(screen.getAllByText("https://briefops.app/s/crew").length).toBeGreaterThan(0);
     await user.click(screen.getAllByRole("button", { name: /WhatsApp/i })[0]);
 

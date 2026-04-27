@@ -1,0 +1,465 @@
+{
+  "app": {
+    "name": "BriefOps",
+    "save": "Opslaan",
+    "loading": "Laden...",
+    "downloadPdf": "PDF downloaden",
+    "soon": "Binnenkort beschikbaar"
+  },
+  "actions": {
+    "REPORT_ISSUE": "Probleem melden"
+  },
+  "success": {
+    "SUPPORT_SENT": "Bedankt, je melding is verzonden."
+  },
+  "errors": {
+    "AUTH_LOGIN_FAILED": "Aanmelden is niet gelukt. Controleer je gegevens en probeer opnieuw.",
+    "AUTH_SIGNUP_FAILED": "Account aanmaken is niet gelukt. Probeer later opnieuw.",
+    "AUTH_EMAIL_NOT_CONFIRMED": "Je e-mail is nog niet bevestigd. Controleer je inbox.",
+    "AUTH_RESET_PASSWORD_FAILED": "Wachtwoord herstellen is niet gelukt. Probeer later opnieuw.",
+    "BRIEFING_CREATE_FAILED": "Briefing aanmaken is niet gelukt. Probeer zo opnieuw.",
+    "BRIEFING_UPDATE_FAILED": "Briefing opslaan is niet gelukt. Probeer zo opnieuw.",
+    "BRIEFING_DELETE_FAILED": "Briefing verwijderen is niet gelukt. Probeer later opnieuw.",
+    "BRIEFING_LOAD_FAILED": "Briefing laden is niet gelukt. Probeer later opnieuw.",
+    "BRIEFING_MODULE_SAVE_FAILED": "Module opslaan is niet gelukt. Probeer later opnieuw.",
+    "SUPABASE_QUERY_FAILED": "Gegevens laden is niet gelukt. Probeer later opnieuw.",
+    "SUPABASE_RLS_DENIED": "Je hebt geen toegang tot deze resource.",
+    "SUPABASE_NOT_FOUND": "Resource niet gevonden.",
+    "SUPABASE_STORAGE_UPLOAD_FAILED": "Bestand uploaden is niet gelukt. Probeer later opnieuw.",
+    "STRIPE_CHECKOUT_FAILED": "Betaling openen is niet gelukt. Probeer later opnieuw.",
+    "STRIPE_PORTAL_FAILED": "Facturatieportaal openen is niet gelukt. Probeer later opnieuw.",
+    "STRIPE_WEBHOOK_SIGNATURE_FAILED": "Stripe-event verifieren is niet gelukt.",
+    "STRIPE_WEBHOOK_FAILED": "Stripe-event verwerken is niet gelukt.",
+    "STRIPE_SUBSCRIPTION_SYNC_FAILED": "Abonnement synchroniseren is niet gelukt.",
+    "PDF_EXPORT_FAILED": "PDF genereren is niet gelukt. Probeer later opnieuw.",
+    "PDF_RENDER_FAILED": "PDF voorbereiden is niet gelukt. Probeer later opnieuw.",
+    "PDF_BROWSER_FAILED": "PDF-engine starten is niet gelukt. Probeer later opnieuw.",
+    "PDF_STORAGE_UPLOAD_FAILED": "PDF opslaan is niet gelukt. Probeer later opnieuw.",
+    "PDF_EXPORT_DB_FAILED": "PDF-export opslaan is niet gelukt. Probeer later opnieuw.",
+    "PDF_EXPORT_TIMEOUT": "PDF-generatie duurde te lang. Probeer later opnieuw.",
+    "EMAIL_SEND_FAILED": "E-mail verzenden is niet gelukt. Probeer later opnieuw.",
+    "SUPPORT_REQUEST_FAILED": "Je aanvraag verzenden is niet gelukt. Probeer later opnieuw.",
+    "PUBLIC_SHARE_LOAD_FAILED": "Gedeelde link laden is niet gelukt.",
+    "PUBLIC_LINK_CREATE_FAILED": "Deellink aanmaken is niet gelukt.",
+    "UNKNOWN_ERROR": "Er is iets misgegaan. Probeer later opnieuw."
+  },
+  "auth": {
+    "login": "Inloggen",
+    "register": "Account aanmaken",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "submitLogin": "Inloggen",
+    "submitRegister": "Account aanmaken",
+    "continueRegister": "Doorgaan",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "offersRedirect": "Account gevonden. Kies een plan om de activatie af te ronden.",
+    "accountMissing": "Account niet gevonden. Maak een account aan om verder te gaan.",
+    "userNotFound": "Gebruiker niet gevonden.",
+    "invalidPassword": "Onjuist wachtwoord.",
+    "emailNotConfirmed": "E-mail niet bevestigd. Controleer je inbox voordat je inlogt.",
+    "logout": "Uitloggen"
+  },
+  "nav": {
+    "briefings": "Briefings",
+    "documents": "Documenten",
+    "modules": "Modules",
+    "staff": "Staff",
+    "account": "Account",
+    "billing": "Facturatie",
+    "notifications": "Meldingen",
+    "settings": "Instellingen",
+    "help": "Help",
+    "onboarding": "Onboarding",
+    "plan": "Plan"
+  },
+  "briefings": {
+    "pageCurrent": "Actieve pagina"
+  },
+  "shell": {
+    "dashboardLink": "Naar dashboard",
+    "logout": "Uitloggen",
+    "alertsShort": "Alerts",
+    "exit": "Afsluiten",
+    "demoData": "Demodata",
+    "workspaceLabel": "Workspace",
+    "userLabel": "Gebruiker",
+    "userFallback": "Gebruiker",
+    "planLabel": "Plan {{plan}}"
+  },
+  "navbar": {
+    "pageTitles": {
+      "briefingDetail": "Briefingdetail"
+    },
+    "searchLabel": "Zoeken",
+    "searchPlaceholder": "Zoeken...",
+    "notificationsPreview": "Overzicht",
+    "viewAll": "Alles bekijken",
+    "emptyNotifications": "Geen alerts.",
+    "dismissNotification": "Melding verwijderen",
+    "dashboard": "Dashboard"
+  },
+  "onboarding": {
+    "title": "Welkom",
+    "orgName": "Organisatienaam",
+    "submit": "Doorgaan",
+    "fallback": "Het onboarding-endpoint is nog niet beschikbaar.",
+    "steps": {
+      "workspace": "Stap 1/5",
+      "products": "Stap 2/5",
+      "demo": "Stap 3/5"
+    },
+    "workspace": {
+      "title": "Maak je workspace aan",
+      "subtitle": "Begin met de kerngegevens van je team.",
+      "name": "Workspacenaam",
+      "country": "Land",
+      "teamSize": "Teamgrootte (optioneel)",
+      "vatNumber": "BTW-nummer (optioneel)",
+      "saving": "Opslaan...",
+      "continue": "Doorgaan"
+    },
+    "products": {
+      "title": "Kies je plan",
+      "subtitle": "Selecteer een product en ga verder naar Stripe Checkout.",
+      "loading": "Producten laden...",
+      "custom": "Op maat",
+      "contact": "Contacteer ons",
+      "subscribe": "Abonneren",
+      "redirecting": "Doorsturen...",
+      "back": "Terug"
+    },
+    "messages": {
+      "workspaceCreated": "Workspace aangemaakt",
+      "workspaceRequired": "Maak eerst je workspace aan"
+    }
+  },
+  "documents": {
+    "kicker": "Exports & delen",
+    "title": "Documenten",
+    "subtitle": "Vind snel gegenereerde PDF's en actieve publieke links voor terreinploegen.",
+    "pdfTab": "PDF's",
+    "linksTab": "Links",
+    "pdfSearchPlaceholder": "Zoek een PDF of briefing",
+    "linkSearchPlaceholder": "Zoek een gedeelde link",
+    "pdfCount": "{{count}} PDF(s)",
+    "linkCount": "{{count}} link(s)",
+    "loadingPdfs": "PDF's laden...",
+    "loadingLinks": "Links laden...",
+    "emptyPdfTitle": "Nog geen PDF",
+    "emptyPdfHint": "Genereer een export vanuit een briefing om die hier terug te vinden.",
+    "emptyLinkTitle": "Nog geen gedeelde link",
+    "emptyLinkHint": "Maak een publieke link vanuit een gegenereerde PDF om die hier terug te vinden.",
+    "copySuccess": "Link gekopieerd",
+    "copyError": "Kopieren lukt niet",
+    "noExpiry": "Geen vervaldatum",
+    "open": "Openen",
+    "copy": "Kopieren"
+  },
+  "modulesPage": {
+    "kicker": "Workspace-bouwstenen",
+    "title": "Modules",
+    "subtitle": "Activeer de bouwstenen die je teams nodig hebben en bereid de basis voor een toekomstige marketplace voor zonder de workflow zwaarder te maken.",
+    "searchPlaceholder": "Zoek een module",
+    "marketplace": "Marketplace",
+    "marketplaceSoon": "Marketplace binnenkort",
+    "active": "Actief",
+    "available": "Beschikbaar",
+    "soon": "Binnenkort",
+    "soonHint": "Extensies en templates komen eraan.",
+    "emptyTitle": "Geen module gevonden",
+    "emptyHint": "Probeer een ander trefwoord.",
+    "enabled": "Geactiveerd",
+    "disabled": "Gedeactiveerd",
+    "settingsDisclosure": "{{count}} instelling",
+    "settingsDisclosure_other": "{{count}} instellingen"
+  },
+  "notificationsPage": {
+    "kicker": "Operationele alerts",
+    "title": "Meldingen",
+    "subtitle": "Een helder overzicht van naderende events, met leesbare prioriteiten en alerts die je makkelijk kunt verwijderen.",
+    "searchPlaceholder": "Zoek een alert",
+    "empty": "Nog geen melding.",
+    "locationFallback": "Locatie niet ingesteld",
+    "priority": "Prioriteit {{level}}",
+    "priorityHigh": "hoog",
+    "priorityMedium": "gemiddeld",
+    "priorityLow": "laag",
+    "todayOrPast": "Vandaag / verleden",
+    "inDays": "Over {{count}} dag(en)",
+    "loading": "Meldingen laden..."
+  },
+  "routeError": {
+    "fallback": "Er is een onverwachte fout opgetreden.",
+    "eyebrow": "Applicatiefout",
+    "title": "Deze pagina kan niet worden weergegeven",
+    "route": "Route: {{path}}",
+    "back": "Terug",
+    "dashboard": "Naar dashboard",
+    "reload": "Herladen"
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Beheer teamleden die gekoppeld zijn aan de `staff`-tabel.",
+    "addTitle": "Lid toevoegen",
+    "selectBriefing": "Briefing kiezen",
+    "addButton": "Staff toevoegen",
+    "adding": "Toevoegen...",
+    "listTitle": "Stafflijst",
+    "empty": "Nog geen stafflid.",
+    "noPhone": "Geen telefoon",
+    "noEmail": "Geen e-mail",
+    "messages": {
+      "added": "Staff toegevoegd",
+      "required": "Briefing en naam zijn verplicht"
+    },
+    "placeholders": {
+      "fullName": "Volledige naam",
+      "role": "Rol",
+      "phone": "Telefoon",
+      "email": "E-mail",
+      "notes": "Notities"
+    }
+  },
+  "billing": {
+    "title": "Facturatie",
+    "freeLimit": "Free-plan: 3 PDF-exports per maand",
+    "upgrade": "Upgraden naar Pro"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "languageTitle": "Interfacetaal",
+    "languageHint": "Kies de taal die in de applicatie wordt gebruikt.",
+    "appearanceTitle": "Weergave",
+    "appearanceHint": "Stel lichte/donkere modus in vanuit de instellingen.",
+    "themeLight": "Licht",
+    "themeDark": "Donker",
+    "preferencesTitle": "Regionale voorkeuren",
+    "preferencesHint": "Tijdformaat, tijdzone en datumformaat voor de weergave.",
+    "hourFormat": "Tijdformaat",
+    "timezone": "Tijdzone",
+    "dateFormat": "Datumformaat",
+    "kicker": "Voorkeuren",
+    "subtitle": "Nuttige workspace- en interface-instellingen voor de MVP.",
+    "workspace": "Workspace",
+    "interface": "Interface",
+    "notifications": "Meldingen",
+    "operationalEmails": "Operationele e-mails",
+    "weeklyDigest": "Wekelijkse digest"
+  },
+  "help": {
+    "kicker": "Support",
+    "title": "Help",
+    "subtitle": "Stel een vraag, meld een bug of stuur een enterprise-aanvraag. Het formulier bevestigt visueel de verzending voor deze MVP.",
+    "success": "Bericht voorbereid. We komen snel bij je terug.",
+    "subjectLabel": "Onderwerp",
+    "subjects": {
+      "general": "Algemene vraag",
+      "bug": "Bug",
+      "feature": "Feature-aanvraag",
+      "enterprise": "Enterprise-aanvraag"
+    },
+    "placeholders": {
+      "name": "Naam",
+      "email": "E-mail",
+      "message": "Bericht"
+    },
+    "errors": {
+      "name": "Naam is verplicht.",
+      "email": "E-mail is verplicht.",
+      "message": "Bericht is verplicht."
+    },
+    "submit": "Verzenden",
+    "submitting": "Verzenden..."
+  },
+  "authFlow": {
+    "confirmed": {
+      "title": "E-mail bevestigd",
+      "loading": "Sessie valideren...",
+      "ready": "Je e-mail is gevalideerd. Log in om de workspace af te ronden.",
+      "error": "De link is geopend, maar de sessie kon niet automatisch worden geactiveerd.",
+      "backToLogin": "Terug naar login",
+      "signIn": "Inloggen",
+      "finalizeError": "Inloggen kon niet worden afgerond"
+    },
+    "checkEmail": {
+      "title": "Bevestigingsmail verzonden",
+      "introWithEmail": "We hebben een link gestuurd naar {{email}}.",
+      "introWithoutEmail": "We hebben een bevestigingslink gestuurd.",
+      "openMail": "Open je e-mail en klik op de link om je account te activeren.",
+      "subtitle": "Bevestig je e-mail en kom daarna hier terug om je workspace te activeren.",
+      "back": "Terug naar login",
+      "checking": "Controleren...",
+      "confirmed": "Ik heb mijn e-mail bevestigd",
+      "resending": "Verzenden...",
+      "resend": "E-mail opnieuw verzenden",
+      "missingEmail": "E-mailadres ontbreekt.",
+      "sent": "E-mail verzonden",
+      "noSession": "Er is geen bevestigde sessie gevonden. Open de volledige link uit de e-mail en kom dan hier terug."
+    }
+  },
+  "resetPassword": {
+    "eyebrow": "Beveiliging",
+    "title": "Nieuw wachtwoord instellen",
+    "description": "Gebruik deze link eenmalig om een nieuw wachtwoord op te slaan en opnieuw toegang te krijgen.",
+    "backToLogin": "Terug naar login",
+    "requestNewLink": "Nieuwe link aanvragen",
+    "checking": "Herstellink controleren...",
+    "invalidLink": "De resetlink is ongeldig of verlopen. Vraag een nieuwe e-mail aan en probeer opnieuw.",
+    "noActiveLink": "Er is geen actieve herstellink op deze pagina gevonden. Ga terug naar de ontvangen e-mail en klik opnieuw op de volledige link.",
+    "activateError": "De herstelsessie kan momenteel niet worden geactiveerd.",
+    "success": "Je nieuwe wachtwoord is opgeslagen. Je wordt doorgestuurd naar de loginpagina...",
+    "helperText": "Kies een wachtwoord van minstens 8 tekens. Daarna kun je meteen opnieuw inloggen.",
+    "pendingLabel": "Opslaan...",
+    "submitLabel": "Nieuw wachtwoord opslaan",
+    "updatedToast": "Wachtwoord bijgewerkt."
+  },
+  "editor": {
+    "previewEyebrow": "Briefingpreview",
+    "untitled": "Naamloze briefing",
+    "canvasHint": "Drag-and-drop preview",
+    "sidebarEyebrow": "Bewerken",
+    "sidebarOptions": "Sidebaropties",
+    "contentCardEyebrow": "Inhoud",
+    "contentDetails": "Briefingdetails",
+    "modulesOverview": "Activeer en organiseer de modules die zichtbaar zijn in de briefing.",
+    "settingsCardEyebrow": "Module-instellingen",
+    "layoutSettings": "Plaatsing",
+    "tabs": {
+      "content": "Inhoud",
+      "modules": "Modules",
+      "settings": "Instellingen"
+    },
+    "page": "Pagina {{count}}",
+    "pageLabel": "Pagina",
+    "addPage": "Pagina toevoegen",
+    "moduleEdit": "Module bewerken",
+    "audienceTags": "Doelgroep",
+    "allTeams": "Alle teams",
+    "pdf": "PDF exporteren",
+    "loadingShort": "Laden",
+    "ready": "Klaar",
+    "share": "Delen",
+    "pdfAllModules": "Alle modules",
+    "pdfGenerating": "PDF genereren...",
+    "pdfGeneratingTeam": "PDF genereren voor {{team}}...",
+    "pdfReady": "PDF klaar",
+    "pdfReadyTeam": "PDF klaar voor {{team}}",
+    "pdfDenied": "PDF-export geweigerd.",
+    "saved": "Opgeslagen",
+    "saveError": "Opslaan mislukt",
+    "saving": "Opslaan...",
+    "savedShort": "Opgeslagen",
+    "savedAt": "Opgeslagen om {{time}}",
+    "pdfFailed": "PDF-generatie mislukt.",
+    "briefingLoading": "Briefing laden...",
+    "downloadReady": "Klaarstaande PDF downloaden",
+    "previewTools": "Preview",
+    "previewToolsHint": "Beheer de zichtbare hulplijnen in de layoutzone.",
+    "previewHandles": "Bewerkingsankers tonen",
+    "previewHandlesHint": "Toon of verberg verplaats- en resizepunten in de preview.",
+    "modules": {
+      "access": {
+        "fields": {
+          "address": "Adres",
+          "parking": "Parking",
+          "entrance": "Ingang",
+          "onSiteContact": "Contact ter plaatse"
+        }
+      },
+      "contact": {
+        "title": "Contact",
+        "addPerson": "Persoon toevoegen",
+        "fields": {
+          "name": "Naam",
+          "role": "Rol",
+          "phone": "Telefoon",
+          "email": "E-mail"
+        }
+      },
+      "equipment": {
+        "placeholder": "Eén item per regel"
+      },
+      "notes": {
+        "title": "Notities",
+        "placeholder": "Notities"
+      },
+      "staff": {
+        "addRole": "Rol toevoegen",
+        "fields": {
+          "role": "Rol",
+          "count": "Aantal",
+          "notes": "Notities"
+        }
+      },
+      "vehicle": {
+        "title": "Voertuig",
+        "addVehicle": "Voertuig toevoegen",
+        "fields": {
+          "type": "Type",
+          "plate": "Nummerplaat",
+          "pickupAddress": "Ophaaladres",
+          "pickupTime": "Ophaaltijd",
+          "returnAddress": "Retouradres",
+          "notes": "Notities"
+        },
+        "preview": {
+          "pickup": "Ophalen",
+          "return": "Retour"
+        }
+      }
+    },
+    "delivery": {
+      "addPoint": "Bestemmingspunt toevoegen",
+      "previewTitle": "Leveringsplanning",
+      "empty": "Nog geen bestemmingspunt ingevuld",
+      "pointLabel": "Stop {{count}}",
+      "destinationLabel": "Bestemmingspunt",
+      "tags": {
+        "depot": "Depot",
+        "return": "Retour",
+        "custom": "Aangepast"
+      },
+      "settings": {
+        "title": "Leveringsinstellingen",
+        "enableDepotTag": {
+          "label": "Depot-tag tonen",
+          "description": "Helpt depotpassen snel te herkennen."
+        },
+        "enableReturnTag": {
+          "label": "Retour-tag tonen",
+          "description": "Voegt de retour-optie toe aan de lijst met tags."
+        },
+        "allowCustomTag": {
+          "label": "Aangepaste tag toestaan",
+          "description": "Laat het team per punt een vrije tag invoeren."
+        }
+      },
+      "fields": {
+        "time": {
+          "label": "Tijd",
+          "placeholder": "Tijd"
+        },
+        "place": {
+          "label": "Bestemmingspunt",
+          "placeholder": "Bestemmingsadres of locatie"
+        },
+        "contact": {
+          "label": "Contact ter plaatse",
+          "placeholder": "Naam of nummer van contact ter plaatse"
+        },
+        "tag": {
+          "label": "Routetag",
+          "placeholder": "Kies een tag"
+        },
+        "customTag": {
+          "label": "Aangepaste tag",
+          "placeholder": "Voer een aangepaste tag in"
+        },
+        "notes": {
+          "label": "Instructies",
+          "placeholder": "Terreininstructies of opmerkingen"
+        }
+      }
+    }
+  }
+}
