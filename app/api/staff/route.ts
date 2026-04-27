@@ -58,13 +58,13 @@ export async function POST(request: Request) {
 
     const { data: briefing, error: briefingError } = await client
       .from("briefings")
-      .select("id, org_id")
+      .select("id, workspace_id")
       .eq("id", body.briefing_id)
       .maybeSingle();
 
     if (briefingError) throw briefingError;
     if (!briefing) throw new HttpError(404, "Briefing not found");
-    if (briefing.org_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
+    if (briefing.workspace_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
 
     const data = await createStaff(client, membership.workspace_id, body);
     if (!data.workspace_id || data.workspace_id !== membership.workspace_id) {
