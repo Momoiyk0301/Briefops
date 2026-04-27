@@ -15,9 +15,21 @@ type Props = {
   location: string;
   sections: PublicSection[];
   audienceLabel?: string | null;
+  updatedAt?: string | null;
 };
 
-export function PublicBriefingView({ title, date, location, sections, audienceLabel }: Props) {
+function formatRelativeTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "Mis à jour à l'instant";
+  if (minutes < 60) return `Mis à jour il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Mis à jour il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Mis à jour il y a ${days}j`;
+}
+
+export function PublicBriefingView({ title, date, location, sections, audienceLabel, updatedAt }: Props) {
   const [terrainMode, setTerrainMode] = useState(false);
 
   const visibleSections = useMemo(
@@ -37,7 +49,10 @@ export function PublicBriefingView({ title, date, location, sections, audienceLa
             <div className="mt-3 space-y-1 text-sm text-[#52607a] dark:text-[#c7d2ea]">
               <p>{date}</p>
               <p>{location}</p>
-              {audienceLabel ? <p>Team: {audienceLabel}</p> : null}
+              {audienceLabel ? <p>Groupe : {audienceLabel}</p> : null}
+              {updatedAt ? (
+                <p className="text-xs text-[#8f9bb3] dark:text-[#8090b0]">{formatRelativeTime(updatedAt)}</p>
+              ) : null}
             </div>
           </div>
           <button

@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
 
 import { createStripeCheckoutSession, createStripePortalSession, getMe, toApiMessage } from "@/lib/api";
+import { getPlanLimits } from "@/lib/quotas";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -93,7 +94,7 @@ export default function BillingPage() {
         <div className="cards-grid-3 mt-4">
           <div className="surface-pad rounded-2xl border border-[#e6e8f2] dark:border-white/10">
             <p className="text-sm font-semibold">Starter</p>
-            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">100 exports PDF/mois</p>
+            <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">{getPlanLimits("starter").briefings} briefings · {getPlanLimits("starter").pdf_month} exports PDF/mois</p>
             <Button
               className="mt-4"
               disabled={submittingPlan !== null || currentPlan === "starter" || currentPlan === "plus" || currentPlan === "pro"}

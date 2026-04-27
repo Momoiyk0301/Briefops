@@ -83,7 +83,7 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
   const sections: PublicSection[] = [
     presentationSectionById.get("access") ?? {
       id: "access",
-      title: "Access",
+      title: "Accès",
       items: compact([
         access?.address ? `Adresse: ${access.address}` : null,
         access?.entrance ? `Entrée: ${access.entrance}` : null,
@@ -93,7 +93,7 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
     },
     presentationSectionById.get("schedule") ?? {
       id: "schedule",
-      title: "Schedule",
+      title: "Planning",
       items: delivery?.deliveries.flatMap((item) =>
         compact([
           item.time ? `${item.time} · ${item.place || "Lieu à confirmer"}` : item.place,
@@ -125,7 +125,7 @@ export function buildPublicBriefingSections(modules: BriefingModuleRow[], audien
     },
     {
       id: "material",
-      title: "Material",
+      title: "Matériel",
       items: compact([equipment?.items_text])
     },
     (() => {
@@ -153,7 +153,7 @@ export function buildTerrainModeSections(sections: PublicSection[]) {
 }
 
 export function buildPublicBriefingHeader(
-  briefing: Pick<Briefing, "title" | "event_date" | "location_text">
+  briefing: Pick<Briefing, "title" | "event_date" | "location_text" | "updated_at">
 ) {
   return {
     title: briefing.title,
@@ -164,6 +164,7 @@ export function buildPublicBriefingHeader(
           year: "numeric"
         })
       : "Date non définie",
-    location: briefing.location_text ?? "Lieu non défini"
+    location: briefing.location_text ?? "Lieu non défini",
+    updatedAt: briefing.updated_at
   };
 }

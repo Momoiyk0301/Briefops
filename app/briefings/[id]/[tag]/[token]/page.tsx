@@ -32,6 +32,7 @@ export default async function AudienceBriefingPage({ params }: Props) {
           location={header.location}
           audienceLabel={resolved.audienceTag}
           sections={sections}
+          updatedAt={header.updatedAt}
         />
       </PublicBriefingErrorBoundary>
     );
