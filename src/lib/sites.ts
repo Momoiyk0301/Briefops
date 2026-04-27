@@ -1,5 +1,6 @@
-const DEFAULT_APP_URL = "http://localhost:3000";
-const DEFAULT_MARKETING_SITE_URL = "http://localhost:3000";
+const LOCAL_SITE_URL = "http://localhost:3000";
+const PRODUCTION_APP_URL = "https://briefing.events-ops.be";
+const PRODUCTION_MARKETING_SITE_URL = "https://events-ops.be";
 
 export const MARKETING_HOSTS = ["events-ops.be", "www.events-ops.be"] as const;
 export const APP_HOSTS = ["briefing.events-ops.be"] as const;
@@ -19,12 +20,22 @@ function normalizePath(path: string) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
+function getDefaultSiteUrl(kind: "app" | "marketing") {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (!isProduction) {
+    return LOCAL_SITE_URL;
+  }
+
+  return kind === "app" ? PRODUCTION_APP_URL : PRODUCTION_MARKETING_SITE_URL;
+}
+
 export function getAppUrl() {
-  return normalizeBaseUrl(process.env.APP_URL, DEFAULT_APP_URL);
+  return normalizeBaseUrl(process.env.APP_URL, getDefaultSiteUrl("app"));
 }
 
 export function getMarketingSiteUrl() {
-  return normalizeBaseUrl(process.env.MARKETING_SITE_URL, DEFAULT_MARKETING_SITE_URL);
+  return normalizeBaseUrl(process.env.MARKETING_SITE_URL, getDefaultSiteUrl("marketing"));
 }
 
 export function buildAppUrl(path = "/") {
@@ -61,4 +72,3 @@ export function isPreviewHost(host: string | null | undefined) {
   const normalizedHost = normalizeHost(host);
   return normalizedHost.endsWith(".vercel.app");
 }
-

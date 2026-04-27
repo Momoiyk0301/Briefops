@@ -45,6 +45,17 @@ describe("resolveSiteRouting", () => {
     expect(
       resolveSiteRouting({
         host: "briefing.events-ops.be",
+        pathname: "/"
+      })
+    ).toEqual({
+      action: "redirect",
+      destination: "http://localhost:3000/login",
+      reason: "app-root-login"
+    });
+
+    expect(
+      resolveSiteRouting({
+        host: "briefing.events-ops.be",
         pathname: "/nl"
       })
     ).toEqual({
@@ -76,4 +87,3 @@ describe("resolveSiteRouting", () => {
     ).toEqual({ action: "next" });
   });
 });
-
