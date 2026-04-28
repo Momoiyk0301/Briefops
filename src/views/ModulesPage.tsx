@@ -56,8 +56,7 @@ export default function ModulesPage() {
       <Card className="page-hero card-pad">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="section-kicker">{t("modulesPage.kicker")}</p>
-            <h1 className="section-title mt-3">{t("modulesPage.title")}</h1>
+            <h1 className="section-title">{t("modulesPage.title")}</h1>
             <p className="section-copy mt-3">{t("modulesPage.subtitle")}</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -117,9 +116,6 @@ export default function ModulesPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{module.name}</p>
-                    <p className="truncate text-xs text-[#6f748a] dark:text-[#a8afc6]">
-                      {module.category} · {module.type} · v{module.version}
-                    </p>
                   </div>
                 </div>
 

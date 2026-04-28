@@ -1,4 +1,4 @@
-import { Bell, Boxes, CircleUser, Files, FileText, HelpCircle, LogOut, Settings, Users } from "lucide-react";
+import { Boxes, CircleUser, Files, FileText, HelpCircle, LogOut, Settings, Users } from "lucide-react";
 import { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
@@ -72,7 +72,6 @@ export function AppShell({ plan, demoData = false, children }: Props) {
               <SidebarItem to="/account" title={t("nav.account")} icon={<CircleUser size={18} />} />
             </nav>
             <div className="space-y-2 pt-3">
-              <SidebarItem to="/notifications" title={t("nav.notifications")} icon={<Bell size={18} />} />
               <SidebarItem to="/settings" title={t("nav.settings")} icon={<Settings size={18} />} end />
               <SidebarItem to="/help" title={t("nav.help")} icon={<HelpCircle size={18} />} end />
               <button type="button" title={t("shell.logout")} onClick={() => void signOut()} className={iconButton}>
@@ -110,15 +109,6 @@ export function AppShell({ plan, demoData = false, children }: Props) {
           >
             <Files size={16} />
             {t("nav.documents")}
-          </NavLink>
-          <NavLink
-            to="/notifications"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <Bell size={16} />
-            {t("shell.alertsShort")}
           </NavLink>
           <NavLink
             to="/settings"

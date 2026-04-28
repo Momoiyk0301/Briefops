@@ -17,7 +17,6 @@ import ForgotPasswordPage from "@/views/ForgotPasswordPage";
 import HelpPage from "@/views/HelpPage";
 import LoginPage from "@/views/LoginPage";
 import ModulesPage from "@/views/ModulesPage";
-import NotificationsPage from "@/views/NotificationsPage";
 import OnboardingPage from "@/views/OnboardingPage";
 import RouteErrorPage from "@/views/RouteErrorPage";
 import ResetPasswordPage from "@/views/ResetPasswordPage";
@@ -109,7 +108,7 @@ export const router = createBrowserRouter([
           { path: "/modules", element: <ModulesPage /> },
           { path: "/account", element: <AccountPage /> },
           { path: "/abonnement", element: <Navigate to="/account" replace /> },
-          { path: "/notifications", element: <NotificationsPage /> },
+          { path: "/notifications", element: <Navigate to="/briefings" replace /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/help", element: <HelpPage /> },

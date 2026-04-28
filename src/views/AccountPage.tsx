@@ -222,7 +222,6 @@ export default function AccountPage() {
               <UserCircle2 size={18} />
               <div>
                 <h2 className="text-lg font-semibold">Profil</h2>
-                <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">Resume par defaut, edition seulement quand necessaire.</p>
               </div>
             </div>
 
@@ -310,9 +309,11 @@ export default function AccountPage() {
               <AvatarBadge label="Logo workspace" imageUrl={logoUrl} initials={workspaceInitials} />
               <div className="min-w-0">
                 <p className="font-semibold">{workspace?.name ?? "Aucun workspace"}</p>
-                <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
-                  Expiration: {workspace?.due_at ? new Date(workspace.due_at).toLocaleDateString("fr-BE") : "—"}
-                </p>
+                {workspace?.due_at ? (
+                  <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">
+                    Expiration : {new Date(workspace.due_at).toLocaleDateString("fr-BE")}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -374,11 +375,13 @@ export default function AccountPage() {
                 <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">Offre active</p>
                 <p className="mt-1 text-2xl font-bold">{toPlanSummary(plan)}</p>
               </div>
-              <Badge>{subscriptionStatus ?? "inactive"}</Badge>
+              <Badge>{subscriptionStatus === "inactive" || !subscriptionStatus ? "Inactif" : subscriptionStatus}</Badge>
             </div>
-            <p className="mt-3 text-sm text-[#6f748a] dark:text-[#a8afc6]">
-              Echeance profil: {currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString("fr-BE") : "—"}
-            </p>
+            {currentPeriodEnd ? (
+              <p className="mt-3 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+                Echéance : {new Date(currentPeriodEnd).toLocaleDateString("fr-BE")}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-3" ref={billingPlansRef}>
