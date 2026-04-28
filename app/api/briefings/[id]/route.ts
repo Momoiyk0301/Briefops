@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { deleteBriefing, getBriefingById, updateBriefing } from "@/supabase/queries/briefings";
+import { countBriefingsByWorkspace, deleteBriefing, getBriefingById, updateBriefing } from "@/supabase/queries/briefings";
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
-import { requireUser } from "@/supabase/server";
+import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 
 const idSchema = z.string().uuid();
@@ -91,8 +91,17 @@ export async function DELETE(request: Request, { params }: Params) {
     const { client, userId } = await requireUser(request);
     const { id } = await params;
     const briefingId = idSchema.parse(id);
-    await assertBriefingAccess(client, userId, briefingId);
+    const briefing = await assertBriefingAccess(client, userId, briefingId);
     await deleteBriefing(client, briefingId);
+    const nextCount = await countBriefingsByWorkspace(client, briefing.workspace_id);
+    const service = createServiceRoleClient();
+    const { error: workspaceUpdateError } = await service
+      .from("workspaces")
+      .update({ briefings_count: nextCount })
+      .eq("id", briefing.workspace_id);
+
+    if (workspaceUpdateError) throw workspaceUpdateError;
+
     ctx.info("deleted briefing", { userId, briefingId: id });
     return NextResponse.json({ ok: true });
   } catch (error) {

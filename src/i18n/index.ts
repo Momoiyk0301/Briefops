@@ -1,11 +1,15 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-import { isAppLocale } from "@/i18n/config";
+import { detectAppLocale, isAppLocale } from "@/i18n/config";
 import { appI18nResources } from "@/i18n/resources";
 
 const saved = typeof window !== "undefined" ? window.localStorage.getItem("briefops:lang") : null;
-const initialLng = saved && isAppLocale(saved) ? saved : "fr";
+const browserLanguage =
+  typeof window !== "undefined"
+    ? detectAppLocale(window.navigator.languages?.length ? window.navigator.languages : window.navigator.language)
+    : "en";
+const initialLng = saved && isAppLocale(saved) ? saved : browserLanguage;
 
 void i18n.use(initReactI18next).init({
   resources: appI18nResources,

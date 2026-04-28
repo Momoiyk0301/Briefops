@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/logger";
-import { resolveSiteRouting } from "@/lib/siteRouting";
+import { isAppPath, resolveSiteRouting } from "@/lib/siteRouting";
+import { isAppHost, isLocalHost, isMarketingHost, isPreviewHost, normalizeHost } from "@/lib/sites";
 
 const SITE_ACCESS_COOKIE = "site_access";
 const SITE_ACCESS_COOKIE_VALUE = "granted";
@@ -19,16 +20,30 @@ function isAccessBypassPath(pathname: string) {
   );
 }
 
+function shouldProtectAppAccess(request: NextRequest, pathname: string) {
+  if (isAccessBypassPath(pathname)) {
+    return false;
+  }
+
+  const host = normalizeHost(request.headers.get("host"));
+
+  if (isMarketingHost(host)) {
+    return false;
+  }
+
+  if (isAppHost(host)) {
+    return true;
+  }
+
+  if (isLocalHost(host) || isPreviewHost(host) || !host) {
+    return isAppPath(pathname);
+  }
+
+  return isAppPath(pathname);
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
-  if (!isAccessBypassPath(pathname)) {
-    const hasAccess = request.cookies.get(SITE_ACCESS_COOKIE)?.value === SITE_ACCESS_COOKIE_VALUE;
-
-    if (!hasAccess) {
-      return NextResponse.redirect(new URL("/access", request.url));
-    }
-  }
 
   const decision = resolveSiteRouting({
     host: request.headers.get("host"),
@@ -46,6 +61,14 @@ export function middleware(request: NextRequest) {
     });
 
     return NextResponse.redirect(new URL(decision.destination, request.url));
+  }
+
+  if (shouldProtectAppAccess(request, pathname)) {
+    const hasAccess = request.cookies.get(SITE_ACCESS_COOKIE)?.value === SITE_ACCESS_COOKIE_VALUE;
+
+    if (!hasAccess) {
+      return NextResponse.redirect(new URL("/access", request.url));
+    }
   }
 
   return NextResponse.next();

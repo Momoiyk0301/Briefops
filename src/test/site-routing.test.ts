@@ -39,6 +39,13 @@ describe("resolveSiteRouting", () => {
         pathname: "/fr"
       })
     ).toEqual({ action: "next" });
+
+    expect(
+      resolveSiteRouting({
+        host: "events-ops.be",
+        pathname: "/en"
+      })
+    ).toEqual({ action: "next" });
   });
 
   it("redirects localized landing paths away from the app host", () => {
@@ -85,5 +92,20 @@ describe("resolveSiteRouting", () => {
         pathname: "/briefings"
       })
     ).toEqual({ action: "next" });
+  });
+
+  it("uses english by default for unsupported browser languages", () => {
+    expect(
+      resolveSiteRouting({
+        host: "localhost:3000",
+        pathname: "/",
+        acceptLanguage: "de-DE,de;q=0.9"
+      })
+    ).toEqual({
+      action: "redirect",
+      destination: "/en",
+      reason: "local-root-locale",
+      locale: "en"
+    });
   });
 });
