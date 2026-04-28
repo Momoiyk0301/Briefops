@@ -7,10 +7,18 @@ export function isMarketingLocale(value: string): value is MarketingLocale {
 }
 
 export function detectMarketingLocale(acceptLanguage: string | null | undefined): MarketingLocale {
-  const normalized = String(acceptLanguage ?? "").toLowerCase();
-  if (normalized.includes("nl")) return "nl";
-  if (normalized.includes("en")) return "en";
-  return "fr";
+  const languages = String(acceptLanguage ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase().split(";")[0]?.split("-")[0] ?? "")
+    .filter(Boolean);
+
+  for (const language of languages) {
+    if (isMarketingLocale(language)) {
+      return language;
+    }
+  }
+
+  return "en";
 }
 
 type MarketingDictionary = {

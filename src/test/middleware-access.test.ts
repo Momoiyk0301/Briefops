@@ -25,4 +25,16 @@ describe("middleware access protection", () => {
 
     expect(response.headers.get("location")).toBeNull();
   });
+
+  it("does not protect localized landing pages", () => {
+    const response = middleware(new NextRequest("http://localhost:3000/fr"));
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("does not show the access page on the marketing host", () => {
+    const response = middleware(new NextRequest("https://events-ops.be/access", { headers: { host: "events-ops.be" } }));
+
+    expect(response.headers.get("location")).toBe("http://localhost:3000/en");
+  });
 });

@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { detectMarketingLocale, getMarketingDictionary } from "@/i18n/marketing";
 
 describe("marketing i18n", () => {
-  it("falls back to french when no header is provided", () => {
-    expect(detectMarketingLocale(undefined)).toBe("fr");
+  it("falls back to english when no supported browser language is provided", () => {
+    expect(detectMarketingLocale(undefined)).toBe("en");
+    expect(detectMarketingLocale("de-DE,de;q=0.9,es;q=0.8")).toBe("en");
   });
 
   it("detects dutch from the accept-language header", () => {

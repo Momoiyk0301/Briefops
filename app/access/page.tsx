@@ -3,23 +3,30 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const ACCESS_PASSWORD = process.env.NEXT_PUBLIC_SITE_ACCESS_PASSWORD ?? "briefops-mvp";
-
 export default function AccessPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
 
-    if (password !== ACCESS_PASSWORD) {
+    const response = await fetch("/api/access", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    setIsSubmitting(false);
+
+    if (!response.ok) {
       setError("Mot de passe incorrect.");
       return;
     }
 
-    const secure = window.location.protocol === "https:" ? "; secure" : "";
-    document.cookie = `site_access=granted; path=/; max-age=2592000; SameSite=Lax${secure}`;
     router.replace("/");
     router.refresh();
   }
@@ -48,9 +55,10 @@ export default function AccessPage() {
           {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
           <button
             type="submit"
+            disabled={isSubmitting}
             className="w-full rounded-xl bg-[#10203a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0d1a30] focus:outline-none focus:ring-4 focus:ring-[#10203a]/20"
           >
-            Entrer
+            {isSubmitting ? "Verification..." : "Entrer"}
           </button>
         </form>
       </section>

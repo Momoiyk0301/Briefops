@@ -46,7 +46,14 @@ export function isAppPath(pathname: string) {
 }
 
 export function isLocalizedMarketingPath(pathname: string) {
-  return pathname === "/fr" || pathname.startsWith("/fr/") || pathname === "/nl" || pathname.startsWith("/nl/");
+  return (
+    pathname === "/fr" ||
+    pathname.startsWith("/fr/") ||
+    pathname === "/nl" ||
+    pathname.startsWith("/nl/") ||
+    pathname === "/en" ||
+    pathname.startsWith("/en/")
+  );
 }
 
 export type SiteRoutingDecision =
