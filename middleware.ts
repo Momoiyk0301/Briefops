@@ -3,10 +3,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { logEvent } from "@/lib/logger";
 import { resolveSiteRouting } from "@/lib/siteRouting";
 
+const SITE_ACCESS_COOKIE = "site_access";
+const SITE_ACCESS_COOKIE_VALUE = "granted";
+
+function isAccessBypassPath(pathname: string) {
+  return (
+    pathname === "/access" ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/assets") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/logo.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
+  );
+}
+
 export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (!isAccessBypassPath(pathname)) {
+    const hasAccess = request.cookies.get(SITE_ACCESS_COOKIE)?.value === SITE_ACCESS_COOKIE_VALUE;
+
+    if (!hasAccess) {
+      return NextResponse.redirect(new URL("/access", request.url));
+    }
+  }
+
   const decision = resolveSiteRouting({
     host: request.headers.get("host"),
-    pathname: request.nextUrl.pathname,
+    pathname,
     search: request.nextUrl.search,
     acceptLanguage: request.headers.get("accept-language")
   });
