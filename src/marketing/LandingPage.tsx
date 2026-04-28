@@ -100,10 +100,10 @@ export function LandingPage({ locale }: LandingPageProps) {
             <div className="rounded-[28px] border border-white/15 bg-white/10 p-4 backdrop-blur sm:p-5">
               <div className="rounded-[24px] bg-white/95 p-4 text-[#10203a] sm:p-5">
                 <div className="rounded-[20px] bg-[linear-gradient(135deg,#66748f_0%,#44536f_100%)] px-5 py-5 text-white" aria-hidden="true">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Briefing</p>
-                  <p className="mt-3 text-xl font-semibold">Municipalia · Ethias</p>
-                  <p className="mt-2 text-sm text-white/80">12 avril 2026 · Marche-en-Famenne</p>
-                  <p className="mt-1 text-sm text-white/80">Contact · Pascale 0486 44 47 03</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Briefing mockup</p>
+                  <p className="mt-3 text-xl font-semibold">Demo Event · Client exemple</p>
+                  <p className="mt-2 text-sm text-white/80">14 mai 2026 · Lieu fictif</p>
+                  <p className="mt-1 text-sm text-white/80">Contact · Equipe demo</p>
                 </div>
 
                 <div className="mt-4 space-y-3" aria-hidden="true">
