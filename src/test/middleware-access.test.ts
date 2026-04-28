@@ -32,9 +32,9 @@ describe("middleware access protection", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("does not show the access page on the marketing host", () => {
+  it("bypasses the access page before any routing logic, even on the marketing host", () => {
     const response = middleware(new NextRequest("https://events-ops.be/access", { headers: { host: "events-ops.be" } }));
 
-    expect(response.headers.get("location")).toBe("http://localhost:3000/en");
+    expect(response.headers.get("location")).toBeNull();
   });
 });
