@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@shared/*": ["../../packages/shared/src/*"]
+    },
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "next-env.d.ts",
+    "app",
+    "src",
+    "middleware.ts",
+    "instrumentation.ts",
+    "instrumentation-client.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "src/test", "tests"]
+}

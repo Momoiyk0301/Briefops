@@ -42,7 +42,7 @@ If not, do not build it.
 
 Frontend:
 
-React 
+React
 
 TailwindCSS
 
@@ -69,6 +69,15 @@ Sentry
 Vercel Analytics / Speed Insights
 
 📦 Architecture Rules
+
+Monorepo placement:
+
+- Code used only by the SaaS product goes in `apps/app`.
+- Code used only by the marketing website goes in `apps/landing`.
+- Code used by both apps goes in `packages/shared`.
+- Keep shared code dependency-light: URLs, constants, small pure helpers, and types that do not pull app-only clients.
+- Do not add landing code back into `apps/app`, and do not add SaaS/API code into `apps/landing`.
+- Vercel deploys two projects: `apps/app` for `briefing.events-ops.be`, `apps/landing` for `events-ops.be`.
 
 Keep database schema simple.
 
@@ -139,8 +148,10 @@ If something is unclear, make the simplest assumption and proceed.
 don't delete SQL file
 
 ## Points d’attention
-- architecture hybride Next App Router + SPA React Router
+- architecture monorepo avec deux apps Next.js: `apps/app` et `apps/landing`
+- `apps/app` reste hybride Next App Router + SPA React Router
 - legacy archivé dans `archive/`; ne pas modifier sauf demande explicite
 - vocabulaire parfois mixte `org` / `workspace`
-- i18n app centralisée dans `src/i18n/locales` avec `fr`, `nl`, `en`
-- pages marketing SEO localisées dans `app/{fr,nl,en}/...` et contenu dans `src/i18n/marketing.ts`
+- i18n app centralisée dans `apps/app/src/i18n/locales` avec `fr`, `nl`, `en`
+- pages marketing SEO localisées dans `apps/landing/app/{fr,nl,en}/...`
+- contenu marketing dans `apps/landing/src/i18n/marketing.ts`

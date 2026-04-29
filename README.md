@@ -4,33 +4,32 @@ BriefOPS est un SaaS de briefings événementiels conçu pour produire des docum
 
 ## Cible V1
 
-- une seule application Next.js déployable sur Vercel
-- une landing marketing séparée de l’app métier
+- deux applications Next.js déployables séparément sur Vercel
+- une landing marketing séparée physiquement de l’app métier
 - une app SaaS centrée sur l’auth, l’onboarding, les briefings, le partage et la facturation
 - des pages SEO localisées pour `event briefing template` et `briefing generator`
 - une base de tests utile sur les flows critiques
 
-## Structure actuelle
+## Structure actuelle monorepo
 
 ```text
 .
-├── app/                     # App Router Next.js + API routes + landing localisée
-├── public/                  # assets statiques
-├── src/
-│   ├── components/          # UI app
-│   ├── i18n/                # i18n app + marketing
-│   ├── lib/                 # helpers, URLs, logging, auth, API
-│   ├── marketing/           # landing page et composants marketing
-│   ├── modules/             # rendu modulaire briefing/pdf
-│   ├── pdf/                 # génération HTML/PDF
-│   ├── supabase/queries/    # accès data
-│   ├── test/                # tests Vitest actifs
-│   └── views/               # vues SPA métier
+├── apps/
+│   ├── app/                 # SaaS BriefOPS: SPA, API routes, auth, PDF, Stripe, Supabase
+│   │   ├── app/             # App Router Next.js de l’application
+│   │   ├── public/          # assets statiques de l’app
+│   │   └── src/             # vues, composants, i18n app, modules, tests app
+│   └── landing/             # site marketing: landing, SEO localisé, sitemap/robots
+│       ├── app/             # App Router Next.js marketing
+│       ├── public/          # assets statiques de la landing
+│       └── src/             # composants marketing, i18n marketing, tests landing
+├── packages/
+│   └── shared/              # code commun sans dépendance métier lourde
 ├── supabase/                # migrations et seed
 ├── archive/
 │   ├── backend-legacy/      # ancien backend archivé
 │   └── frontend-legacy/     # ancien frontend archivé
-└── middleware.ts            # séparation landing/app par host
+└── package.json             # orchestration npm workspaces
 ```
 
 ## Domaines prévus
@@ -38,7 +37,7 @@ BriefOPS est un SaaS de briefings événementiels conçu pour produire des docum
 - `events-ops.be` sert la landing marketing
 - `briefing.events-ops.be` sert l’application SaaS
 
-En local et en preview, la même app supporte les deux usages via `middleware.ts`.
+Chaque app a son propre `middleware.ts`. La landing redirige les routes app vers `APP_URL`; l’app redirige les routes marketing vers `MARKETING_SITE_URL`.
 
 ## Localisation
 
@@ -69,12 +68,30 @@ Copier `.env.example` vers `.env.local`, puis renseigner au minimum:
 
 ```bash
 npm install
-npm run dev
+npm run dev:landing
+npm run dev:app
+npm run test:landing
+npm run test:app
+npm run build:landing
+npm run build:app
 npm test
-npm run build
 npm run validate
 npm audit
 ```
+
+## Déploiement Vercel
+
+Créer deux projets Vercel sur le même repo:
+
+- `briefops-landing`: Root Directory `apps/landing`, domaines `events-ops.be` et `www.events-ops.be`
+- `briefops-app`: Root Directory `apps/app`, domaine `briefing.events-ops.be`
+
+Variables communes:
+
+- `APP_URL=https://briefing.events-ops.be`
+- `MARKETING_SITE_URL=https://events-ops.be`
+
+Les variables Supabase, Stripe, Resend et Sentry sensibles sont nécessaires côté `briefops-app`. La landing n’a besoin que des URLs publiques, sauf ajout futur d’une intégration serveur.
 
 ## Fonctionnement applicatif
 
@@ -123,11 +140,11 @@ Dernier audit local effectué pendant cette mise à jour:
 ## Observabilité
 
 - Sentry pour les erreurs client/serveur
-- logging structuré et redaction légère dans `src/lib/logger.ts`
-- Vercel Analytics et Speed Insights intégrés dans `app/layout.tsx`
+- logging structuré et redaction légère dans `apps/app/src/lib/logger.ts`
+- Vercel Analytics et Speed Insights intégrés dans les layouts Next.js des apps
 
 ## Notes
 
-- le code actif vit désormais à la racine
+- le code actif vit désormais dans `apps/app`, `apps/landing` et `packages/shared`
 - les anciens dossiers `frontend/` et `backend/` sont archivés dans `archive/`
 - les tests legacy archivés ne font plus partie du périmètre de validation V1
