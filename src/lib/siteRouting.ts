@@ -84,12 +84,7 @@ export function resolveSiteRouting({
 
   if (isMarketingHost(normalizedHost)) {
     if (normalizedPathname === "/") {
-      return {
-        action: "redirect",
-        destination: buildMarketingUrl(`/${locale}`),
-        reason: "marketing-root-locale",
-        locale
-      };
+      return { action: "next" };
     }
 
     if (isAppPath(normalizedPathname)) {

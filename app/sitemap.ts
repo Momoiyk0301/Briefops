@@ -10,13 +10,29 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const locales = ["fr", "nl", "en"] as const;
   const seoPageKeys = ["eventBriefingTemplate", "briefingGenerator"] as const;
 
+  const rootPage = {
+    url: base,
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 1.0,
+    alternates: {
+      languages: {
+        "x-default": base,
+        ...Object.fromEntries(locales.map((l) => [l, `${base}/${l}`]))
+      }
+    }
+  };
+
   const homePages = locales.map((locale) => ({
     url: `${base}/${locale}`,
     lastModified,
     changeFrequency: "weekly" as const,
-    priority: locale === "fr" ? 1.0 : 0.9,
+    priority: locale === "fr" ? 0.95 : 0.9,
     alternates: {
-      languages: Object.fromEntries(locales.map((l) => [l, `${base}/${l}`]))
+      languages: {
+        "x-default": base,
+        ...Object.fromEntries(locales.map((l) => [l, `${base}/${l}`]))
+      }
     }
   }));
 
@@ -41,5 +57,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })
   );
 
-  return [...homePages, ...seoPages];
+  return [rootPage, ...homePages, ...seoPages];
 }

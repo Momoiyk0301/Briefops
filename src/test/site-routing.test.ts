@@ -3,19 +3,14 @@ import { describe, expect, it } from "vitest";
 import { resolveSiteRouting } from "@/lib/siteRouting";
 
 describe("resolveSiteRouting", () => {
-  it("redirects the marketing root to the preferred localized landing", () => {
+  it("keeps the marketing root on the landing page", () => {
     expect(
       resolveSiteRouting({
         host: "events-ops.be",
         pathname: "/",
         acceptLanguage: "nl-BE,nl;q=0.9,fr;q=0.7"
       })
-    ).toEqual({
-      action: "redirect",
-      destination: "http://localhost:3000/nl",
-      reason: "marketing-root-locale",
-      locale: "nl"
-    });
+    ).toEqual({ action: "next" });
   });
 
   it("redirects app routes from the marketing host to the app url", () => {
