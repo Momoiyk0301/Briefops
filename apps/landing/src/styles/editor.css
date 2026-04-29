@@ -1,0 +1,20 @@
+.visual-editor-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.visual-editor-module input,
+.visual-editor-module textarea,
+.visual-editor-module select {
+  border-radius: 14px;
+  font-size: 0.8rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.visual-editor-module textarea {
+  min-height: 72px;
+}
+
+.visual-editor-module button {
+  min-height: 2rem;
+}

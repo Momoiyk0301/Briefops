@@ -110,7 +110,7 @@ test.describe("BriefOPS e2e", () => {
     await expect(page.getByRole("heading", { name: /briefings/i }).first()).toBeVisible();
     await page.getByRole("button", { name: /briefing/i }).first().click();
     await expect(page).toHaveURL(/\/briefings\/b-1/);
-    await expect(page.getByRole("button", { name: /modifier|ok/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /save|enregistrer/i })).toBeVisible();
   });
 
   test("API error -> demo data fallback and log", async ({ page }) => {

@@ -1,0 +1,9 @@
+{
+  "name": "@briefops/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./sites": "./src/sites.ts"
+  }
+}

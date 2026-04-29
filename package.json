@@ -2,15 +2,26 @@
   "name": "briefops",
   "private": true,
   "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "dev:app": "npm --workspace @briefops/app run dev",
+    "dev:landing": "npm --workspace @briefops/landing run dev",
+    "build": "npm run build:landing && npm run build:app",
+    "build:app": "npm --workspace @briefops/app run build",
+    "build:landing": "npm --workspace @briefops/landing run build",
+    "start:app": "npm --workspace @briefops/app run start",
+    "start:landing": "npm --workspace @briefops/landing run start",
+    "test": "npm run test:landing && npm run test:app",
+    "test:app": "npm --workspace @briefops/app run test",
+    "test:landing": "npm --workspace @briefops/landing run test",
+    "test:watch:app": "npm --workspace @briefops/app run test:watch",
+    "test:watch:landing": "npm --workspace @briefops/landing run test:watch",
     "test:e2e": "playwright test",
     "test:env": "./scripts/check-env.sh",
     "validate": "npm run test:env && npm run test && npm run build"
