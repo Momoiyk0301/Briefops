@@ -73,7 +73,11 @@
     "plan": "Plan"
   },
   "briefings": {
-    "pageCurrent": "Current page"
+    "pageCurrent": "Current page",
+    "title": "Briefings",
+    "empty": "No briefings yet.",
+    "new": "New briefing",
+    "workspaceMissing": "Workspace missing. Complete onboarding first."
   },
   "shell": {
     "dashboardLink": "Go to dashboard",
@@ -249,7 +253,7 @@
   "help": {
     "kicker": "Support",
     "title": "Help",
-    "subtitle": "Ask a question, report a bug, or send an enterprise request. The form confirms the submission visually for this MVP.",
+    "subtitle": "Ask a question, report a bug, or send an enterprise request.",
     "success": "Message prepared. We will get back to you soon.",
     "subjectLabel": "Subject",
     "subjects": {

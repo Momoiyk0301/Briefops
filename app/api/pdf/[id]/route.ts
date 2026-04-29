@@ -12,6 +12,7 @@ import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { buildBriefingPdfFilename } from "@/lib/pdfFilename";
 import { enforceRateLimit, resolveRateLimitKey } from "@/server/rateLimit";
 import { checkQuota, getPlanLimits } from "@/lib/quotas";
+import { setSentryFeatureTag, setSentryWorkspaceContext } from "@/lib/sentryScope";
 import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 export const runtime = "nodejs";
@@ -58,6 +59,7 @@ export async function GET(request: Request, { params }: Params) {
   const ctx = createRequestContext("GET /api/pdf/:id");
 
   try {
+    setSentryFeatureTag("pdf_export");
     const { client, userId } = await requireUser(request);
     const rateLimit = enforceRateLimit(resolveRateLimitKey(request, "pdf", userId), 12, 60_000);
     if (!rateLimit.allowed) {
@@ -80,6 +82,11 @@ export async function GET(request: Request, { params }: Params) {
 
     const plan = await getUserPlan(client, userId);
     const workspace = await getWorkspaceById(client, workspaceId);
+    setSentryWorkspaceContext({
+      id: workspace.id,
+      name: workspace.name,
+      plan
+    });
     const quota = checkQuota({ ...workspace, plan }, "export_pdf");
     if (!quota.allowed) {
       ctx.warn("pdf limit reached", { userId, plan, used: quota.current, limit: quota.limit });

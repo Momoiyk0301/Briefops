@@ -220,22 +220,6 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               </div>
             ) : null}
           </div>
-          <div className="hidden rounded-full border border-[#e4e9f4] bg-white/78 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] md:inline-flex dark:border-white/10 dark:bg-[#1f1f1f]">
-            <button
-              type="button"
-              onClick={() => navigate("/briefings")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname.startsWith("/briefings") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
-            >
-              {t("navbar.dashboard")}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/account")}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname.startsWith("/account") ? "bg-brand-500 text-white" : "text-[#666] hover:text-[#111] dark:text-[#bbb] dark:hover:text-white"}`}
-            >
-              {t("nav.account")}
-            </button>
-          </div>
           <button
             type="button"
             onClick={() => navigate("/account")}

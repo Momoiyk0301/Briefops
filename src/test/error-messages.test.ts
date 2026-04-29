@@ -6,6 +6,7 @@ import { sanitizeLogContext } from "@/lib/logger";
 describe("error messages and sanitization", () => {
   it("maps standard error codes to localized user messages", () => {
     expect(getErrorMessage("PDF_EXPORT_FAILED")).toContain("PDF");
+    expect(getErrorMessage("NETWORK_ERROR")).toBe("Connexion instable. Reessayez dans quelques secondes.");
     expect(getErrorMessage("NOT_A_CODE")).toBe(getErrorMessage("UNKNOWN_ERROR"));
   });
 

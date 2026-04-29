@@ -13,9 +13,9 @@ export function Button({ className = "", variant = "primary", withArrow = false,
     primary:
       "bg-[linear-gradient(135deg,#1954c9_0%,#2870ff_55%,#55a4ff_100%)] text-white shadow-[0_18px_40px_rgba(32,78,185,0.28)] hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(32,78,185,0.34)]",
     secondary:
-      "border border-[#dde3f2] bg-white text-[#172033] shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:bg-[#f6f8fd] dark:border-white/10 dark:bg-[#171717] dark:text-white dark:hover:bg-[#1f1f1f]",
+      "border border-surface-lineStrong bg-surface-card text-ink shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 hover:bg-surface-muted dark:border-white/10 dark:bg-[#171717] dark:text-white dark:hover:bg-[#1f1f1f]",
     ghost:
-      "bg-transparent text-[#66708a] hover:bg-white/80 hover:text-[#111827] dark:text-[#cfcfcf] dark:hover:bg-white/10"
+      "bg-transparent text-ink-muted hover:bg-white/80 hover:text-ink-strong dark:text-[#cfcfcf] dark:hover:bg-white/10"
   };
 
   return (

@@ -166,16 +166,15 @@ export default function StaffPage() {
     <section className="stack-page">
       <Card className="page-hero card-pad">
         <div className="max-w-2xl">
-          <p className="section-kicker">Crew Coordination</p>
-          <h1 className="section-title mt-2">Staff</h1>
+          <h1 className="section-title">Staff</h1>
           <p className="section-copy mt-2">
             Retrouve les contacts terrain, leurs affectations et ajoute-les rapidement aux bons briefings.
           </p>
         </div>
       </Card>
 
-      <Card className="card-pad">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <Card className="list-surface hidden overflow-hidden p-0 md:block">
+        <div className="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -187,9 +186,6 @@ export default function StaffPage() {
             Ajouter un membre
           </Button>
         </div>
-      </Card>
-
-      <Card className="list-surface hidden overflow-hidden p-0 md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-[#f6f8fc] text-left text-xs font-semibold uppercase tracking-[0.14em] text-[#7a839d] dark:bg-[#181818] dark:text-[#97a0ba]">

@@ -73,7 +73,11 @@
     "plan": "Plan"
   },
   "briefings": {
-    "pageCurrent": "Page active"
+    "pageCurrent": "Page active",
+    "title": "Briefings",
+    "empty": "Aucun briefing pour le moment.",
+    "new": "Nouveau briefing",
+    "workspaceMissing": "Workspace introuvable. Finalise l'onboarding d'abord."
   },
   "shell": {
     "dashboardLink": "Aller au dashboard",
@@ -249,7 +253,7 @@
   "help": {
     "kicker": "Support",
     "title": "Aide",
-    "subtitle": "Pose une question, remonte un bug ou envoie une demande enterprise. Le formulaire confirme visuellement l’envoi pour ce MVP.",
+    "subtitle": "Pose une question, remonte un bug ou envoie une demande enterprise.",
     "success": "Message préparé. Nous reviendrons vers toi bientôt.",
     "subjectLabel": "Sujet",
     "subjects": {

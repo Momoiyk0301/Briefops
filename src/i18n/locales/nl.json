@@ -73,7 +73,11 @@
     "plan": "Plan"
   },
   "briefings": {
-    "pageCurrent": "Actieve pagina"
+    "pageCurrent": "Actieve pagina",
+    "title": "Briefings",
+    "empty": "Nog geen briefings.",
+    "new": "Nieuw briefing",
+    "workspaceMissing": "Workspace ontbreekt. Voltooi de onboarding eerst."
   },
   "shell": {
     "dashboardLink": "Naar dashboard",
@@ -249,7 +253,7 @@
   "help": {
     "kicker": "Support",
     "title": "Help",
-    "subtitle": "Stel een vraag, meld een bug of stuur een enterprise-aanvraag. Het formulier bevestigt visueel de verzending voor deze MVP.",
+    "subtitle": "Stel een vraag, meld een bug of stuur een enterprise-aanvraag.",
     "success": "Bericht voorbereid. We komen snel bij je terug.",
     "subjectLabel": "Onderwerp",
     "subjects": {

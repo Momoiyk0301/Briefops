@@ -79,6 +79,10 @@ function logApiError(method: string, path: string, status: number | string, mess
   console.error(`[API] xx ${method} ${path} ${status} (${durationMs}ms) ${message}`);
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 function captureClientApiError(error: ApiClientError) {
   if (error.status > 0 && error.status < 500) return;
 
@@ -151,17 +155,19 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     });
   } catch (error) {
     if (error instanceof ApiClientError) throw error;
+    if (isAbortError(error)) throw error;
     const message = error instanceof Error ? error.message : "Network failure";
     logApiError(method, path, "NETWORK", message, startedAt);
     throw toApiClientError({
       status: 0,
-      message: "UNKNOWN_ERROR",
+      message: "NETWORK_ERROR",
       method,
       path,
-      errorCode: "UNKNOWN_ERROR",
+      errorCode: "NETWORK_ERROR",
       safeDetails: {
         origin: "client",
-        step: "fetch"
+        step: "fetch",
+        original_message: message
       }
     });
   }
@@ -446,17 +452,19 @@ export async function downloadPdf(id: string, team?: string | null): Promise<{ b
     });
   } catch (error) {
     if (error instanceof ApiClientError) throw error;
+    if (isAbortError(error)) throw error;
     const message = error instanceof Error ? error.message : "Network failure";
     logApiError("GET", path, "NETWORK", message, startedAt);
     throw toApiClientError({
       status: 0,
-      message: "UNKNOWN_ERROR",
+      message: "NETWORK_ERROR",
       method: "GET",
       path,
-      errorCode: "UNKNOWN_ERROR",
+      errorCode: "NETWORK_ERROR",
       safeDetails: {
         origin: "client",
-        step: "download"
+        step: "download",
+        original_message: message
       }
     });
   }

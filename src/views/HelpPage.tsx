@@ -8,7 +8,6 @@ import { getMe } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errorMessages";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 
 export default function HelpPage() {
@@ -27,16 +26,14 @@ export default function HelpPage() {
     return t("help.subjects.general");
   }, [requestedSubject, t]);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [subject, setSubject] = useState(defaultSubject);
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
 
-  const effectiveName = name || meQuery.data?.workspace?.name || "";
-  const effectiveEmail = email || meQuery.data?.user?.email || "";
+  const effectiveName = meQuery.data?.workspace?.name || "";
+  const effectiveEmail = meQuery.data?.user?.email || "";
   const isValid = Boolean(effectiveName.trim() && effectiveEmail.trim() && subject.trim() && message.trim());
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -80,22 +77,12 @@ export default function HelpPage() {
     }
   };
 
-  const handleReportIssue = () => {
-    setSubject(t("help.subjects.bug"));
-    setSubmitted(false);
-  };
-
   return (
     <section className="stack-page">
       <Card className="page-hero card-pad">
         <p className="section-kicker">{t("help.kicker")}</p>
         <h1 className="section-title mt-2">{t("help.title")}</h1>
         <p className="section-copy mt-2">{t("help.subtitle")}</p>
-        <div className="mt-5">
-          <Button type="button" onClick={handleReportIssue}>
-            {t("actions.REPORT_ISSUE")}
-          </Button>
-        </div>
       </Card>
 
       <Card className="card-pad">
@@ -106,22 +93,6 @@ export default function HelpPage() {
         ) : null}
 
         <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
-          <Input
-            aria-label="help-name"
-            placeholder={t("help.placeholders.name")}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          {showErrors && !effectiveName.trim() ? <p className="text-sm text-red-600">{t("help.errors.name")}</p> : null}
-
-          <Input
-            aria-label="help-email"
-            placeholder={t("help.placeholders.email")}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          {showErrors && !effectiveEmail.trim() ? <p className="text-sm text-red-600">{t("help.errors.email")}</p> : null}
-
           <label className="grid gap-2 text-sm font-medium text-[#42506a] dark:text-[#c8d2ea]">
             {t("help.subjectLabel")}
             <select

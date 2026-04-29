@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { getPlanLimits } from "@/lib/quotas";
+import { setSentryFeatureTag, setSentryWorkspaceContext } from "@/lib/sentryScope";
 import { getCurrentMonthUsage } from "@/supabase/queries/usage";
 import { requireAuthContext } from "@/supabase/server";
 
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/me", request);
 
   try {
+    setSentryFeatureTag("me_read");
     const { client, userId, email } = await requireAuthContext(request);
 
     const { data: profile, error: profileError } = await client
@@ -48,6 +50,12 @@ export async function GET(request: Request) {
     const planLimit = Number.isFinite(pdfLimit) ? pdfLimit : null;
     const remaining = planLimit === null ? null : Math.max(planLimit - used, 0);
     const hasMembership = Boolean(membership?.workspace_id);
+
+    setSentryWorkspaceContext({
+      id: workspace?.id ?? membership?.workspace_id ?? null,
+      name: workspace?.name ?? null,
+      plan
+    });
 
     ctx.info("resolved me", {
       userId,
@@ -101,6 +109,7 @@ export async function PATCH(request: Request) {
   const ctx = createRequestContext("PATCH /api/me", request);
 
   try {
+    setSentryFeatureTag("me_update");
     const { client, userId } = await requireAuthContext(request);
     const payload = patchSchema.parse(await request.json());
 

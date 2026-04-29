@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 import { clientEnv, serverEnv } from "@/env";
+import { setSentryUserContext } from "@/lib/sentryScope";
 
 export function getBearerToken(request: Request): string | null {
   const authorization = request.headers.get("authorization");
@@ -52,6 +53,11 @@ export async function requireUser(request: Request): Promise<{ client: SupabaseC
     throw new Error("Unauthorized");
   }
 
+  setSentryUserContext({
+    id: data.user.id,
+    email: data.user.email ?? null
+  });
+
   return { client, userId: data.user.id };
 }
 
@@ -71,6 +77,11 @@ export async function requireAuthContext(request: Request): Promise<{
   if (error || !data.user) {
     throw new Error("Unauthorized");
   }
+
+  setSentryUserContext({
+    id: data.user.id,
+    email: data.user.email ?? null
+  });
 
   return {
     client,

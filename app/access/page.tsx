@@ -32,12 +32,12 @@ export default function AccessPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f6f8fc] px-4 py-12 text-[#10203a]">
-      <section className="w-full max-w-sm rounded-2xl border border-[#dbe4f0] bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5870a8]">BriefOPS MVP</p>
+    <main className="flex min-h-screen items-center justify-center bg-surface-page px-4 py-12 text-ink-strong">
+      <section className="w-full max-w-sm rounded-2xl border border-surface-line bg-surface-card p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">BriefOPS MVP</p>
         <h1 className="mt-3 text-2xl font-semibold">Acces prive</h1>
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block text-sm font-medium text-[#34445f]" htmlFor="access-password">
+          <label className="block text-sm font-medium text-ink" htmlFor="access-password">
             Mot de passe
           </label>
           <input
@@ -48,7 +48,7 @@ export default function AccessPage() {
               setPassword(event.target.value);
               setError("");
             }}
-            className="w-full rounded-xl border border-[#cfd9e8] bg-white px-4 py-3 text-base outline-none transition focus:border-[#5870a8] focus:ring-4 focus:ring-[#5870a8]/15"
+            className="w-full rounded-xl border border-surface-lineStrong bg-surface-card px-4 py-3 text-base outline-none transition focus:border-brand-600 focus:ring-4 focus:ring-brand-500/15"
             autoComplete="current-password"
             autoFocus
           />

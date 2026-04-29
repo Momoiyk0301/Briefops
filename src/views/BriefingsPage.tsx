@@ -174,8 +174,7 @@ export default function BriefingsPage() {
       <Card className="page-hero card-pad">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="section-kicker">Terrain Command Center</p>
-            <h1 className="section-title mt-3">{t("briefings.title")}</h1>
+            <h1 className="section-title">{t("briefings.title")}</h1>
             <p className="section-copy mt-3">
               Centralise tes briefings, garde une vue claire sur les événements du mois et ouvre rapidement le bon document pour le terrain.
             </p>

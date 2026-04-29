@@ -7,6 +7,7 @@ import { getUserPlan } from "@/supabase/queries/profiles";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
 import { checkQuota } from "@/lib/quotas";
+import { setSentryFeatureTag, setSentryWorkspaceContext } from "@/lib/sentryScope";
 import { getWorkspaceById } from "@/supabase/queries/workspaces";
 
 const createSchema = z.object({
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
   const ctx = createRequestContext("GET /api/briefings", request);
 
   try {
+    setSentryFeatureTag("briefing_list");
     const { client, userId } = await requireUser(request);
     const briefings = await listBriefings(client);
     ctx.info("listed briefings", { userId, count: briefings.length });
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
   const ctx = createRequestContext("POST /api/briefings", request);
 
   try {
+    setSentryFeatureTag("briefing_create");
     const { client, userId } = await requireUser(request);
     const body = createSchema.parse(await request.json());
     const workspaceId = await getUserWorkspaceId(client, userId);
@@ -53,6 +56,11 @@ export async function POST(request: Request) {
     }
     const plan = await getUserPlan(client, userId);
     const workspace = await getWorkspaceById(client, workspaceId);
+    setSentryWorkspaceContext({
+      id: workspace.id,
+      name: workspace.name,
+      plan
+    });
     const quota = checkQuota({ ...workspace, plan }, "create_briefing");
     if (!quota.allowed) {
       throw new HttpError(402, quota.message ?? "Briefing limit reached for this plan.", "BRIEFING_CREATE_FAILED");

@@ -15,7 +15,7 @@ export function Toggle({ checked, onChange, disabled, ariaLabel }: Props) {
       className={`relative h-7 w-12 rounded-full border transition ${
         checked
           ? "border-brand-500/30 bg-[linear-gradient(135deg,#1954c9_0%,#3b82f6_100%)] shadow-[0_10px_22px_rgba(32,78,185,0.24)]"
-          : "border-[#d4dcec] bg-[#dbe2ef] dark:border-slate-700 dark:bg-slate-700"
+          : "border-surface-lineStrong bg-surface-chip dark:border-slate-700 dark:bg-slate-700"
       } disabled:opacity-60`}
     >
       <span
