@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root {
+  --font-sans: "Poppins", "Segoe UI", sans-serif;
+  --font-display: "Poppins", "Segoe UI", sans-serif;
   --space-page-x: clamp(1rem, 1.2vw + 0.7rem, 2rem);
   --space-page-y: clamp(1rem, 1.4vw + 0.7rem, 2rem);
   --space-stack-1: clamp(0.75rem, 0.7vw + 0.55rem, 1rem);
@@ -11,6 +13,18 @@
   --space-card-pad: clamp(1rem, 0.9vw + 0.7rem, 1.5rem);
   --surface-border: #e1e7f2;
   --surface-muted: #6f7892;
+  --color-ink: #172033;
+  --color-ink-strong: #10203a;
+  --color-ink-muted: #6f7892;
+  --color-ink-soft: #8c94a9;
+  --color-surface-page: #f3f6fb;
+  --color-surface-page-top: #f7faff;
+  --color-surface-page-bottom: #eef3fb;
+  --color-surface-card: #ffffff;
+  --color-surface-card-muted: #f6f8fd;
+  --color-surface-chip: #f0f1f8;
+  --color-surface-line: #dce3f1;
+  --color-surface-line-strong: #dde3f2;
 }
 
 * {
@@ -25,13 +39,13 @@ body,
 
 body {
   margin: 0;
-  font-family: "Poppins", "Segoe UI", sans-serif;
-  background-color: #f3f6fb;
-  color: #111111;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-page);
+  color: var(--color-ink);
   background-image:
     radial-gradient(circle at top left, rgba(84, 119, 255, 0.1), transparent 28%),
     radial-gradient(circle at bottom right, rgba(255, 184, 108, 0.12), transparent 24%),
-    linear-gradient(180deg, #f7faff 0%, #eef3fb 100%);
+    linear-gradient(180deg, var(--color-surface-page-top) 0%, var(--color-surface-page-bottom) 100%);
   background-attachment: fixed;
 }
 
@@ -41,7 +55,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Poppins", "Segoe UI", sans-serif;
+  font-family: var(--font-display);
 }
 
 .dark body {
