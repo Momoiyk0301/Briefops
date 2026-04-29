@@ -5,6 +5,7 @@ import { countBriefingsByWorkspace, deleteBriefing, getBriefingById, updateBrief
 import { getUserWorkspaceId } from "@/supabase/queries/modulesRegistry";
 import { createServiceRoleClient, requireUser } from "@/supabase/server";
 import { createRequestContext, HttpError, toErrorResponse } from "@/http";
+import { setSentryFeatureTag, setSentryWorkspaceContext } from "@/lib/sentryScope";
 
 const idSchema = z.string().uuid();
 
@@ -32,10 +33,12 @@ export async function GET(request: Request, { params }: Params) {
   const ctx = createRequestContext("GET /api/briefings/:id", request);
 
   try {
+    setSentryFeatureTag("briefing_read");
     const { client, userId } = await requireUser(request);
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     const briefing = await assertBriefingAccess(client, userId, briefingId);
+    setSentryWorkspaceContext({ id: briefing.workspace_id });
     ctx.info("fetched briefing", { userId, briefingId: id });
     return NextResponse.json({ data: briefing });
   } catch (error) {
@@ -59,10 +62,12 @@ export async function PATCH(request: Request, { params }: Params) {
   const ctx = createRequestContext("PATCH /api/briefings/:id", request);
 
   try {
+    setSentryFeatureTag("briefing_update");
     const { client, userId } = await requireUser(request);
     const { id } = await params;
     const briefingId = idSchema.parse(id);
-    await assertBriefingAccess(client, userId, briefingId);
+    const existingBriefing = await assertBriefingAccess(client, userId, briefingId);
+    setSentryWorkspaceContext({ id: existingBriefing.workspace_id });
     const patch = updateSchema.parse(await request.json());
     const briefing = await updateBriefing(client, briefingId, patch);
     ctx.info("updated briefing", { userId, briefingId: id });
@@ -88,10 +93,12 @@ export async function DELETE(request: Request, { params }: Params) {
   const ctx = createRequestContext("DELETE /api/briefings/:id", request);
 
   try {
+    setSentryFeatureTag("briefing_delete");
     const { client, userId } = await requireUser(request);
     const { id } = await params;
     const briefingId = idSchema.parse(id);
     const briefing = await assertBriefingAccess(client, userId, briefingId);
+    setSentryWorkspaceContext({ id: briefing.workspace_id });
     await deleteBriefing(client, briefingId);
     const nextCount = await countBriefingsByWorkspace(client, briefing.workspace_id);
     const service = createServiceRoleClient();
