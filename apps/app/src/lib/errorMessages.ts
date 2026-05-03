@@ -4,7 +4,7 @@ import { AppErrorCode, isAppErrorCode } from "@/lib/errorCodes";
 export function getErrorMessage(errorCode: unknown) {
   const code: AppErrorCode = isAppErrorCode(errorCode) ? errorCode : "UNKNOWN_ERROR";
   if (code === "NETWORK_ERROR") {
-    return "Connexion instable. Reessayez dans quelques secondes.";
+    return "Pas de connexion internet — vérifiez votre réseau et réessayez.";
   }
   const translated = i18n.t(`errors.${code}`, { defaultValue: "" });
   return translated || i18n.t("errors.UNKNOWN_ERROR");

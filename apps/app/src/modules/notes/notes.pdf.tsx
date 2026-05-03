@@ -1,14 +1,18 @@
 import { NotesData } from "@/lib/types";
-import { ModulePdfContext, ModulePublicSection, compact, renderPdfEmptyState, renderPdfRows } from "@/modules/shared";
+import { ModulePdfContext, ModulePublicSection, compact, localizeField, renderPdfEmptyState, renderPdfRows } from "@/modules/shared";
+import { NOTES_PDF_LABELS, NotesPdfField } from "@/modules/notes/notes.i18n";
 
-export function renderNotesPdf(value: NotesData, _context?: ModulePdfContext) {
+function l(field: NotesPdfField, lang: ModulePdfContext["lang"] = "fr") {
+  return localizeField(NOTES_PDF_LABELS, field, lang);
+}
+
+export function renderNotesPdf(value: NotesData, context?: ModulePdfContext): string {
   if (!value.text.trim()) return renderPdfEmptyState();
-
-  return renderPdfRows([{ label: "Notes", value: value.text }]);
+  const lang = context?.lang ?? "fr";
+  return renderPdfRows([{ label: l("text", lang), value: value.text }]);
 }
 
 export function buildNotesPublicSection(value: NotesData): ModulePublicSection | null {
   const items = compact([value.text]);
   return items.length ? { id: "notes", title: "Notes", items } : null;
 }
-

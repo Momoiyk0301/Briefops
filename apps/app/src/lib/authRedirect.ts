@@ -1,8 +1,4 @@
-import type { MeResponse, UserPlan } from "@/lib/types";
-
-function hasPaidPlan(plan: UserPlan | null) {
-  return plan === "starter" || plan === "pro" || plan === "guest" || plan === "funder" || plan === "enterprise";
-}
+import type { MeResponse } from "@/lib/types";
 
 export function getPostAuthRedirect(me: MeResponse): string {
   const workspace = me.workspace ?? me.org ?? null;
@@ -10,10 +6,6 @@ export function getPostAuthRedirect(me: MeResponse): string {
 
   if (!hasMembership) {
     return "/onboarding";
-  }
-
-  if (workspace?.id && !hasPaidPlan(me.plan)) {
-    return "/onboarding?step=products";
   }
 
   if (me.onboarding_step === "done") {
@@ -25,6 +17,10 @@ export function getPostAuthRedirect(me: MeResponse): string {
   }
 
   if (workspace?.id && me.onboarding_step === "products") {
+    return "/onboarding?step=products";
+  }
+
+  if (workspace?.id && me.onboarding_step === "workspace") {
     return "/onboarding?step=products";
   }
 

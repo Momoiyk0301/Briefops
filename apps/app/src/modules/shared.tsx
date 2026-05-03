@@ -1,7 +1,12 @@
 import { ModuleKey } from "@/lib/types";
 
+export type PdfLang = "fr" | "en" | "nl";
+
+export type ModulePdfLabels<K extends string> = Record<K, Record<PdfLang, string>>;
+
 export type ModulePdfContext = {
   moduleKey: ModuleKey | string;
+  lang?: PdfLang;
 };
 
 export type ModulePublicSection = {
@@ -9,6 +14,14 @@ export type ModulePublicSection = {
   title: string;
   items: string[];
 };
+
+export function localizeField<K extends string>(
+  labels: ModulePdfLabels<K>,
+  key: K,
+  lang: PdfLang = "fr"
+): string {
+  return labels[key]?.[lang] ?? humanizeModuleKey(key);
+}
 
 export function escapeHtml(value: string): string {
   return value
@@ -50,4 +63,3 @@ export function renderPdfRows(rows: Array<{ label: string; value: string | null 
     })
     .join("\n");
 }
-

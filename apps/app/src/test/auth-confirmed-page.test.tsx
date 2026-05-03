@@ -12,8 +12,16 @@ const routerMocks = vi.hoisted(() => ({
   navigate: vi.fn()
 }));
 
+const apiMocks = vi.hoisted(() => ({
+  getMe: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => ({
   completeAuthRedirectSession: authMocks.completeAuthRedirectSession
+}));
+
+vi.mock("@/lib/api", () => ({
+  getMe: apiMocks.getMe
 }));
 
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -27,9 +35,20 @@ vi.mock("react-router-dom", async (importOriginal) => {
 describe("AuthConfirmedPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.getMe.mockResolvedValue({
+      user: { id: "u1", email: "test@example.com" },
+      plan: "starter",
+      org: { id: "ws-1", name: "Workspace" },
+      workspace: { id: "ws-1", name: "Workspace" },
+      has_membership: true,
+      role: "owner",
+      is_admin: false,
+      onboarding_step: "done",
+      degraded: false
+    });
   });
 
-  it("redirects to onboarding when the auth redirect yields a session", async () => {
+  it("redirects after auth confirmation using the current account state", async () => {
     authMocks.completeAuthRedirectSession.mockResolvedValueOnce({ access_token: "token" });
 
     render(
@@ -39,7 +58,7 @@ describe("AuthConfirmedPage", () => {
     );
 
     await waitFor(() => {
-      expect(routerMocks.navigate).toHaveBeenCalledWith("/onboarding", { replace: true });
+      expect(routerMocks.navigate).toHaveBeenCalledWith("/briefings", { replace: true });
     });
   });
 

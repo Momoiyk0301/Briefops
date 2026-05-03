@@ -41,6 +41,7 @@
     "SUPPORT_REQUEST_FAILED": "Je aanvraag verzenden is niet gelukt. Probeer later opnieuw.",
     "PUBLIC_SHARE_LOAD_FAILED": "Gedeelde link laden is niet gelukt.",
     "PUBLIC_LINK_CREATE_FAILED": "Deellink aanmaken is niet gelukt.",
+    "NETWORK_ERROR": "Geen internetverbinding — controleer je netwerk en probeer opnieuw.",
     "UNKNOWN_ERROR": "Er is iets misgegaan. Probeer later opnieuw."
   },
   "auth": {
@@ -339,6 +340,12 @@
     "moduleEdit": "Module bewerken",
     "audienceTags": "Doelgroep",
     "allTeams": "Alle teams",
+    "validate": "Valideren",
+    "validateConfirm": "Bevestigen",
+    "validateCancel": "Annuleren",
+    "validateConfirmTitle": "Briefing valideren",
+    "validateConfirmBody": "De briefing wordt als gevalideerd gemarkeerd. Deze actie kan ongedaan worden gemaakt.",
+    "validateSuccess": "Briefing gevalideerd",
     "pdf": "PDF exporteren",
     "loadingShort": "Laden",
     "ready": "Klaar",
