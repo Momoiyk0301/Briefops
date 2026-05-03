@@ -104,6 +104,7 @@ export async function GET(request: Request, { params }: Params) {
     const service = createServiceRoleClient();
 
     // Generate PDF first — quota is only consumed after a successful upload
+    const pdfStartMs = Date.now();
     const bytes = await renderBriefingPdf({
       id: briefing.id,
       title: briefing.title,
@@ -151,11 +152,17 @@ export async function GET(request: Request, { params }: Params) {
       throw new HttpError(500, `Failed to update PDF quota: ${quotaUpdateError.message}`, "PDF_EXPORT_DB_FAILED");
     }
 
+    const generationTimeMs = Date.now() - pdfStartMs;
+    const pdfSizeMb = parseFloat((bytes.byteLength / 1_048_576).toFixed(4));
+
     const exportRow = await createBriefingExport(service, {
       workspace_id: briefing.workspace_id,
       briefing_id: briefing.id,
       version,
       file_path: storagePath,
+      status: "success",
+      generation_time_ms: generationTimeMs,
+      pdf_size_mb: pdfSizeMb,
       created_by: userId
     });
 

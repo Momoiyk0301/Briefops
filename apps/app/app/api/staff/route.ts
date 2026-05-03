@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const createSchema = z.object({
-  briefing_id: z.string().uuid(),
+  briefing_id: z.string().uuid().optional().nullable(),
   full_name: z.string().trim().min(1),
   role: z.string().trim().min(1).default("staff"),
   phone: z.string().trim().optional(),
@@ -56,15 +56,17 @@ export async function POST(request: Request) {
     if (membershipError) throw membershipError;
     if (!membership?.workspace_id) throw new HttpError(404, "Workspace not found");
 
-    const { data: briefing, error: briefingError } = await client
-      .from("briefings")
-      .select("id, workspace_id")
-      .eq("id", body.briefing_id)
-      .maybeSingle();
+    if (body.briefing_id) {
+      const { data: briefing, error: briefingError } = await client
+        .from("briefings")
+        .select("id, workspace_id")
+        .eq("id", body.briefing_id)
+        .maybeSingle();
 
-    if (briefingError) throw briefingError;
-    if (!briefing) throw new HttpError(404, "Briefing not found");
-    if (briefing.workspace_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
+      if (briefingError) throw briefingError;
+      if (!briefing) throw new HttpError(404, "Briefing not found");
+      if (briefing.workspace_id !== membership.workspace_id) throw new HttpError(403, "Forbidden");
+    }
 
     const data = await createStaff(client, membership.workspace_id, body);
     if (!data.workspace_id || data.workspace_id !== membership.workspace_id) {

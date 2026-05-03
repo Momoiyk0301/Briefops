@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus2, Plus, Users, X } from "lucide-react";
+import { CalendarPlus2, Pencil, Plus, Users, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Textarea } from "@/components/ui/Textarea";
-import { createStaffMember, getBriefingsWithFallback, getStaff, toApiMessage } from "@/lib/api";
+import { createStaffMember, deleteStaffMember, getBriefingsWithFallback, getStaff, toApiMessage, updateStaffMember } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { StaffMember } from "@/lib/types";
 
@@ -26,6 +26,14 @@ type StaffAggregate = {
 
 type StaffFormState = {
   briefingId: string;
+  fullName: string;
+  role: string;
+  phone: string;
+  email: string;
+  notes: string;
+};
+
+type EditFormState = {
   fullName: string;
   role: string;
   phone: string;
@@ -54,6 +62,8 @@ export default function StaffPage() {
   const [assignTarget, setAssignTarget] = useState<StaffAggregate | null>(null);
   const [assignSearch, setAssignSearch] = useState("");
   const [selectedBriefingIds, setSelectedBriefingIds] = useState<string[]>([]);
+  const [editTarget, setEditTarget] = useState<StaffAggregate | null>(null);
+  const [editForm, setEditForm] = useState<EditFormState>({ fullName: "", role: "", phone: "", email: "", notes: "" });
 
   const staffQuery = useQuery({ queryKey: queryKeys.staff, queryFn: getStaff });
   const briefingsQuery = useQuery({ queryKey: queryKeys.briefingsFallback, queryFn: getBriefingsWithFallback });
@@ -146,14 +156,50 @@ export default function StaffPage() {
     onError: (error) => toast.error(toApiMessage(error))
   });
 
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editTarget) return;
+      const memberIds = (staffQuery.data ?? [])
+        .filter((m) => buildStaffKey(m) === editTarget.key)
+        .map((m) => m.id);
+
+      for (const id of memberIds) {
+        await updateStaffMember(id, {
+          full_name: editForm.fullName,
+          role: editForm.role,
+          phone: editForm.phone,
+          email: editForm.email,
+          notes: editForm.notes
+        });
+      }
+    },
+    onSuccess: async () => {
+      setEditTarget(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.staff });
+      toast.success("Membre modifié");
+    },
+    onError: (error) => toast.error(toApiMessage(error))
+  });
+
+  const openEdit = (member: StaffAggregate) => {
+    setEditTarget(member);
+    setEditForm({
+      fullName: member.full_name,
+      role: member.role,
+      phone: member.phone ?? "",
+      email: member.email ?? "",
+      notes: member.notes ?? ""
+    });
+  };
+
   const submitCreate = () => {
-    if (!form.briefingId || !form.fullName.trim()) {
-      toast.error("Nom et briefing requis");
+    if (!form.fullName.trim()) {
+      toast.error("Nom requis");
       return;
     }
 
     createMutation.mutate({
-      briefing_id: form.briefingId,
+      briefing_id: form.briefingId || null,
       full_name: form.fullName,
       role: form.role,
       phone: form.phone,
@@ -218,10 +264,14 @@ export default function StaffPage() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="secondary" onClick={() => openEdit(member)}>
+                        <Pencil size={14} />
+                        Modifier
+                      </Button>
                       <Button variant="secondary" onClick={() => setAssignTarget(member)}>
                         <CalendarPlus2 size={14} />
-                        Ajouter un briefing
+                        Briefing
                       </Button>
                     </div>
                   </td>
@@ -294,24 +344,28 @@ export default function StaffPage() {
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <select
-                aria-label="briefing-select"
-                className="w-full rounded-[22px] border border-[#dce3f1] bg-white/96 px-4 py-3 text-sm text-[#172033] shadow-[0_10px_28px_rgba(15,23,42,0.05)] outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/12 dark:border-white/10 dark:bg-[#151515] dark:text-white"
-                value={form.briefingId}
-                onChange={(event) => setForm((prev) => ({ ...prev, briefingId: event.target.value }))}
-              >
-                <option value="">Sélectionner un briefing</option>
-                {(briefingsQuery.data?.data ?? []).map((briefing) => (
-                  <option key={briefing.id} value={briefing.id}>
-                    {briefing.title}
-                  </option>
-                ))}
-              </select>
-              <Input value={form.fullName} onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))} placeholder="Nom complet" />
+              <Input value={form.fullName} onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))} placeholder="Nom complet *" />
               <Input value={form.role} onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))} placeholder="Rôle" />
               <Input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Téléphone" />
               <Input value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="Email" />
-              <Textarea rows={1} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes terrain" />
+              <div className="md:col-span-2">
+                <Textarea rows={2} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes terrain" />
+              </div>
+              <div className="md:col-span-2">
+                <select
+                  aria-label="briefing-select"
+                  className="w-full rounded-[22px] border border-[#dce3f1] bg-white/96 px-4 py-3 text-sm text-[#172033] shadow-[0_10px_28px_rgba(15,23,42,0.05)] outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/12 dark:border-white/10 dark:bg-[#151515] dark:text-white"
+                  value={form.briefingId}
+                  onChange={(event) => setForm((prev) => ({ ...prev, briefingId: event.target.value }))}
+                >
+                  <option value="">Sans briefing (optionnel)</option>
+                  {(briefingsQuery.data?.data ?? []).map((briefing) => (
+                    <option key={briefing.id} value={briefing.id}>
+                      {briefing.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="mt-5 flex gap-2">
@@ -320,6 +374,39 @@ export default function StaffPage() {
               </Button>
               <Button className="flex-1" onClick={submitCreate} disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Ajout..." : "Ajouter"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {editTarget ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#0f172a]/40 px-4 backdrop-blur-sm">
+          <Card className="w-full max-w-2xl p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Modifier le membre</h2>
+                <p className="mt-1 text-sm text-[#6f748a] dark:text-[#a8afc6]">
+                  Modifie les informations de {editTarget.full_name} sans lien briefing requis.
+                </p>
+              </div>
+              <button type="button" onClick={() => setEditTarget(null)} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <Input value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} placeholder="Nom complet" />
+              <Input value={editForm.role} onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value }))} placeholder="Rôle" />
+              <Input value={editForm.phone} onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Téléphone" />
+              <Input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" />
+              <div className="md:col-span-2">
+                <Textarea rows={2} value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes terrain" />
+              </div>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={() => setEditTarget(null)}>Annuler</Button>
+              <Button className="flex-1" onClick={() => editMutation.mutate()} disabled={editMutation.isPending}>
+                {editMutation.isPending ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </div>
           </Card>

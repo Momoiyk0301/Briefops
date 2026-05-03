@@ -4,6 +4,7 @@ import type { MarketingLocale } from "@/i18n/marketing";
 import { getMarketingDictionary, marketingLocales } from "@/i18n/marketing";
 import { LocaleHtmlSync } from "@/marketing/LocaleHtmlSync";
 import { MarketingNavBar } from "@/marketing/MarketingNavBar";
+import { WaitlistForm } from "@/marketing/WaitlistForm";
 
 type LandingPageProps = {
   locale: MarketingLocale;
@@ -63,20 +64,7 @@ export function LandingPage({ locale }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <span
-                aria-disabled="true"
-                className="cursor-not-allowed rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white opacity-60 shadow-[0_20px_40px_rgba(16,32,58,0.18)]"
-              >
-                Bientôt disponible
-              </span>
-              <span
-                aria-disabled="true"
-                className="cursor-not-allowed rounded-full border border-[#d4deef] bg-white px-6 py-3 text-sm font-medium text-[#29436c] opacity-55"
-              >
-                Bientôt disponible
-              </span>
-            </div>
+            <WaitlistForm source="hero" />
 
             <ul className="grid gap-3 sm:grid-cols-3" role="list">
               {dictionary.hero.bullets.map((bullet) => (
@@ -188,9 +176,10 @@ export function LandingPage({ locale }: LandingPageProps) {
         <footer className="flex flex-col gap-4 border-t border-[#dde5f0]/60 py-6 text-sm text-[#5b6b86] sm:flex-row sm:items-center sm:justify-between">
           <p>BriefOPS · {dictionary.footer.marketing}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <span aria-disabled="true" className="cursor-not-allowed font-medium text-[#23457a] opacity-55">
-              Bientôt disponible
-            </span>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/cgu">CGU</a>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/privacy">Confidentialité</a>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/mentions-legales">Mentions légales</a>
+            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/cookies">Cookies</a>
             <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
               {dictionary.seoPages.eventBriefingTemplate.navLabel}
             </a>

@@ -16,7 +16,8 @@ import { Tabs } from "@/components/ui/Tabs";
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(6)
+  password: z.string().min(6),
+  cgu_accepted: z.boolean().optional()
 });
 
 type Values = z.infer<typeof schema>;
@@ -27,7 +28,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "register" ? "register" : "login";
   const [mode, setMode] = useState<"login" | "register">(initialMode);
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "", cgu_accepted: false } });
   const watchedEmail = form.watch("email");
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -77,6 +78,10 @@ export default function LoginPage() {
         }
         navigate(nextRoute);
       } else {
+        if (!values.cgu_accepted) {
+          toast.error(t("auth.cguRequired"));
+          return;
+        }
         const signUpResult = await signUpWithPassword(values.email, values.password);
         if (!signUpResult.session) {
           navigate(`/auth/check-email?email=${encodeURIComponent(values.email)}`);
@@ -154,7 +159,25 @@ export default function LoginPage() {
                     {t("auth.forgotPassword")}
                   </Link>
                 </div>
-              ) : null}
+              ) : (
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-[#6f748a]">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-600"
+                    {...form.register("cgu_accepted")}
+                  />
+                  <span>
+                    {t("auth.cguAccept")}{" "}
+                    <a href="/cgu" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">
+                      CGU
+                    </a>{" "}
+                    {t("auth.and")}{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">
+                      {t("auth.privacyPolicy")}
+                    </a>
+                  </span>
+                </label>
+              )}
               <Button type="submit" className="w-full" withArrow disabled={form.formState.isSubmitting}>
                 {mode === "login" ? t("auth.submitLogin") : t("auth.continueRegister")}
               </Button>

@@ -23,9 +23,11 @@ export async function createBriefingExport(
     briefing_id: string;
     version: number;
     file_path: string;
-    status?: "creating" | "generating" | "ready" | "failed";
+    status?: "creating" | "generating" | "ready" | "failed" | "success" | "error";
     error_message?: string | null;
     created_by: string;
+    generation_time_ms?: number | null;
+    pdf_size_mb?: number | null;
   }
 ) {
   const { data, error } = await client

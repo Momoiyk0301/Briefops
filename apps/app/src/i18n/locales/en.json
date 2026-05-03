@@ -58,7 +58,11 @@
     "userNotFound": "User not found.",
     "invalidPassword": "Incorrect password.",
     "emailNotConfirmed": "Email not confirmed. Check your inbox before signing in.",
-    "logout": "Logout"
+    "logout": "Logout",
+    "cguRequired": "You must accept the Terms of Service to create an account.",
+    "cguAccept": "I accept the",
+    "and": "and the",
+    "privacyPolicy": "Privacy Policy"
   },
   "nav": {
     "briefings": "Briefings",

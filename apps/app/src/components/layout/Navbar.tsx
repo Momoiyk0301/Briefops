@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bell, Search, X } from "lucide-react";
+import { ArrowLeft, Bell, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { AvatarBadge } from "@/components/ui/AvatarBadge";
+import { GlobalSearch } from "@/components/ui/GlobalSearch";
 import { UserPlan } from "@/lib/types";
 import { getBriefingsWithFallback, getMe, getStorageSignedUrl } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -156,18 +157,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <label className="relative hidden min-w-[280px] items-center md:flex">
-            <Search
-              size={15}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8b93a7] dark:text-[#9ea6bc]"
-            />
-            <input
-              type="search"
-              aria-label={t("navbar.searchLabel")}
-              placeholder={t("navbar.searchPlaceholder")}
-              className="h-11 w-full rounded-full border border-[#e4e9f4] bg-white/88 pl-11 pr-4 text-sm text-[#172033] shadow-[0_10px_24px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-[#8b93a7] focus:border-brand-500/40 dark:border-white/10 dark:bg-[#171717] dark:text-white dark:placeholder:text-[#8f98b0]"
-            />
-          </label>
+          <GlobalSearch />
           <div className="relative" ref={notificationsRef}>
             <Button
               variant="ghost"

@@ -1,10 +1,12 @@
+import { headers } from "next/headers";
+
 import * as Sentry from "@sentry/nextjs";
 
 import { PublicBriefingErrorBoundary } from "@/components/briefing/PublicBriefingErrorBoundary";
 import { PublicLinkFallback } from "@/components/briefing/PublicLinkFallback";
 import { PublicBriefingView } from "@/components/briefing/PublicBriefingView";
 import { buildPublicBriefingHeader, buildPublicBriefingSections } from "@/lib/publicBriefings";
-import { resolveStaffBriefingByToken } from "@/supabase/queries/publicLinks";
+import { resolveStaffBriefingByToken, trackPublicLinkView } from "@/supabase/queries/publicLinks";
 import { createServiceRoleClient } from "@/supabase/server";
 
 type Props = {
@@ -18,6 +20,10 @@ export default async function StaffBriefingPage({ params }: Props) {
     const resolved = await resolveStaffBriefingByToken(service, token);
 
     if (!resolved) return <PublicLinkFallback />;
+
+    const reqHeaders = await headers();
+    const userAgent = reqHeaders.get("user-agent");
+    void trackPublicLinkView(service, resolved.link.id, userAgent);
 
     const header = buildPublicBriefingHeader(resolved.briefing);
     const sections = buildPublicBriefingSections(resolved.modules);
