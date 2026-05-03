@@ -2,7 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const createStaffSchema = z.object({
-  briefing_id: z.string().uuid(),
+  briefing_id: z.string().uuid().optional().nullable(),
   full_name: z.string().trim().min(1),
   role: z.string().trim().min(1).default("staff"),
   phone: z.string().trim().optional(),
