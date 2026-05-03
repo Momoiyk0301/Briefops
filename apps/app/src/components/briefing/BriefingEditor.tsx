@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, GripVertical, Loader2, Palette, Share2 } from "lucide-react";
+import { Check, GripVertical, Loader2, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,7 @@ import { generateBriefingPdf, getStorageSignedUrl, patchBriefing, toApiMessage, 
 import { getErrorMessage } from "@/lib/errorMessages";
 import { parseModuleRow, toCanonicalModuleJson } from "@/lib/moduleCanonical";
 import { moduleEntries } from "@/lib/moduleRegistry";
-import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, PdfTheme, RegistryModule } from "@/lib/types";
+import { Briefing, BriefingModuleRow, EditorState, ModuleDataMap, ModuleKey, RegistryModule } from "@/lib/types";
 import { MetadataForm } from "@/components/briefing/MetadataForm";
 import { ModulePanel } from "@/components/briefing/ModulePanel";
 import { SharePanel } from "@/components/briefing/SharePanel";
@@ -77,13 +77,6 @@ function buildInitialOrder(rows: BriefingModuleRow[]): Exclude<ModuleKey, "metad
   });
 }
 
-const PDF_THEMES: { value: PdfTheme; label: string }[] = [
-  { value: "default", label: "Standard" },
-  { value: "elegant", label: "Élégant" },
-  { value: "bold", label: "Bold" },
-  { value: "minimal", label: "Minimal" }
-];
-
 type Props = {
   briefing: Briefing;
   modules: BriefingModuleRow[];
@@ -97,6 +90,8 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [state, setState] = useState<EditorState>(() => buildInitialState(briefing, modules, registryModules));
   const [moduleOrder, setModuleOrder] = useState<Exclude<ModuleKey, "metadata">[]>(() => buildInitialOrder(modules));
   const [saving, setSaving] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validateConfirm, setValidateConfirm] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [pdfButtonState, setPdfButtonState] = useState<"idle" | "loading" | "ready">("idle");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -107,6 +102,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
   const [dragKey, setDragKey] = useState<Exclude<ModuleKey, "metadata"> | null>(null);
   const lastSaved = useRef("");
   const saveIndicatorTimeoutRef = useRef<number | null>(null);
+  const validateConfirmTimeoutRef = useRef<number | null>(null);
 
   const teamModeEnabled = state.modules.metadata.data.team_mode;
   const definedTeams = state.modules.metadata.data.teams;
@@ -139,6 +135,13 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
       return () => { cancelled = true; };
     }
   }, [briefing.pdf_path]);
+
+  useEffect(() => {
+    return () => {
+      if (saveIndicatorTimeoutRef.current) window.clearTimeout(saveIndicatorTimeoutRef.current);
+      if (validateConfirmTimeoutRef.current) window.clearTimeout(validateConfirmTimeoutRef.current);
+    };
+  }, []);
 
   const payload = useMemo(
     () =>
@@ -173,10 +176,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     }, 800);
     return () => window.clearTimeout(id);
   }, [state, moduleOrder]);
-
-  useEffect(() => {
-    return () => { if (saveIndicatorTimeoutRef.current) window.clearTimeout(saveIndicatorTimeoutRef.current); };
-  }, []);
 
   useEffect(() => {
     setState((prev) => {
@@ -218,6 +217,30 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleValidate = async () => {
+    setValidateConfirm(false);
+    if (validateConfirmTimeoutRef.current) window.clearTimeout(validateConfirmTimeoutRef.current);
+    try {
+      setValidating(true);
+      await handleSave(true);
+      await patchBriefing(briefing.id, { status: "validated" });
+      toast.success(t("editor.validateSuccess"));
+    } catch {
+      toast.error(getErrorMessage("BRIEFING_UPDATE_FAILED"));
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const requestValidate = () => {
+    setValidateConfirm(true);
+    if (validateConfirmTimeoutRef.current) window.clearTimeout(validateConfirmTimeoutRef.current);
+    validateConfirmTimeoutRef.current = window.setTimeout(() => {
+      setValidateConfirm(false);
+      validateConfirmTimeoutRef.current = null;
+    }, 4000);
   };
 
   const handlePdf = async () => {
@@ -315,16 +338,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
   const handleDragEnd = () => setDragKey(null);
 
-  const setPdfTheme = (theme: PdfTheme) => {
-    setState((prev) => ({
-      ...prev,
-      modules: {
-        ...prev.modules,
-        metadata: { ...prev.modules.metadata, data: { ...prev.modules.metadata.data, pdf_theme: theme } }
-      }
-    }));
-  };
-
   const saveStatusLabel =
     saveIndicator === "saving" ? t("editor.saving")
     : saveIndicator === "saved" ? t("editor.savedShort")
@@ -348,9 +361,25 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
             <span className="text-xs text-slate-400">{saveStatusLabel}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button className="h-9 px-4" onClick={() => void handleSave(true)} disabled={saving}>
-              {saving ? t("app.loading") : t("app.save")}
-            </Button>
+            {validateConfirm ? (
+              <>
+                <Button
+                  className="h-9 px-4 border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-300"
+                  onClick={() => void handleValidate()}
+                  disabled={validating}
+                >
+                  {validating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  {t("editor.validateConfirm")}
+                </Button>
+                <Button variant="secondary" className="h-9 px-3" onClick={() => setValidateConfirm(false)}>
+                  {t("editor.validateCancel")}
+                </Button>
+              </>
+            ) : (
+              <Button className="h-9 px-4" onClick={requestValidate} disabled={saving || validating}>
+                {saving ? t("app.loading") : t("editor.validate")}
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={() => void handlePdf()}
@@ -476,33 +505,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                       <span className="text-[10px] text-slate-400">{t("editor.mandatory") ?? "—"}</span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* PDF theme */}
-          <div>
-            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7d849a]">
-              <Palette size={12} />
-              {t("editor.pdfTheme") ?? "Thème PDF"}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {PDF_THEMES.map((theme) => {
-                const active = (state.modules.metadata.data.pdf_theme ?? "default") === theme.value;
-                return (
-                  <button
-                    key={theme.value}
-                    type="button"
-                    onClick={() => setPdfTheme(theme.value)}
-                    className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
-                      active
-                        ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                        : "border-[#d9dcea] bg-white text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-[#1a1a1a] dark:text-slate-300"
-                    }`}
-                  >
-                    {theme.label}
-                  </button>
                 );
               })}
             </div>

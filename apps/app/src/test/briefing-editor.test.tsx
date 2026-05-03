@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 import { BriefingEditor } from "@/components/briefing/BriefingEditor";
 import { moduleEntries, moduleRegistry } from "@/lib/moduleRegistry";
@@ -11,7 +11,8 @@ const apiMocks = vi.hoisted(() => ({
   getStorageSignedUrl: vi.fn(),
   listBriefingShareLinks: vi.fn().mockResolvedValue([]),
   createBriefingShareLink: vi.fn(),
-  revokeBriefingShareLink: vi.fn()
+  revokeBriefingShareLink: vi.fn(),
+  patchBriefing: vi.fn().mockResolvedValue({})
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -20,12 +21,18 @@ vi.mock("@/lib/api", () => ({
   listBriefingShareLinks: apiMocks.listBriefingShareLinks,
   createBriefingShareLink: apiMocks.createBriefingShareLink,
   revokeBriefingShareLink: apiMocks.revokeBriefingShareLink,
-  patchBriefing: vi.fn().mockResolvedValue({}),
+  patchBriefing: apiMocks.patchBriefing,
   toApiMessage: vi.fn((e: unknown) => String(e)),
   upsertBriefingModules: vi.fn().mockResolvedValue([])
 }));
 
 describe("BriefingEditor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiMocks.listBriefingShareLinks.mockResolvedValue([]);
+    apiMocks.patchBriefing.mockResolvedValue({});
+  });
+
   const briefing: Briefing = {
     id: "11111111-1111-1111-1111-111111111111",
     org_id: "22222222-2222-2222-2222-222222222222",
@@ -53,12 +60,12 @@ describe("BriefingEditor", () => {
     expect(screen.getAllByPlaceholderText(/Adresse|Address/i).length).toBeGreaterThan(0);
     expect(screen.getAllByPlaceholderText(/^Notes$/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /^Notes$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Standard" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Valider|Validate/i })).toBeInTheDocument();
   });
 
   it("shows editor header actions", () => {
     render(<BriefingEditor briefing={briefing} modules={modules} />);
-    expect(screen.getByRole("button", { name: /Enregistrer|Save/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Valider|Validate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Exporter PDF|Export PDF|editor\.pdf|^pdf$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /partager|share/i })).toBeInTheDocument();
   });
@@ -124,14 +131,15 @@ describe("BriefingEditor", () => {
     }, { timeout: 3000 });
   });
 
-  it("lets the PDF theme be changed", async () => {
+  it("validates the briefing after confirmation", async () => {
     const user = userEvent.setup();
     render(<BriefingEditor briefing={briefing} modules={modules} />);
 
-    await user.click(screen.getByRole("button", { name: "Bold" }));
+    await user.click(screen.getByRole("button", { name: /Valider|Validate/i }));
+    await user.click(screen.getByRole("button", { name: /Confirmer|Confirm/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Enregistré/i)).toBeInTheDocument();
+      expect(apiMocks.patchBriefing).toHaveBeenCalledWith(briefing.id, { status: "validated" });
     }, { timeout: 3000 });
   });
 });

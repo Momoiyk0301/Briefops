@@ -1,6 +1,7 @@
 import { getDesktopPage, getPageCountFromLayouts } from "@/lib/briefingPages";
+import { moduleCatalog } from "@/lib/moduleCatalog";
 import { hasServerModulePresentation, serverModulePresentations } from "@/modules/server";
-import { escapeHtml, humanizeModuleKey, renderPdfRows } from "@/modules/shared";
+import { PdfLang, escapeHtml, humanizeModuleKey, renderPdfRows } from "@/modules/shared";
 import { gridRectToInlineStyle } from "@/pdf/layoutToHtml";
 
 type CanonicalModulePayload = {
@@ -34,6 +35,7 @@ type BriefingHtmlInput = {
   title: string;
   event_date: string | null;
   location_text: string | null;
+  lang?: PdfLang;
   team?: string | null;
   watermark?: boolean | string;
   modules: ModuleInput[];
@@ -68,15 +70,17 @@ function renderObjectRows(value: Record<string, unknown>): string {
   const entries = flattenData(value);
   return renderPdfRows(entries.map(({ key, value: val }) => ({
     label: humanizeModuleKey(key),
-    value: typeof val === "string"
-      ? val
-      : val == null
-        ? "-"
-        : Array.isArray(val)
-          ? val.length
-            ? val.map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry))).join(", ")
-            : "-"
-          : JSON.stringify(val)
+    value: typeof val === "boolean"
+      ? val ? "Oui" : "Non"
+      : typeof val === "string"
+        ? val
+        : val == null
+          ? "-"
+          : Array.isArray(val)
+            ? val.length
+              ? val.map((entry) => (typeof entry === "string" ? entry : JSON.stringify(entry))).join(", ")
+              : "-"
+            : JSON.stringify(val)
   })));
 }
 
@@ -117,15 +121,21 @@ function normalizeTeamKey(team?: string | null) {
   return normalized || null;
 }
 
-function renderModuleBody(moduleKey: string, data: Record<string, unknown>) {
+function getModuleTitle(moduleKey: string, lang: PdfLang): string {
+  const entry = (moduleCatalog as Record<string, { labels?: Partial<Record<PdfLang, string>> }>)[moduleKey];
+  return entry?.labels?.[lang] ?? entry?.labels?.fr ?? humanizeModuleKey(moduleKey);
+}
+
+function renderModuleBody(moduleKey: string, data: Record<string, unknown>, lang: PdfLang): string {
   if (hasServerModulePresentation(moduleKey)) {
-    return serverModulePresentations[moduleKey].renderPdf(data as never, { moduleKey });
+    return serverModulePresentations[moduleKey].renderPdf(data as never, { moduleKey, lang });
   }
 
   return renderObjectRows(data);
 }
 
 export function buildBriefingHtml(input: BriefingHtmlInput): string {
+  const lang: PdfLang = (input.lang && ["fr", "en", "nl"].includes(input.lang)) ? input.lang : "fr";
   const targetTeam = normalizeTeamKey(input.team);
   const activeModules = input.modules
     .map((module) => {
@@ -155,8 +165,8 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
           .map((module, index) => {
             return `
               <section class="module" data-page="${pageIndex + 1}" data-module-index="${index + 1}" style="${gridRectToInlineStyle(module.layoutDesktop)}">
-                <div class="module-title">${escapeHtml(humanizeModuleKey(module.moduleKey))}</div>
-                ${renderModuleBody(module.moduleKey, module.data)}
+                <div class="module-title">${escapeHtml(getModuleTitle(module.moduleKey, lang))}</div>
+                ${renderModuleBody(module.moduleKey, module.data, lang)}
               </section>
             `;
           })
@@ -186,7 +196,7 @@ export function buildBriefingHtml(input: BriefingHtmlInput): string {
 
   return `
 <!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

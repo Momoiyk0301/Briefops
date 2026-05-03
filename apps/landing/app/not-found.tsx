@@ -1,4 +1,4 @@
-import { buildAppUrl, buildMarketingUrl } from "@shared/sites";
+import { buildMarketingUrl } from "@shared/sites";
 
 export default function NotFoundPage() {
   return (
@@ -13,9 +13,9 @@ export default function NotFoundPage() {
           <a className="rounded-full bg-[#10203a] px-5 py-3 text-sm font-semibold text-white" href={buildMarketingUrl("/")}>
             Retour au site
           </a>
-          <a className="rounded-full border border-[#d4deef] bg-white px-5 py-3 text-sm font-medium text-[#29436c]" href={buildAppUrl("/login")}>
-            Ouvrir l’app
-          </a>
+          <span aria-disabled="true" className="cursor-not-allowed rounded-full border border-[#d4deef] bg-white px-5 py-3 text-sm font-medium text-[#29436c] opacity-55">
+            Bientôt disponible
+          </span>
         </div>
       </div>
     </main>

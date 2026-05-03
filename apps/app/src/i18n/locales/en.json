@@ -41,6 +41,7 @@
     "SUPPORT_REQUEST_FAILED": "We could not send your request. Try again later.",
     "PUBLIC_SHARE_LOAD_FAILED": "We could not load the shared link.",
     "PUBLIC_LINK_CREATE_FAILED": "We could not create the share link.",
+    "NETWORK_ERROR": "No internet connection — check your network and try again.",
     "UNKNOWN_ERROR": "Something went wrong. Try again later."
   },
   "auth": {
@@ -339,6 +340,12 @@
     "moduleEdit": "Module editing",
     "audienceTags": "Audience",
     "allTeams": "All teams",
+    "validate": "Validate",
+    "validateConfirm": "Confirm",
+    "validateCancel": "Cancel",
+    "validateConfirmTitle": "Validate briefing",
+    "validateConfirmBody": "The briefing will be marked as validated. This action can be undone.",
+    "validateSuccess": "Briefing validated",
     "pdf": "Export PDF",
     "loadingShort": "Loading",
     "ready": "Ready",

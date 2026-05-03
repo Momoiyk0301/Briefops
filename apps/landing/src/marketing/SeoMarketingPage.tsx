@@ -1,8 +1,7 @@
-import { ArrowRight, CheckCircle2, FileText, Layers, Link as LinkIcon } from "lucide-react";
+import { CheckCircle2, FileText, Layers, Link as LinkIcon } from "lucide-react";
 
 import type { MarketingLocale } from "@/i18n/marketing";
 import { getMarketingDictionary, marketingLocales } from "@/i18n/marketing";
-import { buildAppUrl } from "@shared/sites";
 import { LocaleHtmlSync } from "@/marketing/LocaleHtmlSync";
 import { MarketingNavBar } from "@/marketing/MarketingNavBar";
 
@@ -21,8 +20,6 @@ export function SeoMarketingPage({ locale, pageKey }: Props) {
   const dictionary = getMarketingDictionary(locale);
   const page = dictionary.seoPages[pageKey];
   const crossPage = dictionary.seoPages[getCrossLink(pageKey)];
-  const loginUrl = buildAppUrl("/login");
-  const registerUrl = buildAppUrl("/login?mode=register");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
@@ -30,8 +27,6 @@ export function SeoMarketingPage({ locale, pageKey }: Props) {
 
       <MarketingNavBar
         locale={locale}
-        loginUrl={loginUrl}
-        registerUrl={registerUrl}
         nav={{
           solution: dictionary.nav.solution,
           howItWorks: dictionary.nav.howItWorks,
@@ -49,13 +44,12 @@ export function SeoMarketingPage({ locale, pageKey }: Props) {
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-[#51627f] sm:text-lg">{page.hero.description}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a
-                href={registerUrl}
-                className="inline-flex items-center gap-2 rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(16,32,58,0.18)] transition hover:bg-[#0d1a30]"
+              <span
+                aria-disabled="true"
+                className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white opacity-60 shadow-[0_20px_40px_rgba(16,32,58,0.18)]"
               >
-                {page.hero.primaryCta}
-                <ArrowRight size={16} />
-              </a>
+                Bientôt disponible
+              </span>
               <a
                 href={`/${locale}/${crossPage.slug}`}
                 className="rounded-full border border-[#d4deef] bg-white px-6 py-3 text-sm font-medium text-[#29436c] transition hover:border-[#b7c9e7]"
@@ -116,13 +110,12 @@ export function SeoMarketingPage({ locale, pageKey }: Props) {
               <h2 className="text-2xl font-semibold">{page.finalCta.title}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/74">{page.finalCta.description}</p>
             </div>
-            <a
-              href={registerUrl}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#10203a] transition hover:bg-[#edf4ff]"
+            <span
+              aria-disabled="true"
+              className="inline-flex shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#10203a] opacity-65"
             >
-              {page.finalCta.button}
-              <ArrowRight size={16} />
-            </a>
+              Bientôt disponible
+            </span>
           </div>
         </section>
 

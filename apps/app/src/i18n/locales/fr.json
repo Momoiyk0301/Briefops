@@ -41,6 +41,7 @@
     "SUPPORT_REQUEST_FAILED": "Impossible d’envoyer votre demande. Réessayez plus tard.",
     "PUBLIC_SHARE_LOAD_FAILED": "Impossible de charger le lien partagé.",
     "PUBLIC_LINK_CREATE_FAILED": "Impossible de créer le lien de partage.",
+    "NETWORK_ERROR": "Pas de connexion internet — vérifiez votre réseau et réessayez.",
     "UNKNOWN_ERROR": "Une erreur est survenue. Réessayez plus tard."
   },
   "auth": {
@@ -339,6 +340,12 @@
     "moduleEdit": "Édition du module",
     "audienceTags": "Audience",
     "allTeams": "Toutes les équipes",
+    "validate": "Valider",
+    "validateConfirm": "Confirmer",
+    "validateCancel": "Annuler",
+    "validateConfirmTitle": "Valider le briefing",
+    "validateConfirmBody": "Le briefing sera marqué comme validé. Cette action peut être annulée.",
+    "validateSuccess": "Briefing validé",
     "pdf": "Exporter PDF",
     "loadingShort": "Chargement",
     "ready": "Prêt",

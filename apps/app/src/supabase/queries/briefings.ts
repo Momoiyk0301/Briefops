@@ -4,14 +4,14 @@ import { z } from "zod";
 const createBriefingSchema = z.object({
   workspace_id: z.string().uuid(),
   title: z.string().min(1),
-  status: z.enum(["draft", "ready", "archived"]).optional(),
+  status: z.enum(["draft", "ready", "validated", "archived"]).optional(),
   event_date: z.string().date().optional(),
   location_text: z.string().optional()
 });
 
 const updateBriefingSchema = z.object({
   title: z.string().min(1).optional(),
-  status: z.enum(["draft", "ready", "archived"]).optional(),
+  status: z.enum(["draft", "ready", "validated", "archived"]).optional(),
   event_date: z.string().date().nullable().optional(),
   location_text: z.string().nullable().optional()
 });

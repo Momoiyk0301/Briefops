@@ -4,7 +4,9 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import { Card } from "@/components/ui/Card";
+import { getMe } from "@/lib/api";
 import { completeAuthRedirectSession } from "@/lib/auth";
+import { getPostAuthRedirect } from "@/lib/authRedirect";
 
 export default function AuthConfirmedPage() {
   const { t } = useTranslation();
@@ -20,7 +22,9 @@ export default function AuthConfirmedPage() {
         if (!active) return;
 
         if (session) {
-          navigate("/onboarding", { replace: true });
+          const me = await getMe();
+          if (!active) return;
+          navigate(getPostAuthRedirect(me), { replace: true });
           return;
         }
 

@@ -2,7 +2,6 @@ import { FileText, Layers, Smartphone, Users } from "lucide-react";
 
 import type { MarketingLocale } from "@/i18n/marketing";
 import { getMarketingDictionary, marketingLocales } from "@/i18n/marketing";
-import { buildAppUrl } from "@shared/sites";
 import { LocaleHtmlSync } from "@/marketing/LocaleHtmlSync";
 import { MarketingNavBar } from "@/marketing/MarketingNavBar";
 
@@ -26,8 +25,6 @@ const featureColors = [
 
 export function LandingPage({ locale }: LandingPageProps) {
   const dictionary = getMarketingDictionary(locale);
-  const loginUrl = buildAppUrl("/login");
-  const registerUrl = buildAppUrl("/login?mode=register");
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
@@ -35,8 +32,6 @@ export function LandingPage({ locale }: LandingPageProps) {
 
       <MarketingNavBar
         locale={locale}
-        loginUrl={loginUrl}
-        registerUrl={registerUrl}
         nav={{
           solution: dictionary.nav.solution,
           howItWorks: dictionary.nav.howItWorks,
@@ -69,18 +64,18 @@ export function LandingPage({ locale }: LandingPageProps) {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <a
-                href={registerUrl}
-                className="rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(16,32,58,0.18)] transition hover:bg-[#0d1a30]"
+              <span
+                aria-disabled="true"
+                className="cursor-not-allowed rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white opacity-60 shadow-[0_20px_40px_rgba(16,32,58,0.18)]"
               >
-                {dictionary.hero.primaryCta}
-              </a>
-              <a
-                href={loginUrl}
-                className="rounded-full border border-[#d4deef] bg-white px-6 py-3 text-sm font-medium text-[#29436c] transition hover:border-[#b7c9e7]"
+                Bientôt disponible
+              </span>
+              <span
+                aria-disabled="true"
+                className="cursor-not-allowed rounded-full border border-[#d4deef] bg-white px-6 py-3 text-sm font-medium text-[#29436c] opacity-55"
               >
-                {dictionary.hero.secondaryCta}
-              </a>
+                Bientôt disponible
+              </span>
             </div>
 
             <ul className="grid gap-3 sm:grid-cols-3" role="list">
@@ -193,9 +188,9 @@ export function LandingPage({ locale }: LandingPageProps) {
         <footer className="flex flex-col gap-4 border-t border-[#dde5f0]/60 py-6 text-sm text-[#5b6b86] sm:flex-row sm:items-center sm:justify-between">
           <p>BriefOPS · {dictionary.footer.marketing}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={loginUrl}>
-              {dictionary.footer.app}
-            </a>
+            <span aria-disabled="true" className="cursor-not-allowed font-medium text-[#23457a] opacity-55">
+              Bientôt disponible
+            </span>
             <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
               {dictionary.seoPages.eventBriefingTemplate.navLabel}
             </a>

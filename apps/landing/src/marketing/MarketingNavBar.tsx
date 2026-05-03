@@ -8,8 +8,6 @@ import { marketingLocales } from "@/i18n/marketing";
 
 type Props = {
   locale: MarketingLocale;
-  loginUrl: string;
-  registerUrl: string;
   nav: {
     solution: string;
     howItWorks: string;
@@ -18,7 +16,7 @@ type Props = {
   };
 };
 
-export function MarketingNavBar({ locale, loginUrl, registerUrl, nav }: Props) {
+export function MarketingNavBar({ locale, nav }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -68,18 +66,18 @@ export function MarketingNavBar({ locale, loginUrl, registerUrl, nav }: Props) {
 
         {/* CTA — right */}
         <div className="flex items-center gap-2">
-          <a
-            href={loginUrl}
-            className="hidden rounded-full border border-[#d6def1] px-4 py-2 text-sm font-medium text-[#28436b] transition hover:border-[#b9c8e4] hover:bg-white sm:inline-flex"
+          <span
+            aria-disabled="true"
+            className="hidden cursor-not-allowed rounded-full border border-[#d6def1] px-4 py-2 text-sm font-medium text-[#28436b] opacity-50 sm:inline-flex"
           >
-            {nav.login}
-          </a>
-          <a
-            href={registerUrl}
-            className="rounded-full bg-[#2b65ff] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(43,101,255,0.22)] transition hover:bg-[#2357de]"
+            Bientôt disponible
+          </span>
+          <span
+            aria-disabled="true"
+            className="cursor-not-allowed rounded-full bg-[#2b65ff] px-4 py-2 text-sm font-semibold text-white opacity-60 shadow-[0_8px_20px_rgba(43,101,255,0.22)]"
           >
-            {nav.cta}
-          </a>
+            Bientôt disponible
+          </span>
 
           {/* Mobile hamburger */}
           <button
@@ -112,9 +110,9 @@ export function MarketingNavBar({ locale, loginUrl, registerUrl, nav }: Props) {
             >
               {nav.howItWorks}
             </a>
-            <a href={loginUrl} className="text-sm font-medium text-[#28436b]">
-              {nav.login}
-            </a>
+            <span aria-disabled="true" className="cursor-not-allowed text-sm font-medium text-[#28436b] opacity-55">
+              Bientôt disponible
+            </span>
             <div className="flex items-center gap-1 pt-1">
               {marketingLocales.map((entry) => (
                 <a

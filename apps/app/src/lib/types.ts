@@ -86,7 +86,7 @@ export type Briefing = {
   org_id?: string;
   workspace_id?: string;
   title: string;
-  status?: "draft" | "ready" | "archived" | string;
+  status?: "draft" | "ready" | "validated" | "archived" | string;
   shared?: boolean;
   event_date: string | null;
   location_text: string | null;
@@ -121,7 +121,6 @@ export type PublicLinkWithBriefing = PublicLink & {
   pdf_path: string | null;
 };
 
-export type PdfTheme = "default" | "elegant" | "bold" | "minimal";
 
 export type BriefingModuleRow = {
   id: string;
@@ -185,7 +184,6 @@ export type MetadataExtra = {
   global_notes: string;
   team_mode: boolean;
   teams: string[];
-  pdf_theme?: PdfTheme;
 };
 
 export type AccessData = {

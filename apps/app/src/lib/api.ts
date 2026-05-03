@@ -381,7 +381,12 @@ export async function getBriefing(id: string) {
 
 export async function patchBriefing(
   id: string,
-  patch: { title?: string; event_date?: string | null; location_text?: string | null }
+  patch: {
+    title?: string;
+    status?: "draft" | "ready" | "validated" | "archived";
+    event_date?: string | null;
+    location_text?: string | null;
+  }
 ) {
   const response = await requestJson<{ data: Briefing }>(`/api/briefings/${id}`, {
     method: "PATCH",
