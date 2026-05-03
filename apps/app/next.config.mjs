@@ -18,7 +18,8 @@ const nextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      "@": path.join(__dirname, "src")
+      "@": path.join(__dirname, "src"),
+      "@shared": path.join(repoRoot, "packages/shared/src")
     };
     return config;
   },
