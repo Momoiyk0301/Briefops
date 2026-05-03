@@ -13,7 +13,15 @@ loadEnvConfig(repoRoot);
 const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: repoRoot,
-  transpilePackages: ["@briefops/shared"]
+  transpilePackages: ["@briefops/shared"],
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.join(__dirname, "src"),
+      "@shared": path.join(repoRoot, "packages/shared/src")
+    };
+    return config;
+  }
 };
 
 export default nextConfig;
