@@ -1,10 +1,18 @@
 import { z } from "zod";
 
-if (typeof window === "undefined") {
-  const nodeRequire = eval("require") as (id: string) => any;
-  const path = nodeRequire("node:path") as typeof import("node:path");
-  const { loadEnvConfig } = nodeRequire("@next/env") as typeof import("@next/env");
-  loadEnvConfig(path.resolve(process.cwd(), "../.."));
+// In development, load .env files from the monorepo root if not already loaded.
+// Wrap in try/catch: eval("require") bypasses webpack tracing so @next/env may
+// not be present in the Vercel production bundle — failing here would crash the
+// entire module and return HTML 500 for all API routes.
+if (typeof window === "undefined" && process.env.NODE_ENV === "development") {
+  try {
+    const nodeRequire = eval("require") as (id: string) => any;
+    const path = nodeRequire("node:path") as typeof import("node:path");
+    const { loadEnvConfig } = nodeRequire("@next/env") as typeof import("@next/env");
+    loadEnvConfig(path.resolve(process.cwd(), "../.."));
+  } catch {
+    // env loading failed — Vercel/Next.js already injects vars at runtime
+  }
 }
 
 const trimmed = (schema: z.ZodTypeAny) =>
