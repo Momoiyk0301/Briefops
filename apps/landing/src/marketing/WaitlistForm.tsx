@@ -12,16 +12,21 @@ export function WaitlistForm({ source = "landing", dark = false }: { source?: st
     if (!email) return;
     setStatus("loading");
     setErrorMsg("");
-    const res = await fetch("/api/waitlist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, source })
-    });
-    if (res.ok) {
-      setStatus("success");
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setErrorMsg(data.error ?? "Une erreur est survenue");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source })
+      });
+      if (res.ok) {
+        setStatus("success");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMsg(data.error ?? "Une erreur est survenue");
+        setStatus("error");
+      }
+    } catch {
+      setErrorMsg("Impossible d'envoyer la demande pour le moment");
       setStatus("error");
     }
   }
@@ -47,7 +52,7 @@ export function WaitlistForm({ source = "landing", dark = false }: { source?: st
 
   if (dark) {
     return (
-      <form onSubmit={handleSubmit} className="waitlist-form" noValidate>
+      <form onSubmit={handleSubmit} className="waitlist-form" noValidate method="get" action="">
         <div className="waitlist-input-row">
           <input
             type="email" required value={email}
@@ -67,7 +72,7 @@ export function WaitlistForm({ source = "landing", dark = false }: { source?: st
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 400 }}>
+    <form onSubmit={handleSubmit} noValidate method="get" action="" style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 400 }}>
       <button
         type="submit"
         disabled={status === "loading"}
