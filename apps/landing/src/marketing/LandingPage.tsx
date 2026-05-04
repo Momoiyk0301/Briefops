@@ -42,14 +42,13 @@ export function LandingPage({ locale }: LandingPageProps) {
 
               <p className="hero-desc">{d.hero.description}</p>
 
-              <button
-                type="button"
+              <a
                 className="btn-waitlist-hero"
-                onClick={() => { document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" }); }}
+                href={`/${locale}#waitlist`}
               >
                 {d.nav.cta}
                 <span>→</span>
-              </button>
+              </a>
               <p className="btn-rassurance">{d.hero.bullets[0] ?? "Accès anticipé gratuit · Aucun engagement"}</p>
 
               <div className="hero-chips">
