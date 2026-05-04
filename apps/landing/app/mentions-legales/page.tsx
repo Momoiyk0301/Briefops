@@ -17,8 +17,10 @@ export default function MentionsLegalesPage() {
       <L2>Éditeur du site</L2>
       <LP>
         <strong>Peak Events SRL</strong><br />
-        Belgique<br />
-        Email : <a href="mailto:hello@events-ops.be" className="text-[#1d4ed8]">hello@events-ops.be</a><br />
+        Avenue AJ Slegers 174, 1200 Bruxelles, Belgique<br />
+        Numéro d'entreprise (BCE) : 1014.209.333<br />
+        TVA : BE 1014.209.333<br />
+        Email : <a href="mailto:info@peak-events.be" className="text-[#1d4ed8]">info@peak-events.be</a><br />
         Site : <a href="https://events-ops.be" className="text-[#1d4ed8]">events-ops.be</a>
       </LP>
 
@@ -29,14 +31,15 @@ export default function MentionsLegalesPage() {
       <LP>
         Le site est hébergé par <strong>Vercel Inc.</strong><br />
         340 Pine Street, Suite 701, San Francisco, CA 94104, USA<br />
-        Les données sont stockées en Europe (UE) via Vercel Edge Network.
+        Les données et le trafic sont traités en Europe (UE) via les serveurs Vercel de Frankfurt, Allemagne (fra1).
       </LP>
 
       <L2>Infrastructure technique</L2>
       <LP>
-        Base de données et authentification : <strong>Supabase</strong> (UE)<br />
+        Base de données et authentification : <strong>Supabase</strong> (UE, AWS eu-west-1, Irlande)<br />
         Paiement : <strong>Stripe</strong> (UE, certifié PCI-DSS)<br />
-        Emails transactionnels : <strong>Resend</strong> (UE)
+        Emails transactionnels : <strong>Resend</strong> (UE)<br />
+        Analyse SEO : <strong>Google Search Console</strong> (données de crawl anonymes)
       </LP>
 
       <L2>Propriété intellectuelle</L2>
@@ -49,7 +52,7 @@ export default function MentionsLegalesPage() {
       <LP>Les présentes mentions légales sont soumises au droit belge. En cas de litige, les tribunaux de Bruxelles sont seuls compétents.</LP>
 
       <L2>Contact</L2>
-      <LP>Pour toute question : <a href="mailto:hello@events-ops.be" className="text-[#1d4ed8]">hello@events-ops.be</a></LP>
+      <LP>Pour toute question : <a href="mailto:info@peak-events.be" className="text-[#1d4ed8]">info@peak-events.be</a></LP>
     </LegalLayout>
   );
 }

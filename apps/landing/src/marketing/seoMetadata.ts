@@ -16,9 +16,15 @@ export function generateSeoMarketingMetadata(locale: MarketingLocale, pageKey: S
     description: page.meta.description,
     alternates: {
       canonical: `${base}/${locale}/${page.slug}`,
-      languages: Object.fromEntries(
-        marketingLocales.map((entry) => [entry, `${base}/${entry}/${page.slug}`])
-      )
+      languages: {
+        "x-default": `${base}/${locale}/${page.slug}`,
+        ...Object.fromEntries(
+          marketingLocales.map((entry) => [
+            entry,
+            `${base}/${entry}/${getMarketingDictionary(entry).seoPages[pageKey].slug}`
+          ])
+        )
+      }
     }
   };
 }
