@@ -1,4 +1,4 @@
-import { FileText, Layers, Smartphone, Users } from "lucide-react";
+import { ArrowRight, FileText, Layers, Smartphone, Users, Zap, Clock, Shield } from "lucide-react";
 
 import type { MarketingLocale } from "@/i18n/marketing";
 import { getMarketingDictionary, marketingLocales } from "@/i18n/marketing";
@@ -11,24 +11,23 @@ type LandingPageProps = {
 };
 
 const featureIcons = [
-  <FileText key="file" size={22} />,
-  <Layers key="layers" size={22} />,
-  <Users key="users" size={22} />,
-  <Smartphone key="phone" size={22} />,
+  <FileText key="file" size={20} />,
+  <Layers key="layers" size={20} />,
+  <Users key="users" size={20} />,
+  <Smartphone key="phone" size={20} />,
 ];
 
-const featureColors = [
-  "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300",
-  "bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-300",
-  "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300",
-  "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-300",
+const workflowIcons = [
+  <Zap key="zap" size={18} />,
+  <Clock key="clock" size={18} />,
+  <Shield key="shield" size={18} />,
 ];
 
 export function LandingPage({ locale }: LandingPageProps) {
   const dictionary = getMarketingDictionary(locale);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--ink)]">
       <LocaleHtmlSync locale={locale} />
 
       <MarketingNavBar
@@ -41,65 +40,101 @@ export function LandingPage({ locale }: LandingPageProps) {
         }}
       />
 
-      <main className="mx-auto max-w-[1440px] px-4 pb-12 pt-[72px] sm:px-6 lg:px-10 xl:px-12">
+      <main className="mx-auto max-w-[1280px] px-12 pb-0 pt-[60px]" style={{ fontFamily: "var(--font-body)" }}>
 
         {/* ── Hero ── */}
         <section
           aria-labelledby="hero-heading"
-          className="grid gap-10 py-12 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-center xl:py-16"
+          className="grid items-center gap-[72px] py-20 lg:grid-cols-2"
         >
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#5870a8]">
-                {dictionary.hero.kicker}
-              </p>
-              <h1
-                id="hero-heading"
-                className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-[3.25rem]"
+          {/* Left */}
+          <div>
+            <div className="mb-4 inline-flex items-center gap-[7px]">
+              <span
+                className="h-[5px] w-[5px] rounded-full flex-shrink-0"
+                style={{ background: "oklch(49% 0.22 258)" }}
+              />
+              <span
+                className="font-mono text-[11px] font-medium uppercase tracking-[0.06em]"
+                style={{ color: "oklch(49% 0.22 258)" }}
               >
-                {dictionary.hero.title}
-              </h1>
-              <p className="max-w-2xl text-base leading-8 text-[#51627f] sm:text-lg">
-                {dictionary.hero.description}
-              </p>
+                {dictionary.hero.kicker}
+              </span>
             </div>
+
+            <h1
+              id="hero-heading"
+              className="font-display mb-5 text-[clamp(38px,4vw,54px)] font-bold leading-[1.05] tracking-[-0.04em] text-[var(--ink)]"
+            >
+              {dictionary.hero.title}
+            </h1>
+
+            <p className="mb-8 max-w-[460px] text-base leading-[1.75] text-[var(--ink-2)]">
+              {dictionary.hero.description}
+            </p>
 
             <WaitlistForm source="hero" />
 
-            <ul className="grid gap-3 sm:grid-cols-3" role="list">
+            {/* Chips */}
+            <div className="mt-6 flex flex-wrap gap-2">
               {dictionary.hero.bullets.map((bullet) => (
-                <li
+                <div
                   key={bullet}
-                  className="rounded-[20px] border border-white/80 bg-white/85 px-4 py-3 text-sm font-medium text-[#21334f] shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+                  className="flex items-center gap-[7px] rounded-full border border-[var(--border)] bg-[var(--bg-2)] px-3.5 py-1.5 text-[12px] font-medium text-[var(--ink-2)]"
                 >
+                  <span
+                    className="h-[5px] w-[5px] rounded-full flex-shrink-0"
+                    style={{ color: "oklch(49% 0.22 258)", background: "oklch(49% 0.22 258)" }}
+                  />
                   {bullet}
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
-          {/* Mock briefing preview */}
-          <div className="w-full min-w-0 rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,#163a78_0%,#275ab5_45%,#5fb7ff_100%)] p-4 text-white shadow-[0_40px_120px_rgba(34,76,167,0.28)] sm:p-5">
-            <div className="rounded-[28px] border border-white/15 bg-white/10 p-4 backdrop-blur sm:p-5">
-              <div className="rounded-[24px] bg-white/95 p-4 text-[#10203a] sm:p-5">
-                <div className="rounded-[20px] bg-[linear-gradient(135deg,#66748f_0%,#44536f_100%)] px-5 py-5 text-white" aria-hidden="true">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Briefing mockup</p>
-                  <p className="mt-3 text-xl font-semibold">Demo Event · Client exemple</p>
-                  <p className="mt-2 text-sm text-white/80">14 mai 2026 · Lieu fictif</p>
-                  <p className="mt-1 text-sm text-white/80">Contact · Equipe demo</p>
+          {/* Right — Briefing mock */}
+          <div
+            className="w-full rounded-[28px] p-[5px]"
+            style={{
+              background: "linear-gradient(160deg, #1a2d52 0%, #0e1c3a 100%)",
+              boxShadow: "0 32px 80px rgba(10,20,50,0.28), 0 0 0 1px rgba(255,255,255,0.06)"
+            }}
+          >
+            <div
+              className="rounded-[23px] border border-white/6 p-5"
+              style={{ background: "#0d1830" }}
+            >
+              {/* Header mockup */}
+              <div
+                className="mb-4 rounded-[18px] p-4 text-white"
+                style={{ background: "linear-gradient(135deg, #1e3a7a 0%, #162d62 100%)" }}
+                aria-hidden="true"
+              >
+                <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-white/50">
+                  Briefing mockup
+                </p>
+                <p className="mt-2 font-display text-base font-bold">Demo Event · Client exemple</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/70">
+                  <span>14 mai 2026</span>
+                  <span>Lieu fictif</span>
+                  <span>Équipe démo</span>
                 </div>
+              </div>
 
-                <div className="mt-4 space-y-3" aria-hidden="true">
-                  {Object.values(dictionary.sections).map((section) => (
-                    <div
-                      key={section.title}
-                      className="rounded-[16px] border border-[#d6def1] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#607293]">{section.title}</p>
-                      <p className="mt-1.5 text-sm leading-5 text-[#4f5f7b]">{section.description}</p>
-                    </div>
-                  ))}
-                </div>
+              {/* Module cards */}
+              <div className="space-y-2" aria-hidden="true">
+                {Object.values(dictionary.sections).map((section) => (
+                  <div
+                    key={section.title}
+                    className="rounded-[12px] px-4 py-3"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-white/40">
+                      {section.title}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-5 text-white/75">{section.description}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -108,37 +143,59 @@ export function LandingPage({ locale }: LandingPageProps) {
         {/* ── Problem ── */}
         <section
           aria-labelledby="problem-label"
-          className="mb-10 rounded-[28px] border border-[#fde8c8]/80 bg-[#fffaf4]/90 px-6 py-6 shadow-[0_12px_40px_rgba(180,100,20,0.06)]"
+          className="mb-10 rounded-[20px] px-6 py-5"
+          style={{
+            background: "var(--amber-bg, oklch(98% 0.04 70))",
+            border: "1px solid var(--amber-b, oklch(88% 0.10 68))"
+          }}
         >
-          <p id="problem-label" className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c07a30]">
+          <p
+            id="problem-label"
+            className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] mb-2"
+            style={{ color: "oklch(58% 0.16 65)" }}
+          >
             {dictionary.problem.label}
           </p>
-          <p className="mt-2 text-base leading-7 text-[#7a4a1a]">{dictionary.problem.text}</p>
+          <p className="text-[15px] leading-7 text-[var(--ink-2)]">{dictionary.problem.text}</p>
         </section>
 
         {/* ── Solution / Features ── */}
         <section
           id="solution"
           aria-labelledby="solution-heading"
-          className="mb-10 scroll-mt-20"
+          className="mb-12 scroll-mt-[72px]"
         >
+          <div className="mb-2 inline-flex items-center gap-[7px]">
+            <span className="h-[5px] w-[5px] rounded-full flex-shrink-0" style={{ background: "oklch(49% 0.22 258)" }} />
+            <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: "oklch(49% 0.22 258)" }}>
+              {dictionary.nav.solution}
+            </span>
+          </div>
           <h2
             id="solution-heading"
-            className="mb-6 text-2xl font-semibold text-[#10203a] sm:text-3xl"
+            className="font-display mb-8 text-[clamp(26px,2.5vw,36px)] font-bold tracking-[-0.03em] text-[var(--ink)]"
           >
             {dictionary.nav.solution}
           </h2>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {dictionary.features.map((feature, index) => (
               <article
                 key={feature.title}
-                className="rounded-[28px] border border-white/80 bg-white/85 px-5 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
+                className="rounded-[18px] border border-[var(--border)] bg-[var(--bg-2)] px-5 py-5"
+                style={{ boxShadow: "0 12px 32px rgba(15,23,42,0.06)" }}
               >
-                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-[14px] ${featureColors[index]}`}>
+                <div
+                  className="mb-4 flex h-10 w-10 items-center justify-center rounded-[12px]"
+                  style={{
+                    background: "oklch(92% 0.08 258)",
+                    color: "oklch(49% 0.22 258)"
+                  }}
+                >
                   {featureIcons[index]}
                 </div>
-                <h3 className="text-base font-semibold text-[#10203a]">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#55657f]">{feature.description}</p>
+                <h3 className="font-display text-[14px] font-bold tracking-[-0.01em] text-[var(--ink)]">{feature.title}</h3>
+                <p className="mt-1.5 text-[13px] leading-[1.6] text-[var(--ink-3)]">{feature.description}</p>
               </article>
             ))}
           </div>
@@ -148,52 +205,94 @@ export function LandingPage({ locale }: LandingPageProps) {
         <section
           id="how-it-works"
           aria-labelledby="workflow-heading"
-          className="mb-10 scroll-mt-20"
+          className="mb-12 scroll-mt-[72px]"
         >
+          <div className="mb-2 inline-flex items-center gap-[7px]">
+            <span className="h-[5px] w-[5px] rounded-full flex-shrink-0" style={{ background: "oklch(49% 0.22 258)" }} />
+            <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: "oklch(49% 0.22 258)" }}>
+              {dictionary.nav.howItWorks}
+            </span>
+          </div>
           <h2
             id="workflow-heading"
-            className="mb-6 text-2xl font-semibold text-[#10203a] sm:text-3xl"
+            className="font-display mb-8 text-[clamp(26px,2.5vw,36px)] font-bold tracking-[-0.03em] text-[var(--ink)]"
           >
             {dictionary.workflow.title}
           </h2>
+
           <div className="grid gap-4 md:grid-cols-3">
             {dictionary.workflow.steps.map((step, index) => (
               <article
                 key={step.title}
-                className="rounded-[28px] border border-white/80 bg-white/85 px-5 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
+                className="rounded-[18px] border border-[var(--border)] bg-[var(--bg-2)] px-5 py-6"
+                style={{ boxShadow: "0 12px 32px rgba(15,23,42,0.06)" }}
               >
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#6980ac]">
-                  {String(index + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-3 text-lg font-semibold text-[#10203a]">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#55657f]">{step.description}</p>
+                <div className="mb-3 flex items-center gap-3">
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-[8px] text-white"
+                    style={{ background: "oklch(49% 0.22 258)" }}
+                  >
+                    {workflowIcons[index] ?? <span className="font-mono text-xs font-bold">{index + 1}</span>}
+                  </div>
+                  <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--ink-4)]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+                <h3 className="font-display text-[15px] font-bold tracking-[-0.01em] text-[var(--ink)]">{step.title}</h3>
+                <p className="mt-2 text-[13px] leading-[1.6] text-[var(--ink-3)]">{step.description}</p>
               </article>
             ))}
           </div>
         </section>
 
+        {/* ── Waitlist CTA section ── */}
+        <section
+          id="waitlist"
+          className="mb-0 rounded-t-[28px] px-10 py-14 text-white"
+          style={{ background: "linear-gradient(135deg, #0e1c3a 0%, #1a2d52 100%)" }}
+          aria-labelledby="waitlist-heading"
+        >
+          <div className="mx-auto max-w-[560px] text-center">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-white/50 mb-3">
+              {dictionary.hero.kicker}
+            </p>
+            <h2
+              id="waitlist-heading"
+              className="font-display mb-4 text-[clamp(28px,3vw,40px)] font-bold tracking-[-0.03em]"
+            >
+              {dictionary.hero.title}
+            </h2>
+            <p className="mb-8 text-[15px] leading-[1.7] text-white/70">
+              {dictionary.hero.description}
+            </p>
+            <WaitlistForm source="footer" dark />
+          </div>
+        </section>
+
         {/* ── Footer ── */}
-        <footer className="flex flex-col gap-4 border-t border-[#dde5f0]/60 py-6 text-sm text-[#5b6b86] sm:flex-row sm:items-center sm:justify-between">
-          <p>BriefOPS · {dictionary.footer.marketing}</p>
+        <footer className="flex flex-col gap-4 bg-[var(--bg-3)] px-6 py-8 text-[13px] text-[var(--ink-3)] sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-mono text-[11px]">BriefOPS · {dictionary.footer.marketing}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/cgu">CGU</a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/privacy">Confidentialité</a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/mentions-legales">Mentions légales</a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href="/cookies">Cookies</a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href="/cgu">CGU</a>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href="/privacy">Confidentialité</a>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href="/mentions-legales">Mentions légales</a>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href="/cookies">Cookies</a>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
               {dictionary.seoPages.eventBriefingTemplate.navLabel}
             </a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.briefingGenerator.slug}`}>
+            <a className="text-[var(--ink-2)] no-underline transition hover:text-[var(--ink)]" href={`/${locale}/${dictionary.seoPages.briefingGenerator.slug}`}>
               {dictionary.seoPages.briefingGenerator.navLabel}
             </a>
-            <span className="text-[#cbd5e1]">·</span>
-            <span className="text-xs text-[#8a97b0]">{dictionary.footer.language}:</span>
+            <span className="text-[var(--border-2)]">·</span>
+            <span className="font-mono text-[10px] text-[var(--ink-4)]">{dictionary.footer.language}:</span>
             {marketingLocales.map((entry) => (
               <a
                 key={entry}
                 href={`/${entry}`}
-                className={`text-xs font-semibold uppercase transition ${
-                  entry === locale ? "text-[#1d4ed8]" : "text-[#6a7b9b] hover:text-[#10203a]"
+                className={`font-mono text-[10px] font-semibold uppercase no-underline transition ${
+                  entry === locale
+                    ? "text-[oklch(49%_0.22_258)]"
+                    : "text-[var(--ink-3)] hover:text-[var(--ink)]"
                 }`}
               >
                 {entry}

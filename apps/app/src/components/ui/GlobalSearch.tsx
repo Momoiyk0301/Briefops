@@ -54,9 +54,7 @@ export function GlobalSearch() {
     return [...briefings, ...staff];
   }, [query, briefingsQuery.data, staffQuery.data]);
 
-  useEffect(() => {
-    setActiveIdx(0);
-  }, [results]);
+  useEffect(() => { setActiveIdx(0); }, [results]);
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -67,6 +65,18 @@ export function GlobalSearch() {
     if (open) document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [open]);
+
+  useEffect(() => {
+    function handleGlobal(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    }
+    document.addEventListener("keydown", handleGlobal);
+    return () => document.removeEventListener("keydown", handleGlobal);
+  }, []);
 
   function handleSelect(result: Result) {
     setQuery("");
@@ -87,9 +97,12 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden min-w-[280px] md:block">
-      <label className="relative flex items-center">
-        <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8b93a7] dark:text-[#9ea6bc]" />
+    <div ref={containerRef} className="relative hidden md:block">
+      <div
+        className="flex h-8 w-[220px] cursor-text items-center gap-[7px] rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 transition-[width,border-color] duration-200 focus-within:w-[280px] focus-within:border-[var(--border-2)]"
+        onClick={() => inputRef.current?.focus()}
+      >
+        <Search size={13} className="shrink-0 text-[var(--ink-4)]" />
         <input
           ref={inputRef}
           type="search"
@@ -101,23 +114,27 @@ export function GlobalSearch() {
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          className="h-11 w-full rounded-full border border-[#e4e9f4] bg-white/88 pl-11 pr-10 text-sm text-[#172033] shadow-[0_10px_24px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-[#8b93a7] focus:border-brand-500/40 dark:border-white/10 dark:bg-[#171717] dark:text-white dark:placeholder:text-[#8f98b0]"
+          className="flex-1 border-none bg-transparent text-[12.5px] text-[var(--ink)] outline-none placeholder:text-[var(--ink-4)]"
         />
         {query ? (
           <button
             type="button"
             onClick={() => { setQuery(""); setOpen(false); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8b93a7] hover:text-[#172033] dark:hover:text-white"
+            className="shrink-0 text-[var(--ink-4)] hover:text-[var(--ink)]"
           >
-            <X size={13} />
+            <X size={11} />
           </button>
-        ) : null}
-      </label>
+        ) : (
+          <span className="shrink-0 rounded-[3px] bg-[var(--border)] px-[5px] py-[1px] font-mono text-[9px] text-[var(--ink-4)]">
+            ⌘K
+          </span>
+        )}
+      </div>
 
-      {open && results.length > 0 ? (
+      {open && results.length > 0 && (
         <div
           role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[22px] border border-[#e4e9f4] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#171717]"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-2)] shadow-[0_16px_48px_rgba(11,21,37,0.14)]"
         >
           {results.map((result, idx) => (
             <button
@@ -125,37 +142,35 @@ export function GlobalSearch() {
               role="option"
               aria-selected={idx === activeIdx}
               type="button"
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition ${
-                idx === activeIdx
-                  ? "bg-brand-50 dark:bg-brand-900/20"
-                  : "hover:bg-slate-50 dark:hover:bg-white/5"
+              className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                idx === activeIdx ? "bg-[var(--bg)]" : "hover:bg-[var(--bg)]"
               }`}
               onClick={() => handleSelect(result)}
               onMouseEnter={() => setActiveIdx(idx)}
             >
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.1em] ${
                   result.type === "briefing"
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    ? "bg-[oklch(92%_0.08_258)] text-[oklch(44%_0.22_258)]"
+                    : "bg-emerald-50 text-emerald-700"
                 }`}
               >
                 {result.type === "briefing" ? "Briefing" : "Staff"}
               </span>
               <span className="min-w-0">
-                <span className="block truncate font-medium text-[#111827] dark:text-white">{result.label}</span>
-                <span className="block truncate text-xs text-[#6f748a] dark:text-[#a8afc6]">{result.sub}</span>
+                <span className="block truncate text-[13px] font-medium text-[var(--ink)]">{result.label}</span>
+                <span className="block truncate text-[11px] text-[var(--ink-3)]">{result.sub}</span>
               </span>
             </button>
           ))}
         </div>
-      ) : null}
+      )}
 
-      {open && query.trim() && results.length === 0 ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-[22px] border border-[#e4e9f4] bg-white px-4 py-3 text-sm text-[#6f748a] shadow-[0_24px_60px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#171717] dark:text-[#a8afc6]">
+      {open && query.trim() && results.length === 0 && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-xl border border-[var(--border)] bg-[var(--bg-2)] px-4 py-3 text-[13px] text-[var(--ink-3)] shadow-[0_16px_48px_rgba(11,21,37,0.14)]">
           Aucun résultat pour « {query} »
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
