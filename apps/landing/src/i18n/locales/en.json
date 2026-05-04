@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "title": "BriefOps · events-ops.com | Clear event briefings for field teams",
+    "description": "BriefOPS centralises all operational event information in a structured briefing, shareable via link or PDF, accessible on mobile."
+  },
+  "nav": {
+    "product": "Product",
+    "solution": "Solution",
+    "howItWorks": "How it works",
+    "login": "Sign in",
+    "cta": "Join the waitlist"
+  },
+  "problem": {
+    "label": "The problem",
+    "text": "Event information is scattered across loose files, chats and emails. Field teams show up with the wrong information — or no information at all."
+  },
+  "hero": {
+    "kicker": "SaaS for event teams",
+    "title": "All field information in one briefing, accessible in seconds.",
+    "description": "BriefOPS centralises operational event information in a single structured, modular document. Each team receives only what is relevant — via a link or PDF, readable on mobile, ready for the field.",
+    "primaryCta": "Join the waitlist",
+    "secondaryCta": "Sign in",
+    "bullets": [
+      "Activatable modules per event",
+      "Segmented sharing per team",
+      "Mobile-ready for the field"
+    ]
+  },
+  "sections": {
+    "clarity": {
+      "title": "Centralised info",
+      "description": "Access, schedule, contacts, equipment — all in one document, no confusion, no multiple versions."
+    },
+    "speed": {
+      "title": "Adaptable modules",
+      "description": "Activate only the relevant blocks and customise the content per team and per situation."
+    },
+    "sharing": {
+      "title": "Segmented sharing",
+      "description": "Link or PDF, with team segmentation so everyone only sees the information relevant to them."
+    }
+  },
+  "featuresSectionTitle": "A structured briefing for every team",
+  "features": [
+    {
+      "title": "Everything in one document",
+      "description": "Access, schedule, contacts, equipment — centralised in a structured briefing, accessible in seconds from any device."
+    },
+    {
+      "title": "Activatable modules",
+      "description": "Enable only the blocks needed for each event. The briefing adapts to the requirements of each team and mission."
+    },
+    {
+      "title": "Team-segmented sharing",
+      "description": "Each group receives only the information relevant to them, via a secure link or PDF export."
+    },
+    {
+      "title": "Mobile-ready for the field",
+      "description": "Accessible on any device with no app to install. Teams have the right information at the right time, without confusion."
+    }
+  ],
+  "workflow": {
+    "title": "How it works",
+    "steps": [
+      {
+        "title": "Centralise the info",
+        "description": "Gather all operational event information in a single clear, structured document."
+      },
+      {
+        "title": "Customise with modules",
+        "description": "Activate the useful modules and set the content per team and per field situation."
+      },
+      {
+        "title": "Share with the right group",
+        "description": "Via link or PDF with team segmentation — each member receives only what is relevant to them, at the right moment."
+      }
+    ]
+  },
+  "seoPages": {
+    "eventBriefingTemplate": {
+      "slug": "event-briefing-template",
+      "meta": {
+        "title": "Event briefing template | Operational event briefing | BriefOPS",
+        "description": "A structured event briefing template to centralise access, schedule, contacts, equipment and field instructions."
+      },
+      "navLabel": "Event briefing template",
+      "hero": {
+        "kicker": "Operational event template",
+        "title": "A clear event briefing template for every field team.",
+        "description": "Structure briefings around the essentials: access, schedule, contacts, deliveries, vehicles, equipment and notes. BriefOPS turns the template into a living document shareable by link or PDF.",
+        "primaryCta": "Create a briefing",
+        "secondaryCta": "View generator"
+      },
+      "sections": [
+        {
+          "title": "A reusable structure",
+          "description": "Start from a stable framework so important details are not missed between events, even when plans move fast."
+        },
+        {
+          "title": "Activatable modules",
+          "description": "Add only the blocks you need: access, deliveries, staff, vehicles, equipment, contacts or free notes."
+        },
+        {
+          "title": "Field-ready sharing",
+          "description": "Share the briefing as a PDF or segmented link so each team receives only the information they need."
+        }
+      ],
+      "checklistTitle": "What the template should cover",
+      "checklist": [
+        "Venue, access, parking and on-site contact",
+        "Operational schedule and deliveries",
+        "Staff, roles, phone numbers and useful emails",
+        "Equipment, vehicles, notes and field instructions"
+      ],
+      "finalCta": {
+        "title": "Replace scattered files with one central briefing.",
+        "description": "Create a BriefOPS workspace and turn your template into an actionable briefing for every event.",
+        "button": "Start free"
+      }
+    },
+    "briefingGenerator": {
+      "slug": "briefing-generator",
+      "meta": {
+        "title": "Briefing generator | Event briefing software | BriefOPS",
+        "description": "Generate modular event briefings, export them as PDFs and share them by team with BriefOPS."
+      },
+      "navLabel": "Briefing generator",
+      "hero": {
+        "kicker": "Briefing generator",
+        "title": "A briefing generator for field-ready documents in minutes.",
+        "description": "Compose your briefing with modules, preview the A4 output, export to PDF and share the right information with the right teams without rebuilding the document every time.",
+        "primaryCta": "Generate a briefing",
+        "secondaryCta": "View template"
+      },
+      "sections": [
+        {
+          "title": "Faster creation",
+          "description": "Start with the core information and enrich the briefing module by module instead of beginning from a blank file."
+        },
+        {
+          "title": "PDFs and public links",
+          "description": "Generate a versioned PDF or secure link for field teams, with a mobile-readable view."
+        },
+        {
+          "title": "Workspace control",
+          "description": "Keep briefings, exports, links and quotas in a single workspace connected to your team."
+        }
+      ],
+      "checklistTitle": "Generator features",
+      "checklist": [
+        "Event-by-event briefing creation",
+        "Activatable modules and structured data",
+        "Preview, PDF export and history",
+        "Team-based sharing with public links"
+      ],
+      "finalCta": {
+        "title": "Move from static files to a briefing generator.",
+        "description": "BriefOPS helps you create, maintain and share operational documents without friction.",
+        "button": "Create my first briefing"
+      }
+    }
+  },
+  "footer": {
+    "marketing": "Marketing site",
+    "app": "Application",
+    "language": "Language"
+  }
+}

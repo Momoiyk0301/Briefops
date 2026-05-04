@@ -110,7 +110,7 @@ export function LandingPage({ locale }: LandingPageProps) {
           <section className="features-section" id="solution">
             <div className="section-header">
               <div className="kicker"><span className="kicker-dot" />{d.nav.solution}</div>
-              <h2 className="section-title">{d.features[0]?.title ? d.nav.solution : d.nav.solution}</h2>
+              <h2 className="section-title">{d.featuresSectionTitle}</h2>
               <p className="section-sub">{d.features[0]?.description ?? ""}</p>
             </div>
 

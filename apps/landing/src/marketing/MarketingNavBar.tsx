@@ -43,7 +43,7 @@ export function MarketingNavBar({ locale, nav }: Props) {
               aria-label="Langue"
             >
               {marketingLocales.map((l) => (
-                <option key={l} value={l}>{l === "fr" ? "Français" : l === "nl" ? "Nederlands" : "English"}</option>
+                <option key={l} value={l}>{l.toUpperCase()}</option>
               ))}
             </select>
           </nav>

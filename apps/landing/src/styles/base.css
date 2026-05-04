@@ -8,6 +8,10 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono:    'DM Mono', monospace;
 
+  --ff-head:  var(--font-display);
+  --ff-body:  var(--font-sans);
+  --ff-mono:  var(--font-mono);
+
   /* Brand */
   --accent:       oklch(49% 0.22 258);
   --accent-h:     oklch(44% 0.22 258);
