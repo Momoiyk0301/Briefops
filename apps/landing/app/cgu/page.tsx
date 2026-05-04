@@ -18,27 +18,28 @@ export default function CguPage() {
       <LP>Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation de la plateforme BriefOPS, accessible à l'adresse events-ops.be, éditée par Peak Events SRL. En accédant au service, l'utilisateur accepte sans réserve les présentes CGU.</LP>
 
       <L2>2. Description du service</L2>
-      <LP>BriefOPS est un logiciel SaaS (Software as a Service) destiné aux professionnels de l'événementiel. Il permet la création, la structuration, l'exportation et le partage de briefings opérationnels pour les équipes terrain. Le service est accessible par abonnement mensuel ou annuel via une interface web.</LP>
+      <LP>BriefOPS est un logiciel SaaS (Software as a Service) destiné aux professionnels de l'événementiel. Il permet la création, la structuration, l'exportation et le partage de briefings opérationnels pour les équipes terrain. Le service est accessible via une interface web selon les formules décrites à l'article 4.</LP>
 
       <L2>3. Accès au service</L2>
-      <LP>L'accès à BriefOPS est réservé aux personnes physiques ou morales agissant dans le cadre d'une activité professionnelle. L'utilisateur doit créer un compte avec une adresse email valide. BriefOPS se réserve le droit de refuser ou de suspendre tout accès en cas de violation des présentes CGU.</LP>
+      <LP>L'accès à BriefOPS est réservé aux personnes physiques majeures (18 ans ou plus) ou aux personnes morales agissant dans le cadre d'une activité professionnelle. L'utilisateur doit créer un compte avec une adresse email valide. BriefOPS se réserve le droit de refuser ou de suspendre tout accès en cas de violation des présentes CGU.</LP>
 
-      <L2>4. Abonnement et facturation</L2>
-      <LP>Le service est proposé sous forme d'abonnement payant. La facturation est effectuée via <strong>Stripe</strong>, prestataire de paiement tiers. En souscrivant à un abonnement :</LP>
+      <L2>4. Offres et facturation</L2>
+      <LP>BriefOPS est proposé sous les formules suivantes :</LP>
       <LUl>
-        <li>Le client autorise BriefOPS à débiter automatiquement sa carte bancaire ou son compte à chaque période de renouvellement.</li>
-        <li>Les tarifs sont indiqués hors TVA. La TVA applicable est celle en vigueur dans le pays de résidence du client.</li>
-        <li>Les factures sont émises électroniquement et accessibles depuis le tableau de bord.</li>
+        <li><strong>Offre Gratuite</strong> — accès limité aux fonctionnalités de base, sans engagement ni carte bancaire.</li>
+        <li><strong>Offre Pro</strong> — accès illimité à l'ensemble des fonctionnalités, facturation mensuelle ou annuelle.</li>
+        <li><strong>Offre Custom</strong> — fonctionnalités et conditions sur mesure, définies contractuellement selon les besoins.</li>
       </LUl>
+      <LP>La facturation est effectuée via un prestataire de paiement tiers certifié. Les tarifs sont indiqués hors TVA. Les factures sont émises électroniquement et accessibles depuis le tableau de bord.</LP>
       <LHighlight>
-        <p><strong>Résiliation :</strong> L'abonnement peut être résilié à tout moment depuis les paramètres du compte. La résiliation prend effet à la fin de la période de facturation en cours. Aucun remboursement prorata n'est accordé sauf obligation légale.</p>
+        <p><strong>Résiliation :</strong> L'abonnement peut être résilié à tout moment depuis les paramètres du compte. L'accès reste actif jusqu'à la fin de la période de facturation en cours. Aucun remboursement prorata n'est accordé sauf obligation légale.</p>
       </LHighlight>
 
       <L2>5. Propriété intellectuelle</L2>
       <LP>BriefOPS et l'ensemble de ses composants (interface, algorithmes, design, marques) sont la propriété exclusive de Peak Events SRL. L'utilisateur bénéficie d'un droit d'utilisation personnel, non exclusif et non transférable. Toute reproduction, représentation ou redistribution sans autorisation écrite préalable est interdite.</LP>
 
       <L2>6. Données utilisateur</L2>
-      <LP>Les données saisies par l'utilisateur (briefings, contacts, fichiers) lui appartiennent. BriefOPS n'exploite pas ces données à des fins commerciales. L'utilisateur peut exporter et supprimer ses données à tout moment. Voir notre <a href="/privacy" className="text-[#1d4ed8]">Politique de confidentialité</a> pour le détail du traitement.</LP>
+      <LP>Les données saisies par l'utilisateur (briefings, contacts, fichiers staff, informations événementielles) lui appartiennent intégralement. BriefOPS n'exploite pas ces données à des fins commerciales. L'utilisateur peut exporter et demander la suppression de ses données à tout moment. Voir notre <a href="/privacy" className="text-[#1d4ed8]">Politique de confidentialité</a> pour le détail du traitement.</LP>
 
       <L2>7. Disponibilité du service</L2>
       <LP>BriefOPS s'engage à maintenir une disponibilité du service de 99,5 % par mois, hors maintenances planifiées. Des interruptions ponctuelles peuvent survenir pour des raisons de maintenance ou de force majeure. BriefOPS ne peut être tenu responsable des dommages indirects liés à une interruption de service.</LP>
@@ -53,7 +54,7 @@ export default function CguPage() {
       <LP>Les présentes CGU sont soumises au droit belge. Tout litige relatif à leur interprétation ou leur exécution sera soumis aux tribunaux compétents de Bruxelles, Belgique.</LP>
 
       <L2>11. Contact</L2>
-      <LP>Pour toute question relative aux présentes CGU : <a href="mailto:legal@events-ops.be" className="text-[#1d4ed8]">legal@events-ops.be</a></LP>
+      <LP>Pour toute question relative aux présentes CGU : <a href="mailto:info@peak-events.be" className="text-[#1d4ed8]">info@peak-events.be</a></LP>
     </LegalLayout>
   );
 }
