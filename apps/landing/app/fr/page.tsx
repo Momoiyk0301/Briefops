@@ -11,9 +11,13 @@ export function generateMetadata(): Metadata {
   return {
     title: dictionary.meta.title,
     description: dictionary.meta.description,
+    openGraph: {
+      locale: "fr_BE"
+    },
     alternates: {
       canonical: `${base}/fr`,
       languages: {
+        "x-default": base,
         fr: `${base}/fr`,
         nl: `${base}/nl`,
         en: `${base}/en`
