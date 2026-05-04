@@ -30,7 +30,7 @@ export default function CguPage() {
         <li><strong>Offre Pro</strong> — accès illimité à l'ensemble des fonctionnalités, facturation mensuelle ou annuelle.</li>
         <li><strong>Offre Custom</strong> — fonctionnalités et conditions sur mesure, définies contractuellement selon les besoins.</li>
       </LUl>
-      <LP>La facturation est effectuée via un prestataire de paiement tiers certifié. Les tarifs sont indiqués hors TVA. Les factures sont émises électroniquement et accessibles depuis le tableau de bord.</LP>
+      <LP>La facturation est effectuée via <strong>Stripe</strong>, prestataire de paiement certifié PCI-DSS. Les tarifs sont indiqués hors TVA. Les factures sont émises électroniquement et accessibles depuis le tableau de bord.</LP>
       <LHighlight>
         <p><strong>Résiliation :</strong> L'abonnement peut être résilié à tout moment depuis les paramètres du compte. L'accès reste actif jusqu'à la fin de la période de facturation en cours. Aucun remboursement prorata n'est accordé sauf obligation légale.</p>
       </LHighlight>

@@ -43,6 +43,7 @@ export default function PrivacyPage() {
       <LUl>
         <li><strong>Vercel</strong> — Hébergement frontend, CDN et analytics anonymes (UE, serveurs Frankfurt fra1, Allemagne)</li>
         <li><strong>Supabase</strong> — Base de données, authentification et stockage (UE, AWS eu-west-1, Irlande)</li>
+        <li><strong>Stripe</strong> — Traitement des paiements (UE, certifié PCI-DSS) — voir la <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener noreferrer" className="text-[#1d4ed8]">politique de confidentialité Stripe</a></li>
         <li><strong>Resend</strong> — Envoi d'emails transactionnels (UE)</li>
         <li><strong>Google Search Console</strong> — Analyse de la visibilité dans les résultats de recherche (données de crawl anonymes uniquement, aucune donnée personnelle utilisateur transmise)</li>
       </LUl>

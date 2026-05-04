@@ -37,6 +37,7 @@ export default function MentionsLegalesPage() {
       <L2>Infrastructure technique</L2>
       <LP>
         Base de données et authentification : <strong>Supabase</strong> (UE, AWS eu-west-1, Irlande)<br />
+        Paiement : <strong>Stripe</strong> (UE, certifié PCI-DSS)<br />
         Emails transactionnels : <strong>Resend</strong> (UE)<br />
         Analyse SEO : <strong>Google Search Console</strong> (données de crawl anonymes)
       </LP>
