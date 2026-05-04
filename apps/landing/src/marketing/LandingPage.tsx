@@ -77,20 +77,27 @@ export function LandingPage({ locale }: LandingPageProps) {
                   </div>
                   <div className="briefing-status">
                     <span className="briefing-status-dot" />
-                    V3 · Publié
+                    V3 · Publié · events-ops.com
                   </div>
                 </div>
 
                 <div className="briefing-modules">
-                  {Object.entries(d.sections).map(([key, section]) => (
-                    <div key={key} className="briefing-module">
-                      <div className="briefing-module-tag">
-                        {section.title}
-                        <span className="briefing-module-dot" />
-                      </div>
-                      <div className="briefing-module-content">{section.description}</div>
-                    </div>
-                  ))}
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Accès <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">Entrée nord · Badge rouge · Parking P4 -1</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Planning <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">07h00 Montage · 12h00 Check · 17h00 Ouverture</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Contacts <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">Resp. site · Catering · Sécurité dispatch</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Matériel <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">2 camions · 4 tables · Groupe 20kW</div>
+                  </div>
                 </div>
 
                 <div className="briefing-segments">

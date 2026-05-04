@@ -4,6 +4,7 @@ import { resolveLandingRouting } from "@/lib/siteRouting";
 
 function isBypassPath(pathname: string) {
   return (
+    pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/assets") ||
     pathname === "/favicon.ico" ||
@@ -35,5 +36,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.ico|robots.txt|sitemap.xml).*)"]
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|logo.ico|robots.txt|sitemap.xml).*)"]
 };
