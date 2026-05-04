@@ -68,27 +68,20 @@ export const metadata: Metadata = {
     url: "https://events-ops.be",
     siteName: "BriefOPS",
     title: "BriefOPS — Briefings terrain pour équipes événementielles",
-    description: "Montez, validez et partagez vos briefings terrain en quelques minutes. Le cockpit opérationnel pour professionnels de l'événementiel.",
-    images: [
-      {
-        url: "/assets/logo.svg",
-        alt: "BriefOPS — logo"
-      }
-    ]
+    description: "Montez, validez et partagez vos briefings terrain en quelques minutes. Le cockpit opérationnel pour professionnels de l'événementiel."
   },
   twitter: {
     card: "summary_large_image",
     title: "BriefOPS — Briefings terrain pour équipes événementielles",
-    description: "Montez, validez et partagez vos briefings terrain en quelques minutes.",
-    images: ["/assets/logo.svg"]
+    description: "Montez, validez et partagez vos briefings terrain en quelques minutes."
   },
   icons: {
     icon: [
       { url: "/assets/logo.svg", type: "image/svg+xml" },
-      { url: "/assets/logo.ico", sizes: "48x48", type: "image/x-icon" }
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" }
     ],
-    shortcut: "/assets/logo.ico",
-    apple: "/assets/logo.ico"
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico"
   },
   robots: {
     index: true,
