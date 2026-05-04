@@ -31,6 +31,10 @@ function shouldProtectAppAccess(request: NextRequest, pathname: string) {
     return false;
   }
 
+  if (process.env.NODE_ENV === "development") {
+    return false;
+  }
+
   if (pathname === "/") {
     return true;
   }
