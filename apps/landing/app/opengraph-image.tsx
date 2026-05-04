@@ -15,8 +15,7 @@ export default function Image() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "72px 80px",
-          position: "relative"
+          padding: "72px 80px"
         }}
       >
         {/* Top: logo + brand */}
@@ -44,30 +43,16 @@ export default function Image() {
           </span>
         </div>
 
-        {/* Center: headline */}
+        {/* Center: headline + description */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 900 }}>
-          <div
-            style={{
-              color: "white",
-              fontSize: 58,
-              fontWeight: 700,
-              lineHeight: 1.15,
-              letterSpacing: "-1px"
-            }}
-          >
-            Briefings terrain pour{" "}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", fontSize: 58, fontWeight: 700, letterSpacing: "-1px", lineHeight: 1.15 }}>
+            <span style={{ color: "white" }}>Briefings terrain pour&nbsp;</span>
             <span style={{ color: "#60a5fa" }}>équipes événementielles</span>
           </div>
-          <div
-            style={{
-              color: "rgba(255,255,255,0.58)",
-              fontSize: 24,
-              lineHeight: 1.55,
-              maxWidth: 720
-            }}
-          >
-            Montez, validez et partagez vos briefings en quelques minutes.
-            Conçu pour les professionnels de l'événementiel.
+          <div style={{ display: "flex" }}>
+            <span style={{ color: "rgba(255,255,255,0.58)", fontSize: 24, lineHeight: 1.55, maxWidth: 720 }}>
+              Montez, validez et partagez vos briefings en quelques minutes. Conçu pour les professionnels de l'événementiel.
+            </span>
           </div>
         </div>
 
@@ -78,6 +63,7 @@ export default function Image() {
               <div
                 key={label}
                 style={{
+                  display: "flex",
                   background: "rgba(255,255,255,0.08)",
                   border: "1px solid rgba(255,255,255,0.12)",
                   borderRadius: 999,
