@@ -48,12 +48,12 @@ export async function POST(req: NextRequest) {
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#111827;">
             <div style="width:42px;height:42px;border-radius:14px;background:#1d4ed8;color:#fff;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;">B</div>
-            <h1 style="margin:0 0 16px;font-size:24px;">Tu es sur la liste !</h1>
+            <h1 style="margin:0 0 16px;font-size:24px;">Confirmation d'inscription a la waitlist</h1>
             <p style="font-size:15px;color:#374151;">
-              Merci de ton intérêt pour <strong>BriefOPS</strong>. Tu seras parmi les premiers informés lors du lancement.
+              Tu es bien inscrit(e) sur la waitlist <strong>BriefOPS</strong>. Merci pour ta confiance.
             </p>
             <p style="font-size:15px;color:#374151;">
-              BriefOPS est le cockpit opérationnel pour monter, valider et partager des briefings terrain en quelques minutes.
+              Nous t'enverrons un email des que la beta sera ouverte, avec toutes les infos pour y acceder.
             </p>
             <p style="margin-top:32px;font-size:12px;color:#6b7280;">BriefOPS · events-ops.be</p>
           </div>

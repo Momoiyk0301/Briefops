@@ -10,6 +10,8 @@ type LandingPageProps = {
 
 export function LandingPage({ locale }: LandingPageProps) {
   const d = getMarketingDictionary(locale);
+  const heroAccent = "seul briefing";
+  const heroTitleParts = d.hero.title.split(new RegExp(`(${heroAccent})`, "i"));
 
   return (
     <div style={{ fontFamily: "var(--ff-body)", background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", overflowX: "hidden" }}>
@@ -30,11 +32,24 @@ export function LandingPage({ locale }: LandingPageProps) {
                 {d.hero.kicker}
               </div>
 
-              <h1 className="hero-title">{d.hero.title}</h1>
+              <h1 className="hero-title">
+                {heroTitleParts.map((part, index) => (
+                  part.toLowerCase() === heroAccent
+                    ? <span key={index} className="hero-title-accent">{part}</span>
+                    : <span key={index}>{part}</span>
+                ))}
+              </h1>
 
               <p className="hero-desc">{d.hero.description}</p>
 
-              <WaitlistForm source="hero" />
+              <button
+                type="button"
+                className="btn-waitlist-hero"
+                onClick={() => { document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" }); }}
+              >
+                {d.nav.cta}
+                <span>→</span>
+              </button>
               <p className="btn-rassurance">{d.hero.bullets[0] ?? "Accès anticipé gratuit · Aucun engagement"}</p>
 
               <div className="hero-chips">

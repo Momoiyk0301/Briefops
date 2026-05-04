@@ -33,6 +33,7 @@
   margin: 16px 0 20px;
 }
 .hero-title em { font-style: italic; color: var(--accent); }
+.hero-title-accent { color: var(--accent); }
 
 .hero-desc {
   font-size: 16px; line-height: 1.75; color: var(--ink-2);
