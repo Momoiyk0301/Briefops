@@ -233,7 +233,8 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
           <button
             type="button"
             onClick={() => navigate("/account")}
-            className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-2)] px-2.5 py-1.5 transition hover:border-[var(--border-2)] hover:bg-[var(--bg)] md:flex"
+            title={meQuery.data?.user?.email ?? t("shell.userLabel")}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-2)] transition hover:border-[var(--border-2)] hover:bg-[var(--bg)]"
           >
             <AvatarBadge
               label={t("shell.userLabel")}
@@ -241,14 +242,6 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
               initials={meQuery.data?.user?.initials || getInitials(meQuery.data?.user?.full_name || meQuery.data?.user?.email, "US")}
               className="h-6 w-6 shrink-0 rounded-md"
             />
-            <div className="min-w-0">
-              <p className="block truncate max-w-[140px] text-[11.5px] font-semibold text-[var(--ink)] leading-tight">
-                {meQuery.data?.user?.email ?? t("shell.userFallback")}
-              </p>
-              <p className="block text-[10px] text-[var(--ink-3)] leading-tight">
-                {t("shell.planLabel", { plan: meQuery.data?.plan ?? "starter" })}
-              </p>
-            </div>
           </button>
 
           {demoData && (

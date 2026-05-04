@@ -18,12 +18,18 @@ if (typeof window === "undefined" && process.env.NODE_ENV === "development") {
 const trimmed = (schema: z.ZodTypeAny) =>
   z.preprocess((value) => (typeof value === "string" ? value.trim() : value), schema);
 
+const optionalUrl = (fallback: string) =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined),
+    z.string().url().default(fallback)
+  );
+
 const baseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: trimmed(z.string().min(1)),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: trimmed(z.string().min(1)),
   SUPABASE_SERVICE_ROLE_KEY: trimmed(z.string().min(1)), // server only
-  APP_URL: trimmed(z.string().url()).default("http://localhost:3000"),
-  MARKETING_SITE_URL: trimmed(z.string().url()).default("http://localhost:3000"),
+  APP_URL: optionalUrl("http://localhost:3000"),
+  MARKETING_SITE_URL: optionalUrl("http://localhost:3000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development")
 });
 

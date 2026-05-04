@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/logger";
 import { isAppPath, isLocalizedMarketingPath } from "@/lib/siteRouting";
-import { buildAppUrl, buildMarketingUrl } from "@shared/sites";
+import { buildMarketingUrl } from "@shared/sites";
 
 const SITE_ACCESS_COOKIE = "site_access";
 const SITE_ACCESS_COOKIE_VALUE = "granted";
@@ -60,13 +60,12 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname === "/" && hasSiteAccess(request)) {
-    const destination = buildAppUrl("/login");
     logEvent("info", "[middleware] redirect", {
       reason: "app-root-login",
       pathname,
       host: request.headers.get("host")
     });
-    return NextResponse.redirect(new URL(destination, request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (shouldProtectAppAccess(request, pathname)) {

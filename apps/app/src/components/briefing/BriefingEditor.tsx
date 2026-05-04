@@ -338,15 +338,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
   const handleDragEnd = () => setDragKey(null);
 
-  const saveStatusLabel =
-    saveIndicator === "saving" ? t("editor.saving")
-    : saveIndicator === "saved" ? t("editor.savedShort")
-    : saveIndicator === "timestamp" && lastSavedAt
-      ? t("editor.savedAt", {
-          time: new Intl.DateTimeFormat(lang === "fr" ? "fr-BE" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastSavedAt))
-        })
-      : "";
-
   const orderedEnabledModules = moduleOrder.filter((key) => state.modules[key].enabled);
 
   return (
@@ -365,10 +356,16 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
         </div>
 
         {/* Save indicator */}
-        {saveStatusLabel ? (
-          <div className="hidden shrink-0 items-center gap-1.5 font-mono text-[11px] text-[var(--ink-4)] md:flex">
-            <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: saving ? "var(--border-2)" : "#10b981" }} />
-            {saveStatusLabel}
+        {saveIndicator !== "hidden" ? (
+          <div className="hidden shrink-0 items-center gap-1 font-mono text-[11px] text-[var(--ink-4)] md:flex">
+            {saving ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : (
+              <Check size={11} style={{ color: "#10b981" }} />
+            )}
+            {saveIndicator === "timestamp" && lastSavedAt
+              ? new Intl.DateTimeFormat(lang === "fr" ? "fr-BE" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastSavedAt))
+              : null}
           </div>
         ) : null}
 
@@ -389,7 +386,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                 <path d="M8 2v8M4 7l4 4 4-4M2 13h12" />
               </svg>
             )}
-            {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.downloadReady")}
+            PDF
           </button>
 
           <button
@@ -474,7 +471,6 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                       <div className="editor-drag-row"><span className="editor-drag-dot" /><span className="editor-drag-dot" /></div>
                     </div>
                     <span className="editor-form-card-title">{entry.labels[lang]}</span>
-                    <span className="editor-module-active-badge">{t("editor.active") ?? "Actif"}</span>
                   </div>
                 </div>
                 <div className="editor-form-card-body">

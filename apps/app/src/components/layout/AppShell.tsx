@@ -80,8 +80,7 @@ export function AppShell({ plan, demoData = false, children }: Props) {
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside
-          className="group/sidebar sticky top-0 z-50 hidden h-screen shrink-0 flex-col overflow-hidden bg-[oklch(49%_0.22_258)] transition-[width] duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[220px] lg:flex"
-          style={{ width: "56px" }}
+          className="group/sidebar sticky top-0 z-50 hidden h-screen w-[56px] shrink-0 flex-col overflow-hidden bg-[oklch(49%_0.22_258)] transition-[width] duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[220px] lg:flex"
         >
           {/* Logo */}
           <Link
