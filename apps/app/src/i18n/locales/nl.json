@@ -58,7 +58,11 @@
     "userNotFound": "Gebruiker niet gevonden.",
     "invalidPassword": "Onjuist wachtwoord.",
     "emailNotConfirmed": "E-mail niet bevestigd. Controleer je inbox voordat je inlogt.",
-    "logout": "Uitloggen"
+    "logout": "Uitloggen",
+    "cguRequired": "Je moet de Algemene Voorwaarden accepteren om een account aan te maken.",
+    "cguAccept": "Ik accepteer de",
+    "and": "en het",
+    "privacyPolicy": "Privacybeleid"
   },
   "nav": {
     "briefings": "Briefings",

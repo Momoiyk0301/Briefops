@@ -58,7 +58,11 @@
     "userNotFound": "Utilisateur introuvable.",
     "invalidPassword": "Mot de passe incorrect.",
     "emailNotConfirmed": "Email non confirmé. Vérifie ta boîte mail avant de te connecter.",
-    "logout": "Se déconnecter"
+    "logout": "Se déconnecter",
+    "cguRequired": "Tu dois accepter les CGU pour créer un compte.",
+    "cguAccept": "J'accepte les",
+    "and": "et la",
+    "privacyPolicy": "politique de confidentialité"
   },
   "nav": {
     "briefings": "Briefings",

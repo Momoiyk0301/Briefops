@@ -13,6 +13,7 @@ loadEnvConfig(repoRoot);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["192.168.0.50"],
   outputFileTracingRoot: repoRoot,
   transpilePackages: ["@briefops/shared"],
   webpack: (config) => {

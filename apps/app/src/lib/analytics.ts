@@ -3,7 +3,18 @@ export function checkAnalyticsEnabled() {
     return true;
   }
 
-  return !document.cookie.split(";").some((cookie) => cookie.trim() === "ignore_analytics=true");
+  const ignoreByCookie = document.cookie.split(";").some((cookie) => cookie.trim() === "ignore_analytics=true");
+  if (ignoreByCookie) {
+    return false;
+  }
+
+  const referrer = document.referrer.toLowerCase();
+  const comesFromVercel = referrer.includes("vercel.app") || referrer.includes("vercel.com");
+  if (comesFromVercel) {
+    return false;
+  }
+
+  return true;
 }
 
 export function installAnalyticsDevTool() {

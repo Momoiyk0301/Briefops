@@ -49,52 +49,40 @@
 .page-hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(219, 228, 243, 0.95);
-  border-radius: 34px;
-  background:
-    radial-gradient(circle at top left, rgba(84, 119, 255, 0.1), transparent 26%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 247, 253, 0.96) 100%);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.09);
-}
-
-.page-hero::after {
-  content: "";
-  position: absolute;
-  inset: auto -8% -30% auto;
-  width: 220px;
-  height: 220px;
-  border-radius: 9999px;
-  background: rgba(86, 169, 255, 0.1);
-  filter: blur(30px);
-  pointer-events: none;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-2);
+  box-shadow: 0 12px 32px rgba(11, 21, 37, 0.06);
 }
 
 .section-kicker {
-  color: #66708a;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: oklch(49% 0.22 258);
 }
 
 .section-title {
-  color: #13203a;
-  font-size: clamp(1.7rem, 2vw, 2.25rem);
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: clamp(1.5rem, 2vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.03em;
 }
 
 .section-copy {
-  color: #69738c;
-  font-size: 0.95rem;
+  color: var(--ink-3);
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 
 .list-surface {
-  border: 1px solid var(--surface-border);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-2);
+  box-shadow: 0 8px 24px rgba(11, 21, 37, 0.06);
 }
 
 .empty-state {
@@ -106,24 +94,22 @@
 }
 
 .dark .page-hero {
-  border-color: rgba(255, 255, 255, 0.08);
-  background:
-    radial-gradient(circle at top left, rgba(84, 119, 255, 0.1), transparent 24%),
-    linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(12, 18, 30, 0.96) 100%);
+  border-color: var(--border);
+  background: var(--bg-2);
 }
 
 .dark .section-title {
-  color: #f3f6ff;
+  color: var(--ink);
 }
 
 .dark .section-copy,
 .dark .section-kicker {
-  color: #a8b1c8;
+  color: var(--ink-3);
 }
 
 .dark .list-surface {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(18, 18, 18, 0.88);
+  border-color: var(--border);
+  background: var(--bg-2);
 }
 
 @media (min-width: 640px) {

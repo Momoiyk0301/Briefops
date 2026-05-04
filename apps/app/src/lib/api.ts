@@ -753,7 +753,7 @@ export async function getStaff(): Promise<StaffMember[]> {
 }
 
 export async function createStaffMember(input: {
-  briefing_id: string;
+  briefing_id?: string | null;
   full_name: string;
   role: string;
   phone?: string;
@@ -765,4 +765,22 @@ export async function createStaffMember(input: {
     body: input
   });
   return response.data;
+}
+
+export async function updateStaffMember(id: string, input: {
+  full_name?: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}): Promise<StaffMember> {
+  const response = await requestJson<{ data: StaffMember }>(`/api/staff/${id}`, {
+    method: "PATCH",
+    body: input
+  });
+  return response.data;
+}
+
+export async function deleteStaffMember(id: string): Promise<void> {
+  await requestJson<{ ok: boolean }>(`/api/staff/${id}`, { method: "DELETE" });
 }

@@ -3,7 +3,6 @@ import { PropsWithChildren, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink } from "react-router-dom";
 
-import { BrandLogo } from "@/components/layout/BrandLogo";
 import { Navbar } from "@/components/layout/Navbar";
 import { signOut } from "@/lib/auth";
 import { UserPlan } from "@/lib/types";
@@ -27,124 +26,141 @@ function SidebarItem({ to, title, icon, end = false }: ItemProps) {
       title={title}
       end={end}
       className={({ isActive }) =>
-        `relative flex h-11 w-full items-center rounded-2xl px-3 text-sm outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-white/40 ${
+        `group/item relative flex h-10 w-full items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-lg px-[13px] text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/40 ${
           isActive
-            ? "bg-white text-brand-500 shadow-[0_14px_40px_rgba(15,23,42,0.18)]"
-            : "text-white/80 hover:bg-white/12 hover:text-white"
+            ? "bg-white/20 text-white"
+            : "text-white/75 hover:bg-white/12 hover:text-white"
         }`
       }
     >
-      <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center">
         {icon}
       </span>
-      <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+      <span className="pointer-events-none max-w-0 overflow-hidden opacity-0 transition-all duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
         {title}
       </span>
     </NavLink>
   );
 }
 
+function SidebarButton({ title, icon, onClick }: { title: string; icon: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="group/item relative flex h-10 w-full items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-lg px-[13px] text-sm text-white/75 outline-none transition-colors duration-150 hover:bg-white/12 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"
+    >
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center">
+        {icon}
+      </span>
+      <span className="pointer-events-none max-w-0 overflow-hidden opacity-0 transition-all duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+        {title}
+      </span>
+    </button>
+  );
+}
+
+function SidebarLabel({ label }: { label: string }) {
+  return (
+    <div
+      className="overflow-hidden whitespace-nowrap px-[18px] font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-white/40 opacity-0 transition-all duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/sidebar:opacity-100"
+      style={{ height: 0, paddingTop: 0, paddingBottom: 0, transition: "opacity 220ms cubic-bezier(0.4,0,0.2,1), height 220ms cubic-bezier(0.4,0,0.2,1)" }}
+    >
+      {label}
+    </div>
+  );
+}
+
 export function AppShell({ plan, demoData = false, children }: Props) {
   const { t } = useTranslation();
-  const iconButton =
-    "relative flex h-11 w-full items-center rounded-2xl px-3 text-white/80 transition-all duration-300 hover:bg-white/12 hover:text-white";
 
   return (
-    <div className="min-h-screen bg-transparent text-[#111] dark:text-white">
-      <div className="grid min-h-screen lg:grid-cols-[64px_1fr]">
-        <aside className="group/sidebar sticky top-0 z-30 hidden h-screen w-16 flex-col overflow-hidden rounded-r-[30px] bg-[linear-gradient(180deg,#112f61_0%,#1954c9_42%,#2f7cff_100%)] px-2 py-4 transition-all duration-300 hover:w-56 dark:bg-[#1A1A1A] lg:flex">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <aside
+          className="group/sidebar sticky top-0 z-50 hidden h-screen w-[56px] shrink-0 flex-col overflow-hidden bg-[oklch(49%_0.22_258)] transition-[width] duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[220px] lg:flex"
+        >
+          {/* Logo */}
           <Link
             to="/briefings"
             title={t("shell.dashboardLink")}
-            className="mb-5 flex h-14 w-full items-center justify-center rounded-[22px] border border-white/35 bg-white/16 px-2 text-white shadow-[0_18px_40px_rgba(10,20,60,0.25)] backdrop-blur-xl transition-all duration-300 hover:bg-white/22 group-hover/sidebar:justify-start"
+            className="flex h-14 shrink-0 items-center gap-2.5 overflow-hidden whitespace-nowrap px-[13px] text-white"
+            style={{ borderBottom: "1px solid oklch(55% 0.22 258 / 0.3)" }}
           >
-            <BrandLogo compact size="md" className="shrink-0" />
-            <span className="pointer-events-none max-w-0 overflow-hidden whitespace-nowrap text-base font-semibold opacity-0 transition-all duration-200 group-hover/sidebar:ml-3 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
+            <span
+              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
+              style={{ background: "rgba(255,255,255,0.18)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="5" height="5" rx="1.2" fill="white" />
+                <rect x="9" y="2" width="5" height="5" rx="1.2" fill="white" opacity="0.7" />
+                <rect x="2" y="9" width="5" height="5" rx="1.2" fill="white" opacity="0.7" />
+                <rect x="9" y="9" width="5" height="5" rx="1.2" fill="white" opacity="0.4" />
+              </svg>
+            </span>
+            <span
+              className="pointer-events-none font-display text-sm font-bold tracking-[-0.025em] opacity-0 transition-opacity duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/sidebar:opacity-100"
+            >
               BriefOps
             </span>
           </Link>
-          <div className="flex h-full flex-col justify-between">
-            <nav className="space-y-3">
-              <SidebarItem to="/briefings" title={t("nav.briefings")} icon={<FileText size={18} />} />
-              <SidebarItem to="/documents" title={t("nav.documents")} icon={<Files size={18} />} />
-              <SidebarItem to="/modules" title={t("nav.modules")} icon={<Boxes size={18} />} />
-              <SidebarItem to="/staff" title={t("nav.staff")} icon={<Users size={18} />} />
-              <SidebarItem to="/account" title={t("nav.account")} icon={<CircleUser size={18} />} />
-            </nav>
-            <div className="space-y-2 pt-3">
-              <SidebarItem to="/settings" title={t("nav.settings")} icon={<Settings size={18} />} end />
-              <SidebarItem to="/help" title={t("nav.help")} icon={<HelpCircle size={18} />} end />
-              <button type="button" title={t("shell.logout")} onClick={() => void signOut()} className={iconButton}>
-                <span className="absolute left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center transition-all duration-300 group-hover/sidebar:left-4 group-hover/sidebar:translate-x-0">
-                  <LogOut size={18} />
-                </span>
-                <span className="pointer-events-none ml-8 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[140px] group-hover/sidebar:opacity-100">
-                  {t("shell.logout")}
-                </span>
-              </button>
+
+          {/* Nav */}
+          <nav className="flex flex-1 flex-col justify-between overflow-hidden py-2.5">
+            <div className="space-y-0.5 px-1.5">
+              <SidebarItem to="/briefings" title={t("nav.briefings")} icon={<FileText size={17} />} />
+              <SidebarItem to="/documents" title={t("nav.documents")} icon={<Files size={17} />} />
+              <SidebarItem to="/modules" title={t("nav.modules")} icon={<Boxes size={17} />} />
+              <SidebarItem to="/staff" title={t("nav.staff")} icon={<Users size={17} />} />
+              <SidebarItem to="/account" title={t("nav.account")} icon={<CircleUser size={17} />} />
             </div>
-          </div>
+
+            <div className="space-y-0.5 px-1.5 pb-2">
+              <SidebarItem to="/settings" title={t("nav.settings")} icon={<Settings size={17} />} end />
+              <SidebarItem to="/help" title={t("nav.help")} icon={<HelpCircle size={17} />} end />
+              <SidebarButton
+                title={t("shell.logout")}
+                icon={<LogOut size={17} />}
+                onClick={() => void signOut()}
+              />
+            </div>
+          </nav>
         </aside>
-        <div className="min-w-0">
+
+        {/* Main content */}
+        <div className="flex min-w-0 flex-1 flex-col">
           <Navbar plan={plan} demoData={demoData} />
-          <main className="layout-main mx-auto max-w-[1500px] pb-24 lg:pb-8">{children}</main>
+          <main className="layout-main mx-auto w-full max-w-[1500px] pb-24 lg:pb-8">{children}</main>
         </div>
       </div>
-      <nav className="fixed bottom-3 left-3 right-3 z-30 rounded-[28px] border border-[#e1e8f3] bg-white/94 p-2 shadow-[0_20px_60px_rgba(15,23,42,0.16)] backdrop-blur dark:border-white/10 dark:bg-[#121212]/95 lg:hidden">
-        <div className="grid grid-cols-4 gap-1">
-          <NavLink
-            to="/briefings"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <FileText size={16} />
-            {t("nav.briefings")}
-          </NavLink>
-          <NavLink
-            to="/documents"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <Files size={16} />
-            {t("nav.documents")}
-          </NavLink>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <Settings size={16} />
-            {t("nav.settings")}
-          </NavLink>
-          <NavLink
-            to="/account"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <CircleUser size={16} />
-            {t("nav.account")}
-          </NavLink>
-          <NavLink
-            to="/help"
-            className={({ isActive }) =>
-              `flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium ${isActive ? "bg-brand-500/10 text-brand-600 dark:text-brand-300" : "text-[#6f748a] dark:text-[#a8afc6]"}`
-            }
-          >
-            <HelpCircle size={16} />
-            {t("nav.help")}
-          </NavLink>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="flex h-12 flex-col items-center justify-center rounded-xl text-[11px] font-medium text-[#6f748a] dark:text-[#a8afc6]"
-          >
-            <LogOut size={16} />
-            {t("shell.exit")}
-          </button>
+
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-3 left-3 right-3 z-50 rounded-[20px] border border-[var(--border)] bg-[var(--bg-2)] p-2 shadow-[0_20px_60px_rgba(11,21,37,0.14)] lg:hidden">
+        <div className="grid grid-cols-5 gap-1">
+          {[
+            { to: "/briefings", icon: <FileText size={16} />, label: t("nav.briefings") },
+            { to: "/documents", icon: <Files size={16} />, label: t("nav.documents") },
+            { to: "/staff", icon: <Users size={16} />, label: t("nav.staff") },
+            { to: "/settings", icon: <Settings size={16} />, label: t("nav.settings") },
+            { to: "/account", icon: <CircleUser size={16} />, label: t("nav.account") },
+          ].map(({ to, icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${
+                  isActive
+                    ? "bg-[oklch(92%_0.08_258)] text-[oklch(49%_0.22_258)]"
+                    : "text-[var(--ink-3)] hover:text-[var(--ink)]"
+                }`
+              }
+            >
+              {icon}
+              {label}
+            </NavLink>
+          ))}
         </div>
       </nav>
     </div>

@@ -1,21 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bell, Search, X } from "lucide-react";
+import { Bell, ChevronRight, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { AvatarBadge } from "@/components/ui/AvatarBadge";
+import { GlobalSearch } from "@/components/ui/GlobalSearch";
 import { UserPlan } from "@/lib/types";
 import { getBriefingsWithFallback, getMe, getStorageSignedUrl } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { getInitials } from "@/lib/branding";
 
 type Props = {
   plan: UserPlan | null;
   demoData?: boolean;
 };
+
+function IconBtn({ children, onClick, label, dot = false }: { children: React.ReactNode; onClick?: () => void; label: string; dot?: boolean }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-transparent text-[var(--ink-3)] transition-colors hover:border-[var(--border-2)] hover:bg-[var(--bg)] hover:text-[var(--ink)]"
+    >
+      {children}
+      {dot && (
+        <span
+          className="absolute right-[5px] top-[5px] h-[7px] w-[7px] rounded-full border-[1.5px] border-[var(--bg-2)] bg-[oklch(49%_0.22_258)]"
+        />
+      )}
+    </button>
+  );
+}
 
 export function Navbar({ plan: _plan, demoData = false }: Props) {
   const { t } = useTranslation();
@@ -42,7 +60,8 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
     if (pathname.startsWith("/onboarding")) return t("nav.onboarding");
     return t("app.name");
   })();
-  const showBackButton = !pathname.startsWith("/briefings") && !pathname.startsWith("/onboarding");
+
+  const workspaceName = meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? t("app.name");
 
   const previewNotifications = useMemo(() => {
     const now = new Date();
@@ -62,7 +81,7 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
       .filter((item) => !dismissedNotificationIds.includes(item.id))
       .sort((a, b) => a.diffDays - b.diffDays)
       .slice(0, 4);
-  }, [briefingsQuery.data, dismissedNotificationIds]);
+  }, [briefingsQuery.data, dismissedNotificationIds, t]);
 
   useEffect(() => {
     const raw = localStorage.getItem("briefops:notifications:dismissed");
@@ -134,55 +153,38 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
   }, [notificationsOpen]);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[#e7edf7] bg-white/72 backdrop-blur-xl dark:border-white/10 dark:bg-[#101010]/90">
-      <div className="flex h-[74px] items-center justify-between pl-3 pr-4 lg:pl-5 lg:pr-6">
-        <div className="min-w-0 flex items-center gap-2">
-          {showBackButton ? (
-            <Button variant="ghost" aria-label={t("routeError.back")} onClick={() => navigate(-1)}>
-              <ArrowLeft size={16} />
-            </Button>
-          ) : null}
-          <div className="min-w-0">
-            <div className="hidden items-center gap-2 md:flex">
-              <AvatarBadge
-                label={t("shell.workspaceLabel")}
-                imageUrl={workspaceLogoUrl}
-                initials={meQuery.data?.workspace?.initials || getInitials(meQuery.data?.workspace?.name, "WS")}
-                className="h-10 w-10 rounded-2xl"
-              />
-              <p className="section-kicker">{meQuery.data?.workspace?.name ?? meQuery.data?.org?.name ?? t("app.name")}</p>
-            </div>
-            <h1 className="truncate text-lg font-bold text-[#111] dark:text-white">{pageTitle}</h1>
-          </div>
+    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg-2)]">
+      <div className="flex h-[52px] items-center gap-3 px-5">
+        {/* Breadcrumb */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] text-[var(--ink-3)]">
+          <span className="hidden truncate max-w-[140px] md:block">{workspaceName}</span>
+          <ChevronRight size={12} className="hidden shrink-0 text-[var(--border-2)] md:block" />
+          <span className="font-semibold text-[var(--ink)] truncate">{pageTitle}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="relative hidden min-w-[280px] items-center md:flex">
-            <Search
-              size={15}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8b93a7] dark:text-[#9ea6bc]"
-            />
-            <input
-              type="search"
-              aria-label={t("navbar.searchLabel")}
-              placeholder={t("navbar.searchPlaceholder")}
-              className="h-11 w-full rounded-full border border-[#e4e9f4] bg-white/88 pl-11 pr-4 text-sm text-[#172033] shadow-[0_10px_24px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-[#8b93a7] focus:border-brand-500/40 dark:border-white/10 dark:bg-[#171717] dark:text-white dark:placeholder:text-[#8f98b0]"
-            />
-          </label>
+
+        {/* Right zone */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <GlobalSearch />
+
+          <div className="h-5 w-px bg-[var(--border)]" />
+
+          {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
-            <Button
-              variant="ghost"
-              aria-label={t("nav.notifications")}
-              onClick={() => setNotificationsOpen((value) => !value)}
+            <IconBtn
+              label={t("nav.notifications")}
+              onClick={() => setNotificationsOpen((v) => !v)}
+              dot={previewNotifications.length > 0}
             >
-              <Bell size={16} />
-            </Button>
-            {notificationsOpen ? (
-              <div className="absolute right-0 top-[calc(100%+10px)] w-[min(360px,calc(100vw-1.5rem))] rounded-[28px] border border-[#e4e9f4] bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fd_100%)] p-4 shadow-[0_26px_70px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#151515]">
+              <Bell size={15} />
+            </IconBtn>
+
+            {notificationsOpen && (
+              <div className="absolute right-0 top-[calc(100%+8px)] w-[min(340px,calc(100vw-1.5rem))] rounded-2xl border border-[var(--border)] bg-[var(--bg-2)] p-4 shadow-[0_16px_48px_rgba(11,21,37,0.14)]">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">{t("navbar.notificationsPreview")}</p>
+                  <p className="text-sm font-semibold text-[var(--ink)]">{t("navbar.notificationsPreview")}</p>
                   <button
                     type="button"
-                    className="text-xs text-brand-500"
+                    className="text-xs text-[oklch(49%_0.22_258)] hover:underline"
                     onClick={() => {
                       setNotificationsOpen(false);
                       navigate("/notifications");
@@ -193,24 +195,30 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
                 </div>
                 <div className="mt-3 space-y-2">
                   {previewNotifications.length === 0 ? (
-                    <p className="text-sm text-[#6f748a] dark:text-[#a8afc6]">{t("navbar.emptyNotifications")}</p>
+                    <p className="text-sm text-[var(--ink-3)]">{t("navbar.emptyNotifications")}</p>
                   ) : (
                     previewNotifications.map((item) => (
-                      <div key={item.id} className="rounded-[22px] border border-[#e7ecf5] bg-white/85 p-3 dark:border-white/10">
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="text-sm font-medium">{item.title}</p>
-                            <p className="text-xs text-[#6f748a] dark:text-[#a8afc6]">
-                              {item.location} · {item.diffDays <= 0 ? t("notificationsPage.todayOrPast") : t("notificationsPage.inDays", { count: item.diffDays })}
+                            <p className="text-sm font-medium text-[var(--ink)]">{item.title}</p>
+                            <p className="text-xs text-[var(--ink-3)]">
+                              {item.location} ·{" "}
+                              {item.diffDays <= 0
+                                ? t("notificationsPage.todayOrPast")
+                                : t("notificationsPage.inDays", { count: item.diffDays })}
                             </p>
                           </div>
                           <button
                             type="button"
                             aria-label={t("navbar.dismissNotification")}
-                            className="rounded-full p-1 text-[#8a90a5] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                            className="shrink-0 rounded-md p-1 text-[var(--ink-4)] transition hover:bg-red-50 hover:text-red-600"
                             onClick={() => dismissNotification(item.id)}
                           >
-                            <X size={12} />
+                            <X size={11} />
                           </button>
                         </div>
                       </div>
@@ -218,29 +226,29 @@ export function Navbar({ plan: _plan, demoData = false }: Props) {
                   )}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
+
+          {/* Avatar */}
           <button
             type="button"
             onClick={() => navigate("/account")}
-            className="hidden max-w-[280px] items-center gap-2 rounded-full border border-[#e4e9f3] bg-white/88 px-3 py-2 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:border-brand-500/40 md:flex dark:border-white/10 dark:bg-[#171717]"
+            title={meQuery.data?.user?.email ?? t("shell.userLabel")}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-2)] transition hover:border-[var(--border-2)] hover:bg-[var(--bg)]"
           >
             <AvatarBadge
               label={t("shell.userLabel")}
               imageUrl={avatarUrl}
               initials={meQuery.data?.user?.initials || getInitials(meQuery.data?.user?.full_name || meQuery.data?.user?.email, "US")}
-              className="h-7 w-7 shrink-0"
+              className="h-6 w-6 shrink-0 rounded-md"
             />
-            <span className="min-w-0">
-              <span className="block truncate text-xs font-semibold text-[#21263a] dark:text-[#dbe3ff]">
-                {meQuery.data?.user?.email ?? t("shell.userFallback")}
-              </span>
-              <span className="block truncate text-[11px] text-[#767c91] dark:text-[#9da5bf]">
-                {t("shell.planLabel", { plan: meQuery.data?.plan ?? "starter" })}
-              </span>
-            </span>
           </button>
-          {demoData && <Badge className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-900/20 dark:text-orange-200">{t("shell.demoData")}</Badge>}
+
+          {demoData && (
+            <Badge className="border-orange-200 bg-orange-50 text-orange-700">
+              {t("shell.demoData")}
+            </Badge>
+          )}
         </div>
       </div>
     </header>

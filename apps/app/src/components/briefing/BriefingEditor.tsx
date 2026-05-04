@@ -338,89 +338,142 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
 
   const handleDragEnd = () => setDragKey(null);
 
-  const saveStatusLabel =
-    saveIndicator === "saving" ? t("editor.saving")
-    : saveIndicator === "saved" ? t("editor.savedShort")
-    : saveIndicator === "timestamp" && lastSavedAt
-      ? t("editor.savedAt", {
-          time: new Intl.DateTimeFormat(lang === "fr" ? "fr-BE" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastSavedAt))
-        })
-      : "";
-
   const orderedEnabledModules = moduleOrder.filter((key) => state.modules[key].enabled);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-[#e2e7f2] bg-white/95 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-[#161616]/95">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-[#172033] dark:text-white">
-              {state.core.title || t("editor.untitled")}
-            </h2>
-            <span className="text-xs text-slate-400">{saveStatusLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {validateConfirm ? (
-              <>
-                <Button
-                  className="h-9 px-4 border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-300"
-                  onClick={() => void handleValidate()}
-                  disabled={validating}
-                >
-                  {validating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  {t("editor.validateConfirm")}
-                </Button>
-                <Button variant="secondary" className="h-9 px-3" onClick={() => setValidateConfirm(false)}>
-                  {t("editor.validateCancel")}
-                </Button>
-              </>
-            ) : (
-              <Button className="h-9 px-4" onClick={requestValidate} disabled={saving || validating}>
-                {saving ? t("app.loading") : t("editor.validate")}
-              </Button>
-            )}
-            <Button
-              variant="secondary"
-              onClick={() => void handlePdf()}
-              disabled={pdfButtonState === "loading"}
-              className={`h-9 px-4 ${pdfButtonState === "ready" ? "border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300" : ""}`}
-            >
-              {pdfButtonState === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
-              {pdfButtonState === "ready" ? <Check size={14} /> : null}
-              {pdfButtonState === "idle" ? t("editor.pdf") : pdfButtonState === "loading" ? t("editor.loadingShort") : t("editor.downloadReady")}
-            </Button>
-            <Button variant="secondary" className="h-9 px-4" onClick={() => setShareOpen(true)}>
-              <Share2 size={14} />
-              {t("editor.share")}
-            </Button>
-          </div>
+    <div className="flex min-h-screen flex-col bg-[var(--bg)]">
+
+      {/* ── TOP BAR (mockup exact) ── */}
+      <header className="sticky top-0 z-40 flex h-[52px] shrink-0 items-center gap-4 border-b border-[var(--border)] bg-[var(--bg-2)] px-5">
+
+        {/* Breadcrumb */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] text-[var(--ink-3)]">
+          <span className="hidden truncate max-w-[120px] md:block">{t("nav.briefings")}</span>
+          <span className="hidden text-[var(--border-2)] md:block">/</span>
+          <strong className="truncate font-semibold text-[var(--ink)]">
+            {state.core.title || t("editor.untitled")}
+          </strong>
         </div>
-      </div>
 
-      {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main column: 70% */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Metadata form */}
-          <Card className="p-4">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7d849a]">{t("editor.contentDetails")}</p>
-            <MetadataForm core={state.core} metadata={state.modules.metadata.data} onChange={updateMetadata} />
-          </Card>
+        {/* Save indicator */}
+        {saveIndicator !== "hidden" ? (
+          <div className="hidden shrink-0 items-center gap-1 font-mono text-[11px] text-[var(--ink-4)] md:flex">
+            {saving ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : (
+              <Check size={11} style={{ color: "#10b981" }} />
+            )}
+            {saveIndicator === "timestamp" && lastSavedAt
+              ? new Intl.DateTimeFormat(lang === "fr" ? "fr-BE" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastSavedAt))
+              : null}
+          </div>
+        ) : null}
 
-          {/* Enabled modules in order */}
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handlePdf()}
+            disabled={pdfButtonState === "loading"}
+            className={`editor-btn editor-btn-ghost ${pdfButtonState === "ready" ? "text-emerald-700 border-emerald-300" : ""}`}
+          >
+            {pdfButtonState === "loading" ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : pdfButtonState === "ready" ? (
+              <Check size={13} />
+            ) : (
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ width: 13, height: 13 }}>
+                <path d="M8 2v8M4 7l4 4 4-4M2 13h12" />
+              </svg>
+            )}
+            PDF
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="editor-btn editor-btn-secondary"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ width: 13, height: 13 }}>
+              <circle cx="4" cy="8" r="2" /><circle cx="12" cy="4" r="2" /><circle cx="12" cy="12" r="2" />
+              <path d="M5.8 7.1L10 4.9M5.8 8.9L10 11.1" />
+            </svg>
+            {t("editor.share")}
+          </button>
+
+          {validateConfirm ? (
+            <>
+              <button
+                type="button"
+                className="editor-btn editor-btn-primary"
+                onClick={() => void handleValidate()}
+                disabled={validating}
+              >
+                {validating ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                {t("editor.validateConfirm")}
+              </button>
+              <button type="button" className="editor-btn editor-btn-secondary" onClick={() => setValidateConfirm(false)}>
+                {t("editor.validateCancel")}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="editor-btn editor-btn-primary"
+              onClick={requestValidate}
+              disabled={saving || validating}
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ width: 13, height: 13 }}>
+                <path d="M2 8l4 4 8-8" />
+              </svg>
+              {saving ? t("app.loading") : t("editor.validate")}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* ── BODY ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* Main form */}
+        <main className="flex-1 min-w-0 overflow-y-auto" style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Détails card */}
+          <div className="editor-form-card">
+            <div className="editor-form-card-header">
+              <span className="editor-form-card-title">{t("editor.contentDetails")}</span>
+            </div>
+            <div className="editor-form-card-body">
+              <MetadataForm core={state.core} metadata={state.modules.metadata.data} onChange={updateMetadata} />
+            </div>
+          </div>
+
+          {/* Module cards in order */}
           {orderedEnabledModules.map((key) => {
             const entry = moduleEntries.find((e) => e.key === key)!;
             const module = state.modules[key];
             const moduleTeams = module.audience.teams;
             return (
-              <Card key={key} className="overflow-hidden p-0">
-                <div className="border-b border-[#e8edf5] bg-slate-50/60 px-4 py-2.5 dark:border-white/10 dark:bg-[#161616]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7d849a]">
-                    {entry.labels[lang]}
-                  </p>
+              <div
+                key={key}
+                draggable
+                onDragStart={() => handleDragStart(key)}
+                onDragOver={(event) => handleDragOver(event, key)}
+                onDragEnd={handleDragEnd}
+                className="editor-form-card"
+                style={dragKey === key ? { opacity: 0.6, outline: "2px solid oklch(49% 0.22 258)" } : undefined}
+              >
+                <div className="editor-form-card-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {/* Drag handle */}
+                    <div className="editor-drag-dots" style={{ cursor: "grab" }}>
+                      <div className="editor-drag-row"><span className="editor-drag-dot" /><span className="editor-drag-dot" /></div>
+                      <div className="editor-drag-row"><span className="editor-drag-dot" /><span className="editor-drag-dot" /></div>
+                    </div>
+                    <span className="editor-form-card-title">{entry.labels[lang]}</span>
+                  </div>
                 </div>
-                <div className="p-4">
+                <div className="editor-form-card-body">
                   <ModulePanel
                     state={state}
                     selected={key}
@@ -428,18 +481,12 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                   />
                 </div>
                 {teamModeEnabled && definedTeams.length > 0 ? (
-                  <div className="border-t border-[#e8edf5] px-4 py-3 dark:border-white/10">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8890a6]">
-                      {t("editor.audienceTags")}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="editor-audience-bar">
+                    <p className="editor-audience-label">{t("editor.audienceTags")}</p>
+                    <div className="editor-team-tags">
                       <button
                         type="button"
-                        className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                          moduleTeams.length === 0
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-900/20 dark:text-emerald-300"
-                            : "border-[#d9dcea] bg-white text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                        }`}
+                        className={`editor-team-tag ${moduleTeams.length === 0 ? "active" : ""}`}
                         onClick={() => clearTagsForModule(key)}
                       >
                         {t("editor.allTeams")}
@@ -450,11 +497,7 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                           <button
                             key={team}
                             type="button"
-                            className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                              active
-                                ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-900/20 dark:text-brand-300"
-                                : "border-[#d9dcea] bg-white text-slate-600 hover:border-slate-300 dark:border-white/10 dark:bg-[#101010] dark:text-slate-300"
-                            }`}
+                            className={`editor-team-tag ${active ? "active" : ""}`}
                             onClick={() => toggleTagForModule(key, team)}
                           >
                             {team}
@@ -464,50 +507,56 @@ export function BriefingEditor({ briefing, modules, registryModules = [] }: Prop
                     </div>
                   </div>
                 ) : null}
-              </Card>
+              </div>
             );
           })}
-        </div>
+        </main>
 
-        {/* Sidebar: 30% */}
-        <aside className="hidden w-72 flex-shrink-0 overflow-y-auto border-l border-[#e2e7f2] bg-[#f8faff] p-4 space-y-4 lg:block dark:border-white/10 dark:bg-[#121212]">
-          {/* Module list with DnD */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7d849a]">{t("editor.tabs.modules")}</p>
-            <div className="space-y-1">
-              {moduleOrder.map((key) => {
-                const entry = moduleEntries.find((e) => e.key === key)!;
-                const enabled = state.modules[key].enabled;
-                return (
-                  <div
-                    key={key}
-                    draggable
-                    onDragStart={() => handleDragStart(key)}
-                    onDragOver={(event) => handleDragOver(event, key)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition ${
-                      dragKey === key
-                        ? "border-brand-400 bg-brand-50 dark:border-brand-500/40 dark:bg-brand-900/20"
-                        : "border-[#e3e8f2] bg-white dark:border-white/10 dark:bg-[#1a1a1a]"
-                    }`}
-                  >
-                    <GripVertical size={14} className="shrink-0 cursor-grab text-slate-400 active:cursor-grabbing" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-[#273047] dark:text-white">
+        {/* ── SIDEBAR MODULES (right) ── */}
+        <aside className="editor-sidebar hidden lg:flex">
+          <div className="editor-sidebar-header">
+            {t("editor.tabs.modules")}
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14, color: "var(--ink-4)" }}>
+              <circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 5.5v.5" />
+            </svg>
+          </div>
+
+          <div className="editor-sidebar-modules">
+            {moduleOrder.map((key) => {
+              const entry = moduleEntries.find((e) => e.key === key)!;
+              const enabled = state.modules[key].enabled;
+              return (
+                <div
+                  key={key}
+                  draggable
+                  onDragStart={() => handleDragStart(key)}
+                  onDragOver={(event) => handleDragOver(event, key)}
+                  onDragEnd={handleDragEnd}
+                  className="editor-sidebar-module"
+                  style={dragKey === key ? { opacity: 0.5 } : undefined}
+                >
+                  <div className="editor-sidebar-module-left">
+                    <div className="editor-drag-dots" style={{ cursor: "grab" }}>
+                      <div className="editor-drag-row"><span className="editor-drag-dot" /><span className="editor-drag-dot" /></div>
+                      <div className="editor-drag-row"><span className="editor-drag-dot" /><span className="editor-drag-dot" /></div>
+                    </div>
+                    <span className={`editor-sidebar-module-name ${enabled ? "active" : ""}`}>
                       {entry.labels[lang]}
                     </span>
-                    {!entry.isMandatory ? (
-                      <Toggle
-                        checked={enabled}
-                        onChange={(value) => setModuleEnabled(key, value)}
-                        ariaLabel={entry.labels[lang]}
-                      />
-                    ) : (
-                      <span className="text-[10px] text-slate-400">{t("editor.mandatory") ?? "—"}</span>
-                    )}
                   </div>
-                );
-              })}
-            </div>
+                  {!entry.isMandatory ? (
+                    <button
+                      type="button"
+                      className={`editor-toggle-sm ${enabled ? "on" : ""}`}
+                      aria-label={entry.labels[lang]}
+                      onClick={() => setModuleEnabled(key, !enabled)}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--ink-4)" }}>—</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </aside>
       </div>

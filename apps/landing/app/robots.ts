@@ -9,8 +9,21 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/api/", "/briefings/s/", "/briefings/*/"]
+        allow: ["/", "/en/", "/fr/", "/nl/", "/cgu", "/privacy", "/mentions-legales", "/cookies"],
+        disallow: [
+          "/api/",
+          "/dashboard/",
+          "/briefings/",
+          "/auth/",
+          "/login",
+          "/onboarding",
+          "/account",
+          "/settings",
+          "/staff",
+          "/modules",
+          "/documents",
+          "/status"
+        ]
       }
     ],
     sitemap: `${base}/sitemap.xml`

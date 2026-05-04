@@ -139,6 +139,13 @@ export async function incrementViewsCount(client: SupabaseClient, linkId: string
   await client.rpc("increment_views_count_for_link", { p_link_id: linkId });
 }
 
+export async function trackPublicLinkView(client: SupabaseClient, linkId: string, userAgent?: string | null) {
+  await Promise.allSettled([
+    client.rpc("increment_views_count_for_link", { p_link_id: linkId }),
+    client.from("public_link_views").insert({ link_id: linkId, user_agent: userAgent ?? null })
+  ]);
+}
+
 export async function resolvePublicLinkByToken(client: SupabaseClient, token: string) {
   const link = await getActivePublicLink(client, token);
   if (!link) return null;

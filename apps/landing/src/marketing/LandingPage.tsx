@@ -1,218 +1,217 @@
-import { FileText, Layers, Smartphone, Users } from "lucide-react";
-
 import type { MarketingLocale } from "@/i18n/marketing";
 import { getMarketingDictionary, marketingLocales } from "@/i18n/marketing";
 import { LocaleHtmlSync } from "@/marketing/LocaleHtmlSync";
 import { MarketingNavBar } from "@/marketing/MarketingNavBar";
+import { WaitlistForm } from "@/marketing/WaitlistForm";
 
 type LandingPageProps = {
   locale: MarketingLocale;
 };
 
-const featureIcons = [
-  <FileText key="file" size={22} />,
-  <Layers key="layers" size={22} />,
-  <Users key="users" size={22} />,
-  <Smartphone key="phone" size={22} />,
-];
-
-const featureColors = [
-  "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300",
-  "bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-300",
-  "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300",
-  "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-300",
-];
-
 export function LandingPage({ locale }: LandingPageProps) {
-  const dictionary = getMarketingDictionary(locale);
+  const d = getMarketingDictionary(locale);
+  const heroAccent = "seul briefing";
+  const heroTitleParts = d.hero.title.split(new RegExp(`(${heroAccent})`, "i"));
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f7fbff_0%,#eef4ff_48%,#fff7ef_100%)] text-[#10203a]">
+    <div style={{ fontFamily: "var(--ff-body)", background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", overflowX: "hidden" }}>
       <LocaleHtmlSync locale={locale} />
 
-      <MarketingNavBar
-        locale={locale}
-        nav={{
-          solution: dictionary.nav.solution,
-          howItWorks: dictionary.nav.howItWorks,
-          login: dictionary.nav.login,
-          cta: dictionary.nav.cta
-        }}
-      />
+      <MarketingNavBar locale={locale} nav={{ solution: d.nav.solution, howItWorks: d.nav.howItWorks, login: d.nav.login, cta: d.nav.cta }} />
 
-      <main className="mx-auto max-w-[1440px] px-4 pb-12 pt-[72px] sm:px-6 lg:px-10 xl:px-12">
+      <main>
 
-        {/* ── Hero ── */}
-        <section
-          aria-labelledby="hero-heading"
-          className="grid gap-10 py-12 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-center xl:py-16"
-        >
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#5870a8]">
-                {dictionary.hero.kicker}
-              </p>
-              <h1
-                id="hero-heading"
-                className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-[3.25rem]"
-              >
-                {dictionary.hero.title}
+        {/* ── HERO ── */}
+        <div className="page-wrap">
+          <section className="hero">
+
+            {/* Left col */}
+            <div>
+              <div className="kicker">
+                <span className="kicker-dot" />
+                {d.hero.kicker}
+              </div>
+
+              <h1 className="hero-title">
+                {heroTitleParts.map((part, index) => (
+                  part.toLowerCase() === heroAccent
+                    ? <span key={index} className="hero-title-accent">{part}</span>
+                    : <span key={index}>{part}</span>
+                ))}
               </h1>
-              <p className="max-w-2xl text-base leading-8 text-[#51627f] sm:text-lg">
-                {dictionary.hero.description}
-              </p>
+
+              <p className="hero-desc">{d.hero.description}</p>
+
+              <a
+                className="btn-waitlist-hero"
+                href={`/${locale}#waitlist`}
+              >
+                {d.nav.cta}
+                <span>→</span>
+              </a>
+              <p className="btn-rassurance">{d.hero.bullets[0] ?? "Accès anticipé gratuit · Aucun engagement"}</p>
+
+              <div className="hero-chips">
+                {d.hero.bullets.map((bullet, i) => (
+                  <div key={i} className="hero-chip">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ width: 14, height: 14, color: "var(--accent)", flexShrink: 0 }}>
+                      <rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" />
+                      <rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" />
+                    </svg>
+                    {bullet}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <span
-                aria-disabled="true"
-                className="cursor-not-allowed rounded-full bg-[#10203a] px-6 py-3 text-sm font-semibold text-white opacity-60 shadow-[0_20px_40px_rgba(16,32,58,0.18)]"
-              >
-                Bientôt disponible
-              </span>
-              <span
-                aria-disabled="true"
-                className="cursor-not-allowed rounded-full border border-[#d4deef] bg-white px-6 py-3 text-sm font-medium text-[#29436c] opacity-55"
-              >
-                Bientôt disponible
-              </span>
-            </div>
-
-            <ul className="grid gap-3 sm:grid-cols-3" role="list">
-              {dictionary.hero.bullets.map((bullet) => (
-                <li
-                  key={bullet}
-                  className="rounded-[20px] border border-white/80 bg-white/85 px-4 py-3 text-sm font-medium text-[#21334f] shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
-                >
-                  {bullet}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Mock briefing preview */}
-          <div className="w-full min-w-0 rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,#163a78_0%,#275ab5_45%,#5fb7ff_100%)] p-4 text-white shadow-[0_40px_120px_rgba(34,76,167,0.28)] sm:p-5">
-            <div className="rounded-[28px] border border-white/15 bg-white/10 p-4 backdrop-blur sm:p-5">
-              <div className="rounded-[24px] bg-white/95 p-4 text-[#10203a] sm:p-5">
-                <div className="rounded-[20px] bg-[linear-gradient(135deg,#66748f_0%,#44536f_100%)] px-5 py-5 text-white" aria-hidden="true">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Briefing mockup</p>
-                  <p className="mt-3 text-xl font-semibold">Demo Event · Client exemple</p>
-                  <p className="mt-2 text-sm text-white/80">14 mai 2026 · Lieu fictif</p>
-                  <p className="mt-1 text-sm text-white/80">Contact · Equipe demo</p>
+            {/* Right col — Briefing mock */}
+            <div className="briefing-mock">
+              <div className="briefing-mock-inner">
+                <div className="briefing-header">
+                  <div className="briefing-header-tag">Briefing opérationnel</div>
+                  <div className="briefing-header-title">Festival Printemps · Client XYZ</div>
+                  <div className="briefing-header-meta">
+                    <span>24 mai 2026</span>
+                    <span>Bruxelles Expo</span>
+                    <span>Équipe ×12</span>
+                  </div>
+                  <div className="briefing-status">
+                    <span className="briefing-status-dot" />
+                    V3 · Publié · events-ops.com
+                  </div>
                 </div>
 
-                <div className="mt-4 space-y-3" aria-hidden="true">
-                  {Object.values(dictionary.sections).map((section) => (
-                    <div
-                      key={section.title}
-                      className="rounded-[16px] border border-[#d6def1] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#607293]">{section.title}</p>
-                      <p className="mt-1.5 text-sm leading-5 text-[#4f5f7b]">{section.description}</p>
-                    </div>
-                  ))}
+                <div className="briefing-modules">
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Accès <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">Entrée nord · Badge rouge · Parking P4 -1</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Planning <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">07h00 Montage · 12h00 Check · 17h00 Ouverture</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Contacts <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">Resp. site · Catering · Sécurité dispatch</div>
+                  </div>
+                  <div className="briefing-module">
+                    <div className="briefing-module-tag">Matériel <span className="briefing-module-dot" /></div>
+                    <div className="briefing-module-content">2 camions · 4 tables · Groupe 20kW</div>
+                  </div>
+                </div>
+
+                <div className="briefing-segments">
+                  <span className="briefing-seg-label">Segments :</span>
+                  <span className="briefing-seg active">Terrain</span>
+                  <span className="briefing-seg">Catering</span>
+                  <span className="briefing-seg">Sécurité</span>
+                  <span className="briefing-seg">Direction</span>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* ── Problem ── */}
-        <section
-          aria-labelledby="problem-label"
-          className="mb-10 rounded-[28px] border border-[#fde8c8]/80 bg-[#fffaf4]/90 px-6 py-6 shadow-[0_12px_40px_rgba(180,100,20,0.06)]"
-        >
-          <p id="problem-label" className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c07a30]">
-            {dictionary.problem.label}
-          </p>
-          <p className="mt-2 text-base leading-7 text-[#7a4a1a]">{dictionary.problem.text}</p>
-        </section>
+          </section>
+        </div>
 
-        {/* ── Solution / Features ── */}
-        <section
-          id="solution"
-          aria-labelledby="solution-heading"
-          className="mb-10 scroll-mt-20"
-        >
-          <h2
-            id="solution-heading"
-            className="mb-6 text-2xl font-semibold text-[#10203a] sm:text-3xl"
-          >
-            {dictionary.nav.solution}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {dictionary.features.map((feature, index) => (
-              <article
-                key={feature.title}
-                className="rounded-[28px] border border-white/80 bg-white/85 px-5 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
-              >
-                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-[14px] ${featureColors[index]}`}>
-                  {featureIcons[index]}
+        {/* ── PROBLEM ── */}
+        <div className="page-wrap">
+          <section className="problem-section">
+            <div className="problem-card">
+              <div className="problem-label-col">
+                <span className="problem-label">{d.problem.label}</span>
+                <div className="problem-bar" />
+              </div>
+              <p className="problem-text">{d.problem.text}</p>
+            </div>
+          </section>
+        </div>
+
+        {/* ── FEATURES ── */}
+        <div className="page-wrap">
+          <section className="features-section" id="solution">
+            <div className="section-header">
+              <div className="kicker"><span className="kicker-dot" />{d.nav.solution}</div>
+              <h2 className="section-title">{d.featuresSectionTitle}</h2>
+              <p className="section-sub">{d.features[0]?.description ?? ""}</p>
+            </div>
+
+            <div className="features-grid">
+              {d.features.map((feature) => (
+                <div key={feature.title} className="feature-card">
+                  <div className="feature-icon">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" style={{ width: 18, height: 18, color: "var(--accent)" }}>
+                      <rect x="3" y="3" width="6" height="6" rx="1.5" /><rect x="11" y="3" width="6" height="6" rx="1.5" />
+                      <rect x="3" y="11" width="6" height="6" rx="1.5" /><rect x="11" y="11" width="6" height="6" rx="1.5" />
+                    </svg>
+                  </div>
+                  <div className="feature-title">{feature.title}</div>
+                  <div className="feature-desc">{feature.description}</div>
                 </div>
-                <h3 className="text-base font-semibold text-[#10203a]">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#55657f]">{feature.description}</p>
-              </article>
-            ))}
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* ── HOW IT WORKS ── */}
+        <section className="how-section" id="how-it-works">
+          <div className="page-wrap">
+            <div className="section-header">
+              <div className="kicker"><span className="kicker-dot" />{d.nav.howItWorks}</div>
+              <h2 className="section-title">{d.workflow.title}</h2>
+            </div>
+            <div className="steps-grid">
+              {d.workflow.steps.map((step, index) => (
+                <div key={step.title} className="step">
+                  <div className="step-num">
+                    <span className="step-num-badge">{String(index + 1).padStart(2, "0")}</span>
+                  </div>
+                  <div className="step-title">{step.title}</div>
+                  <div className="step-desc">{step.description}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* ── How it works ── */}
-        <section
-          id="how-it-works"
-          aria-labelledby="workflow-heading"
-          className="mb-10 scroll-mt-20"
-        >
-          <h2
-            id="workflow-heading"
-            className="mb-6 text-2xl font-semibold text-[#10203a] sm:text-3xl"
-          >
-            {dictionary.workflow.title}
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {dictionary.workflow.steps.map((step, index) => (
-              <article
-                key={step.title}
-                className="rounded-[28px] border border-white/80 bg-white/85 px-5 py-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
-              >
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#6980ac]">
-                  {String(index + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-3 text-lg font-semibold text-[#10203a]">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#55657f]">{step.description}</p>
-              </article>
-            ))}
+        {/* ── WAITLIST ── */}
+        <section className="waitlist-section" id="waitlist">
+          <div className="page-wrap">
+            <div className="waitlist-inner">
+              <div>
+                <span className="waitlist-kicker">{d.hero.kicker}</span>
+                <h2 className="waitlist-title">{d.hero.title}</h2>
+                <p className="waitlist-desc">{d.hero.description}</p>
+              </div>
+              <WaitlistForm source="footer" dark />
+            </div>
           </div>
         </section>
 
-        {/* ── Footer ── */}
-        <footer className="flex flex-col gap-4 border-t border-[#dde5f0]/60 py-6 text-sm text-[#5b6b86] sm:flex-row sm:items-center sm:justify-between">
-          <p>BriefOPS · {dictionary.footer.marketing}</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <span aria-disabled="true" className="cursor-not-allowed font-medium text-[#23457a] opacity-55">
-              Bientôt disponible
-            </span>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.eventBriefingTemplate.slug}`}>
-              {dictionary.seoPages.eventBriefingTemplate.navLabel}
-            </a>
-            <a className="font-medium text-[#23457a] transition hover:text-[#10203a]" href={`/${locale}/${dictionary.seoPages.briefingGenerator.slug}`}>
-              {dictionary.seoPages.briefingGenerator.navLabel}
-            </a>
-            <span className="text-[#cbd5e1]">·</span>
-            <span className="text-xs text-[#8a97b0]">{dictionary.footer.language}:</span>
-            {marketingLocales.map((entry) => (
-              <a
-                key={entry}
-                href={`/${entry}`}
-                className={`text-xs font-semibold uppercase transition ${
-                  entry === locale ? "text-[#1d4ed8]" : "text-[#6a7b9b] hover:text-[#10203a]"
-                }`}
-              >
-                {entry}
-              </a>
-            ))}
-          </div>
-        </footer>
       </main>
+
+      {/* ── FOOTER ── */}
+      <footer className="footer">
+        <div className="page-wrap">
+          <div className="footer-inner">
+            <span className="footer-brand">BriefOPS · events-ops.com</span>
+            <div className="footer-links">
+              <a href={`/${locale}/${d.seoPages.eventBriefingTemplate.slug}`}>{d.seoPages.eventBriefingTemplate.navLabel}</a>
+              <a href={`/${locale}/${d.seoPages.briefingGenerator.slug}`}>{d.seoPages.briefingGenerator.navLabel}</a>
+              <span style={{ color: "var(--border-2)" }}>·</span>
+              <a href="/cgu">CGU</a>
+              <a href="/privacy">Confidentialité</a>
+              <a href="/mentions-legales">Mentions légales</a>
+              <a href="/cookies">Cookies</a>
+              <span style={{ color: "var(--border-2)" }}>·</span>
+              {marketingLocales.map((entry) => (
+                <a key={entry} href={`/${entry}`} style={{ fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: entry === locale ? "var(--accent)" : "var(--ink-3)" }}>
+                  {entry}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

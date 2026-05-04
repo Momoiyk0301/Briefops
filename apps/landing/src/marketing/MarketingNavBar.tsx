@@ -8,127 +8,85 @@ import { marketingLocales } from "@/i18n/marketing";
 
 type Props = {
   locale: MarketingLocale;
-  nav: {
-    solution: string;
-    howItWorks: string;
-    login: string;
-    cta: string;
-  };
+  nav: { solution: string; howItWorks: string; login: string; cta: string };
 };
 
 export function MarketingNavBar({ locale, nav }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-[#e4ecf9]/70 bg-white/90 shadow-[0_2px_16px_rgba(15,23,42,0.06)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6 lg:px-10 xl:px-12">
+    <header className="nav">
+      <div className="page-wrap">
+        <div className="nav-inner">
 
-        {/* Logo — left */}
-        <a href={`/${locale}`} className="flex items-center gap-3 shrink-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#2b65ff_0%,#55b4ff_100%)] text-sm font-bold text-white shadow-[0_8px_20px_rgba(43,101,255,0.22)]">
-            B
-          </div>
-          <span className="text-sm font-semibold tracking-wide text-[#10203a]">BriefOPS</span>
-        </a>
-
-        {/* Nav — center (desktop only) */}
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Navigation principale">
-          <a
-            href={`/${locale}#solution`}
-            className="text-sm font-medium text-[#4a5a78] transition hover:text-[#10203a]"
-          >
-            {nav.solution}
-          </a>
-          <a
-            href={`/${locale}#how-it-works`}
-            className="text-sm font-medium text-[#4a5a78] transition hover:text-[#10203a]"
-          >
-            {nav.howItWorks}
+          {/* Logo */}
+          <a className="nav-logo" href={`/${locale}`}>
+            <div className="nav-logo-mark">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 18, height: 18 }}>
+                <path d="M8 14.5C8 14.5 8.8 17.5 12 17.5C15.2 17.5 16 14.5 16 14.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M8 10L8 6.5C8 5.1 9.1 4 10.5 4L13.5 4C14.9 4 16 5.1 16 6.5L16 10" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+                <rect x="6" y="10" width="12" height="7" rx="2" stroke="white" strokeWidth="1.6" />
+              </svg>
+            </div>
+            <span className="nav-brand">BriefOPS</span>
           </a>
 
-          {/* Locale switcher */}
-          <div className="flex items-center gap-0.5 rounded-full border border-[#d6def1] bg-white px-2 py-1">
-            {marketingLocales.map((entry) => (
-              <a
-                key={entry}
-                href={`/${entry}`}
-                className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase transition ${
-                  entry === locale
-                    ? "bg-[#e9f0ff] text-[#1d4ed8]"
-                    : "text-[#6a7b9b] hover:text-[#10203a]"
-                }`}
-              >
-                {entry}
-              </a>
-            ))}
+          {/* Nav links */}
+          <nav className="nav-links" aria-label="Navigation principale">
+            <a href={`/${locale}#solution`}>{nav.solution}</a>
+            <a href={`/${locale}#how-it-works`}>{nav.howItWorks}</a>
+
+            <select
+              className="lang-select"
+              value={locale}
+              onChange={(e) => { window.location.href = `/${e.target.value}`; }}
+              aria-label="Langue"
+            >
+              {marketingLocales.map((l) => (
+                <option key={l} value={l}>{l.toUpperCase()}</option>
+              ))}
+            </select>
+          </nav>
+
+          {/* CTA */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button className="btn-waitlist-nav" onClick={() => { document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" }); }}>
+              {nav.cta}
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Mobile hamburger */}
+            <button
+              type="button"
+              aria-label="Menu"
+              aria-expanded={open}
+              style={{ display: "none" }}
+              className="mobile-menu-btn"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
-        </nav>
 
-        {/* CTA — right */}
-        <div className="flex items-center gap-2">
-          <span
-            aria-disabled="true"
-            className="hidden cursor-not-allowed rounded-full border border-[#d6def1] px-4 py-2 text-sm font-medium text-[#28436b] opacity-50 sm:inline-flex"
-          >
-            Bientôt disponible
-          </span>
-          <span
-            aria-disabled="true"
-            className="cursor-not-allowed rounded-full bg-[#2b65ff] px-4 py-2 text-sm font-semibold text-white opacity-60 shadow-[0_8px_20px_rgba(43,101,255,0.22)]"
-          >
-            Bientôt disponible
-          </span>
-
-          {/* Mobile hamburger */}
-          <button
-            type="button"
-            aria-label="Menu"
-            aria-expanded={open}
-            className="ml-1 rounded-xl border border-[#d6def1] p-2 text-[#4a5a78] transition hover:bg-[#f0f4ff] md:hidden"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X size={18} /> : <Menu size={18} />}
-          </button>
         </div>
       </div>
 
       {/* Mobile menu */}
-      {open ? (
-        <div className="border-t border-[#e8eef8] bg-white/98 px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-4" aria-label="Navigation mobile">
-            <a
-              href={`/${locale}#solution`}
-              className="text-sm font-medium text-[#4a5a78]"
-              onClick={() => setOpen(false)}
-            >
-              {nav.solution}
-            </a>
-            <a
-              href={`/${locale}#how-it-works`}
-              className="text-sm font-medium text-[#4a5a78]"
-              onClick={() => setOpen(false)}
-            >
-              {nav.howItWorks}
-            </a>
-            <span aria-disabled="true" className="cursor-not-allowed text-sm font-medium text-[#28436b] opacity-55">
-              Bientôt disponible
-            </span>
-            <div className="flex items-center gap-1 pt-1">
+      {open && (
+        <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-2)", padding: "16px 24px" }}>
+          <nav style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <a href={`/${locale}#solution`} style={{ fontSize: 14, fontWeight: 500, color: "var(--ink-2)", textDecoration: "none" }} onClick={() => setOpen(false)}>{nav.solution}</a>
+            <a href={`/${locale}#how-it-works`} style={{ fontSize: 14, fontWeight: 500, color: "var(--ink-2)", textDecoration: "none" }} onClick={() => setOpen(false)}>{nav.howItWorks}</a>
+            <div style={{ display: "flex", gap: 8 }}>
               {marketingLocales.map((entry) => (
-                <a
-                  key={entry}
-                  href={`/${entry}`}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-                    entry === locale ? "bg-[#e9f0ff] text-[#1d4ed8]" : "text-[#6a7b9b]"
-                  }`}
-                >
-                  {entry}
-                </a>
+                <a key={entry} href={`/${entry}`} style={{ fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: entry === locale ? "var(--accent)" : "var(--ink-3)", textDecoration: "none" }}>{entry}</a>
               ))}
             </div>
           </nav>
         </div>
-      ) : null}
+      )}
     </header>
   );
 }
