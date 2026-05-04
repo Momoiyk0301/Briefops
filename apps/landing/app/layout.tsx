@@ -17,6 +17,10 @@ const jsonLd = {
       "@id": "https://peak-events.be/#organization",
       name: "Peak Events",
       url: "https://peak-events.be",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://events-ops.be/assets/logo.svg"
+      },
       sameAs: []
     },
     {
@@ -67,10 +71,8 @@ export const metadata: Metadata = {
     description: "Montez, validez et partagez vos briefings terrain en quelques minutes. Le cockpit opérationnel pour professionnels de l'événementiel.",
     images: [
       {
-        url: "/assets/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "BriefOPS — Briefings terrain"
+        url: "/assets/logo.svg",
+        alt: "BriefOPS — logo"
       }
     ]
   },
@@ -78,15 +80,15 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BriefOPS — Briefings terrain pour équipes événementielles",
     description: "Montez, validez et partagez vos briefings terrain en quelques minutes.",
-    images: ["/assets/og-image.png"]
+    images: ["/assets/logo.svg"]
   },
   icons: {
     icon: [
       { url: "/assets/logo.svg", type: "image/svg+xml" },
-      { url: "/logo.ico", sizes: "48x48", type: "image/x-icon" }
+      { url: "/assets/logo.ico", sizes: "48x48", type: "image/x-icon" }
     ],
-    shortcut: "/logo.ico",
-    apple: "/logo.ico"
+    shortcut: "/assets/logo.ico",
+    apple: "/assets/logo.ico"
   },
   robots: {
     index: true,
