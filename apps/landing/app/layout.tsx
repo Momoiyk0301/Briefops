@@ -14,13 +14,9 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://events-ops.be/#organization",
-      name: "BriefOPS",
-      url: "https://events-ops.be",
-      logo: {
-        "@type": "ImageObject",
-        url: "https://events-ops.be/assets/logo.svg"
-      },
+      "@id": "https://peak-events.be/#organization",
+      name: "Peak Events",
+      url: "https://peak-events.be",
       sameAs: []
     },
     {
@@ -29,7 +25,7 @@ const jsonLd = {
       url: "https://events-ops.be",
       name: "BriefOPS",
       description: "Cockpit opérationnel pour briefings terrain événementiels",
-      publisher: { "@id": "https://events-ops.be/#organization" }
+      publisher: { "@id": "https://peak-events.be/#organization" }
     },
     {
       "@type": "SoftwareApplication",
@@ -46,7 +42,7 @@ const jsonLd = {
         priceCurrency: "EUR",
         availability: "https://schema.org/ComingSoon"
       },
-      publisher: { "@id": "https://events-ops.be/#organization" }
+      publisher: { "@id": "https://peak-events.be/#organization" }
     }
   ]
 };
