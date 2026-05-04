@@ -126,6 +126,11 @@ export function SeoMarketingPage({ locale, pageKey }: Props) {
               {dictionary.nav.product}
             </a>
             <span className="text-[#cbd5e1]">·</span>
+            <a className="transition hover:text-[#10203a]" href="/cgu">CGU</a>
+            <a className="transition hover:text-[#10203a]" href="/privacy">Confidentialité</a>
+            <a className="transition hover:text-[#10203a]" href="/mentions-legales">Mentions légales</a>
+            <a className="transition hover:text-[#10203a]" href="/cookies">Cookies</a>
+            <span className="text-[#cbd5e1]">·</span>
             {marketingLocales.map((entry) => (
               <a
                 key={entry}

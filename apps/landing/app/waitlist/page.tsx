@@ -43,6 +43,8 @@ export default function WaitlistPage() {
         <a href="/" className="mx-2 text-[#64748b] hover:text-[#0b1525]">Accueil</a>
         <a href="/cgu" className="mx-2 text-[#64748b] hover:text-[#0b1525]">CGU</a>
         <a href="/privacy" className="mx-2 text-[#64748b] hover:text-[#0b1525]">Confidentialité</a>
+        <a href="/mentions-legales" className="mx-2 text-[#64748b] hover:text-[#0b1525]">Mentions légales</a>
+        <a href="/cookies" className="mx-2 text-[#64748b] hover:text-[#0b1525]">Cookies</a>
       </footer>
     </div>
   );
