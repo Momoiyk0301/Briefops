@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -106,6 +107,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans">
         {children}
+        <Script
+          defer
+          data-domain="events-ops.be"
+          src="https://tracking.peak-events.be/js/script.file-downloads.outbound-links.pageview-props.tagged-events.js"
+          strategy="afterInteractive"
+        />
+        <Script id="plausible-queue" strategy="afterInteractive">
+          {`window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`}
+        </Script>
         <Analytics />
         <SpeedInsights />
       </body>
